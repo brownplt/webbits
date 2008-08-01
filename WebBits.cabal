@@ -1,0 +1,35 @@
+Name:           WebBits
+Version:        1.0
+Cabal-Version:	>= 1.2
+Copyright:      Copyright (c) 2007-2008 Arjun Guha, Spiridon Eliopoulos,
+                Brendan Hickey
+License:        LGPL
+License-file:   LICENSE
+Author:         Arjun Guha, Spiridon Eliopoulos, Brendan Hickey
+Maintainer:     Arjun Guha <arjun@cs.brown.edu>
+Homepage:       http://www.cs.brown.edu/research/plt/
+Stability:      stable
+Category:       Tools
+Build-Type:     Custom
+Synopsis:       Javascript analysis tools
+ 
+Library
+  Hs-Source-Dirs:
+    src
+  Build-Depends:
+    base, mtl, parsec, pretty, containers
+  ghc-options:
+    -fwarn-incomplete-patterns
+  Extensions:     
+    Generics Rank2Types MultiParamTypeClasses FunctionalDependencies
+    TypeSynonymInstances FlexibleInstances FlexibleContexts CPP
+    DeriveDataTypeable ExistentialQuantification
+  Exposed-Modules:
+    WebBits.Data.Zipper
+    WebBits.Html.Html WebBits.Html.Syntax WebBits.Html.PermissiveParser
+    WebBits.Html.PrettyPrint WebBits.Html.Instances WebBits.Common
+    WebBits.Html.RawScript WebBits.JavaScript.Combinators
+    WebBits.JavaScript.HtmlEmbedding WebBits.JavaScript.Instances
+    WebBits.JavaScript.JavaScript WebBits.JavaScript.Lexer 
+    WebBits.JavaScript.Parser WebBits.JavaScript.PrettyPrint
+    WebBits.JavaScript.Syntax
