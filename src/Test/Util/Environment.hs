@@ -1,8 +1,10 @@
 module Test.Util.Environment 
   ( testLabelEq
+  , testLabelDiff
   , testFile
   , labelAt
   , runTestTT
+  , module Test.HUnit.Base
   ) where
 
 import Control.Monad.State
@@ -43,7 +45,15 @@ assertLabelEq stmts p1 p2 = do
   let lbl2 = labelAt stmts p2
   assertEqual "same label" lbl1 lbl2
   
+assertLabelDiff :: [LabelledStatement] -> (Int,Int) -> (Int,Int) ->  IO ()
+assertLabelDiff stmts p1 p2 = do
+  let lbl1 = labelAt stmts p1
+  let lbl2 = labelAt stmts p2
+  assert (lbl1 /= lbl2)
+  
 testLabelEq stmts p1 p2 = TestCase (assertLabelEq stmts p1 p2)
+
+testLabelDiff stmts p1 p2 = TestCase (assertLabelDiff stmts p1 p2)
 
 testFile :: String -> IO [LabelledStatement]
 testFile filename = do
