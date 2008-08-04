@@ -116,14 +116,13 @@ buildStmt (FunctionStmt loc id args stmt) = do
   return (FunctionStmt loc id args stmt')
 buildStmt s = gmapM buildAny s
 
+buildAny' :: (Data a, Typeable a) => a -> RefM a
+buildAny' v = gmapM buildAny v
+
 buildAny :: GenericM RefM
-buildAny v = do
-  v <- mkM buildExpr v
-  v <- mkM buildCatchClause v
-  v <- mkM buildVarDecl v
-  v <- mkM buildForInInit v
-  v <- mkM buildStmt v
-  gmapM buildAny v
+buildAny =
+  buildAny' `extM` buildExpr `extM` buildCatchClause `extM`
+    buildVarDecl `extM` buildForInInit `extM` buildStmt
 
 --
 -- buildAny creates a tree of partial environments.  We now walk the tree and
@@ -245,14 +244,12 @@ labelStmt (FunctionStmt (_,_,loc) id args stmt) = do
   return (FunctionStmt (env,lbl,loc) id args' stmt')
 labelStmt e = gmapM labelAny e
 
+labelAny' :: (Data a, Typeable a) => a -> Z.TraverserT Env (State Int) a
+labelAny' = gmapM labelAny
+
 labelAny :: GenericM (Z.TraverserT Env (State Int)) 
-labelAny v = do
-  v <- mkM labelEnv v
-  v <- mkM labelId v
-  v <- mkM labelProp v
-  v <- mkM labelExpr v
-  v <- mkM labelStmt v
-  gmapM labelAny v
+labelAny = labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
+  labelExpr `extM` labelStmt
 
 -- |Annotates each expression with its static environment.  In addition,
 -- a map of free identifiers is returned, along with the next valid label.
