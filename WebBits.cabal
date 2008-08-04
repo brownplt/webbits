@@ -22,8 +22,8 @@ Library
     -fwarn-incomplete-patterns
   Extensions:     
     Generics Rank2Types MultiParamTypeClasses FunctionalDependencies
-    TypeSynonymInstances FlexibleInstances FlexibleContexts CPP
-    DeriveDataTypeable ExistentialQuantification
+    TypeSynonymInstances FlexibleInstances FlexibleContexts
+    DeriveDataTypeable ExistentialQuantification NoMonomorphismRestriction
   Exposed-Modules:
     WebBits.Data.Zipper
     WebBits.Html.Html WebBits.Html.Syntax WebBits.Html.PermissiveParser
@@ -32,4 +32,4 @@ Library
     WebBits.JavaScript.HtmlEmbedding WebBits.JavaScript.Instances
     WebBits.JavaScript.JavaScript WebBits.JavaScript.Lexer 
     WebBits.JavaScript.Parser WebBits.JavaScript.PrettyPrint
-    WebBits.JavaScript.Syntax
+    WebBits.JavaScript.Syntax WebBits.JavaScript.Environment

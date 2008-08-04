@@ -1,13 +1,17 @@
 module WebBits.JavaScript.Environment 
   ( staticEnvironment
+  , Ann
+  , LabelledStatement
+  , LabelledExpression
+  , Env
   ) where
 
 import Data.Generics hiding (GT)
 import Data.Maybe (fromJust)
 import qualified Data.Set as S
-import Data.Zipper (ZipperT,TraverserT)
+import WebBits.Data.Zipper (ZipperT,TraverserT)
 import qualified Data.Map as M
-import qualified Data.Zipper as Z
+import qualified WebBits.Data.Zipper as Z
 import Control.Monad.State
 import qualified Data.Foldable as F
 import qualified Data.List as L
@@ -34,8 +38,13 @@ removeParens :: Expression SourcePos -> Expression SourcePos
 removeParens (ParenExpr _ e) = e
 removeParens e = e
 
+removeSingletons :: Expression SourcePos -> Expression SourcePos
+removeSingletons (ListExpr _ [e]) = e
+removeSingletons e = e
+
 explicitThis :: [Statement SourcePos] -> [Statement SourcePos]
-explicitThis = everywhere $ (mkT removeParens) . (mkT thisExpr) . (mkT thisStmt)
+explicitThis = everywhere $ (mkT removeSingletons) . (mkT removeParens) 
+  . (mkT thisExpr) . (mkT thisStmt)
 
 -- JavaScript has a global and function scopes.  Globals do not need to be
 -- declared.  Any "unbound identifier" in a function is treated as a reference
@@ -164,6 +173,9 @@ completeEnvM pt = do
 
 type Ann = (Env,Int,SourcePos)
 
+type LabelledStatement = Statement Ann
+type LabelledExpression = Expression Ann
+
 -- Necessary for type-checking.  gmapM won't let us transform the type of the
 -- annotation.  So, we first inject SourcePos into a trivial Ann.
 insertEmptyAnn :: (Functor f) => f SourcePos -> f Ann
@@ -198,6 +210,9 @@ labelProp (PropId (_,_,loc) id) = do
 
 labelExpr :: Expression Ann 
           -> Z.TraverserT Env (State Int) (Expression Ann)
+labelExpr (VarRef (_,_,loc) id) = do
+  id'@(Id ann s) <- labelId id
+  return (VarRef ann id') 
 labelExpr (ThisRef (_,_,loc)) = do
   env <- Z.trGet
   lbl <- M.lookup "this" env
@@ -245,11 +260,11 @@ labelStmt (FunctionStmt (_,_,loc) id args stmt) = do
 labelStmt e = gmapM labelAny e
 
 labelAny' :: (Data a, Typeable a) => a -> Z.TraverserT Env (State Int) a
-labelAny' = gmapM labelAny
+labelAny' a = gmapM labelAny a
 
 labelAny :: GenericM (Z.TraverserT Env (State Int)) 
-labelAny = labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
-  labelExpr `extM` labelStmt
+labelAny a = (labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
+  labelExpr `extM` labelStmt) a
 
 -- |Annotates each expression with its static environment.  In addition,
 -- a map of free identifiers is returned, along with the next valid label.
