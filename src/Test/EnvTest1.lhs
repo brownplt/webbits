@@ -10,6 +10,6 @@ function foo(x) {
 
 > main = do
 >   stmts <- testFile "Test/EnvTest1.lhs"
->   runTestTT $ testLabelEq stmts  (1,14) (2,10)
+>   return $ testLabelEq stmts  (1,14) (2,10)
 
 */

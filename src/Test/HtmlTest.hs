@@ -1,4 +1,4 @@
-module HtmlTest where
+module Test.HtmlTest where
 
 import Test.HUnit.Base
 import Test.HUnit.Text
@@ -26,4 +26,4 @@ allTests = TestList
   [ structureRecoveryTests 
   ]
   
-main = runTestTT allTests
+main = return allTests
