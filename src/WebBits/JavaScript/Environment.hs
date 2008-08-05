@@ -207,6 +207,7 @@ labelProp (PropId (_,_,loc) id) = do
   lbl <- nextLabel
   id' <- labelIdNoVar id
   return (PropId (env,lbl,loc) id')
+labelProp e = gmapM labelAny e
 
 labelExpr :: Expression Ann 
           -> Z.TraverserT Env (State Int) (Expression Ann)

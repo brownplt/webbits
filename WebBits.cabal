@@ -1,11 +1,10 @@
 Name:           WebBits
 Version:        1.0
 Cabal-Version:	>= 1.2
-Copyright:      Copyright (c) 2007-2008 Arjun Guha, Spiridon Eliopoulos,
-                Brendan Hickey
+Copyright:      Copyright (c) 2007-2008 Arjun Guha and Spiridon Eliopoulos
 License:        LGPL
 License-file:   LICENSE
-Author:         Arjun Guha, Spiridon Eliopoulos, Brendan Hickey
+Author:         Arjun Guha, Spiridon Eliopoulos
 Maintainer:     Arjun Guha <arjun@cs.brown.edu>
 Homepage:       http://www.cs.brown.edu/research/plt/
 Stability:      stable
@@ -19,7 +18,7 @@ Library
   Build-Depends:
     base, mtl, parsec, pretty, containers
   ghc-options:
-    -fwarn-incomplete-patterns
+    -fwarn-incomplete-patterns -fglasgow-exts
   Extensions:     
     Generics Rank2Types MultiParamTypeClasses FunctionalDependencies
     TypeSynonymInstances FlexibleInstances FlexibleContexts
