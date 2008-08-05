@@ -1,6 +1,9 @@
 -- | Defines commonly used datatypes and functions.
 module WebBits.Common
   ( PrettyPrintable(..)
+  , L.isPrefixOf
+  , SourcePos
+  , sourceName
   ) where
 
 import Data.Map (Map)
@@ -17,7 +20,7 @@ import Data.Foldable (Foldable)
 import qualified Data.Traversable as Traversable
 import Data.Traversable (Traversable, traverse)
 import qualified Text.PrettyPrint.HughesPJ as Pp
-import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos)
+import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, sourceName)
 
 lowercase = map toLower
 
