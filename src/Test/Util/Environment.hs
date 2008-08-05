@@ -4,6 +4,7 @@ module Test.Util.Environment
   , testFile
   , labelAt
   , runTestTT
+  , annotationAt
   , module Test.HUnit.Base
   ) where
 
@@ -12,7 +13,7 @@ import Test.HUnit.Base
 import Test.HUnit.Text (runTestTT)
 import qualified Data.Foldable as F
 import Data.Foldable (Foldable)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes,listToMaybe)
 import Text.ParserCombinators.Parsec.Pos
 
 import WebBits.JavaScript.JavaScript (parseJavaScriptFromFile)
@@ -21,22 +22,21 @@ import WebBits.JavaScript.Environment
 annotationAt :: (Foldable t) 
         => [t (Env,Int,SourcePos)]
         -> (Int,Int) -- ^row and column
-        -> (Env,Int,SourcePos)
+        -> [(Env,Int,SourcePos)]
 annotationAt terms (line,column) =
-  let match loc = sourceLine loc == line && sourceColumn loc == column
-      results = map (F.find (\(_,_,loc) -> match loc)) terms
-    in case catMaybes results of
-         (result:_) -> result
-         [] -> error $ "no term at line " ++ show line ++ ", column " 
-                       ++ show column
+  let match a@(_,_,loc) =
+        if sourceLine loc == line && sourceColumn loc == column
+          then [a] 
+          else []
+  in concatMap (F.concatMap match) terms 
 
 envAt :: (Foldable t) => [t (Env,Int,SourcePos)] -> (Int,Int) -> Env
 envAt terms p = env where
-  (env,_,_) = annotationAt terms p
+  (env,_,_) = last $ annotationAt terms p
 
 labelAt :: (Foldable t) => [t (Env,Int,SourcePos)] -> (Int,Int) -> Int
 labelAt terms p = label where
-  (_,label,_) = annotationAt terms p
+  (_,label,_) = last $ annotationAt terms p
 
   
 assertLabelEq :: [LabelledStatement] -> (Int,Int) -> (Int,Int) ->  IO ()

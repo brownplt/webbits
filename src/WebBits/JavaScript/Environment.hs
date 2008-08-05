@@ -210,9 +210,6 @@ labelProp (PropId (_,_,loc) id) = do
 
 labelExpr :: Expression Ann 
           -> Z.TraverserT Env (State Int) (Expression Ann)
-labelExpr (VarRef (_,_,loc) id) = do
-  id'@(Id ann s) <- labelId id
-  return (VarRef ann id') 
 labelExpr (ThisRef (_,_,loc)) = do
   env <- Z.trGet
   lbl <- M.lookup "this" env
