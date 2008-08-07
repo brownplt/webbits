@@ -39,12 +39,6 @@ module WebBits.Data.Zipper
   , shiftLeft', shiftRight' -- Monad m => ZipperT v m ()
   , withCurrentChild        -- Monad m => Zipper T v m a -> ZipperT v m a
   
-  -- * Imperative tree traversal
-  
-  -- $treeTraversal
-  
-  , TraverserT, Traverser, runTraverserT, evalTraverserT, execTraverserT
-  , trGet, trRight, trCanGoRight, trDown
   ) where
 
 import Control.Monad
@@ -186,6 +180,10 @@ fromLocation (Location t _) = t
 -- $treeBuilder
 -- A state monad that carries a zipper.  It provides convenient methods to
 -- imperatively create and update a tree.
+--
+-- The state monad's set method may be used to arbitrarily update the current
+-- location.  However, such updates can break the behavior of nest and
+-- withCurrentChild.  We recommend avoiding StateT.set.
 
 type ZipperT v m a = StateT (Location v) m a
 
@@ -206,7 +204,10 @@ execZipperT m l = do
   return t
 
 -- |Creates a new node as the right-most child of the current node.
-nest :: Monad m => v -> ZipperT v m a -> ZipperT v m a
+nest :: Monad m 
+     => v -- ^value of the new right-most child 
+     -> ZipperT v m a -- ^computation applied to the new child 
+     -> ZipperT v m a -- ^returns the result of the nested computation
 nest v m = do
   z <- get 
   put $ insertDownRight z (empty v)
@@ -225,7 +226,10 @@ setNode v = do
   (Location (Node _ cs) path) <- get
   put $ Location (Node v cs) path
 
-withCurrentChild :: Monad m => ZipperT v m a -> ZipperT v m a
+withCurrentChild :: Monad m 
+                 => ZipperT v m a -- ^computation to apply to the current child 
+                 -> ZipperT v m a -- ^returns the result of the nested 
+                                  -- computation
 withCurrentChild m = do
   z <- get
   put (down z)
@@ -266,56 +270,5 @@ hasLeft _                                = False
 hasRight :: Location a -> Bool
 hasRight (Location _ (Split _ _ _ (_:_))) = True
 hasRight _                                = False
-
-       
--- $treeTraversal
--- A state monad that carries a zipper.  The following
--- functions make it easy to shift position while traversing.
-
--- TODO: Why isn't this simply location?
-data Traverser a = Traverser a [Tree a] [Tree a] (Path a)
-
-type TraverserT v m a = StateT (Traverser v) m a
-
-toTraverser :: Tree a -> Path a -> Traverser a
-toTraverser (Node v cs) path =  Traverser v [] cs path
-
-runTraverserT :: Monad m => TraverserT v m a -> Tree v -> m (a, Tree v)
-runTraverserT m (Node v ns) = do
-  (a, Traverser v ls rs Top) <- runStateT m (Traverser v [] ns Top)
-  return (a,Node v (reverse ls ++ rs))
-
-evalTraverserT :: Monad m => TraverserT v m a -> Tree v -> m a
-evalTraverserT m t = runTraverserT m t >>= return . fst
-
-execTraverserT :: Monad m => TraverserT v m a -> Tree v -> m (Tree v)
-execTraverserT m t = runTraverserT m t >>= return . snd
-
-trGet :: Monad m => TraverserT v m v
-trGet = do
-  (Traverser v ls rs _) <- get
-  return v
-  
-
-trRight :: Monad m => TraverserT v m ()
-trRight = do
-  (Traverser v ls (r:rs) path) <- get
-  put (Traverser v (r:ls) rs path)
-  
-trCanGoRight :: Monad m => TraverserT v m Bool
-trCanGoRight = do
-  (Traverser _ _ rs _) <- get
-  return $ not $ null rs
-
-
-trDown :: Monad m => TraverserT v m a -> TraverserT v m a
-trDown m = do
-  (Traverser v ls (r:rs) path) <- get
-  put (toTraverser r (Split v ls path rs))
-  a <- m
-  tr@(Traverser v' ls' rs' (Split v ls path rs)) <- get
-  put $ Traverser v ls ((Node v' (reverse ls' ++ rs')):rs) path
-  return a
-
 
 

@@ -9,7 +9,7 @@ module WebBits.JavaScript.Environment
 import Data.Generics hiding (GT)
 import Data.Maybe (fromJust)
 import qualified Data.Set as S
-import WebBits.Data.Zipper (ZipperT,TraverserT)
+import WebBits.Data.Zipper (ZipperT,ZipperT)
 import qualified Data.Map as M
 import qualified WebBits.Data.Zipper as Z
 import Control.Monad.State
@@ -185,82 +185,82 @@ insertEmptyAnn = fmap (\loc -> (M.empty,0,loc))
 locOf :: F.Foldable t => t SourcePos -> SourcePos
 locOf = fromJust . (F.find $ const True)
 
-labelEnv :: Env -> Z.TraverserT Env (State Int) Env
-labelEnv env = Z.trGet
+labelEnv :: Env -> Z.ZipperT Env (State Int) Env
+labelEnv env = Z.getNode
 
-labelId :: Id Ann -> Z.TraverserT Env (State Int) (Id Ann)
+labelId :: Id Ann -> Z.ZipperT Env (State Int) (Id Ann)
 labelId id@(Id (_,_,loc) s) = do
-  env <- Z.trGet
+  env <- Z.getNode
   case M.lookup s env of
     Nothing -> fail $ "BUG: unbound identifier while labelling" ++ show id
     Just lbl -> return (Id (env,lbl,loc) s)
     
-labelIdNoVar :: Id Ann -> Z.TraverserT Env (State Int) (Id Ann)
+labelIdNoVar :: Id Ann -> Z.ZipperT Env (State Int) (Id Ann)
 labelIdNoVar (Id (_,_,loc) s) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
   return (Id (env,lbl,loc) s)
 
-labelProp :: Prop Ann -> Z.TraverserT Env (State Int) (Prop Ann)
+labelProp :: Prop Ann -> Z.ZipperT Env (State Int) (Prop Ann)
 labelProp (PropId (_,_,loc) id) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
   id' <- labelIdNoVar id
   return (PropId (env,lbl,loc) id')
 labelProp e = gmapM labelAny e
 
 labelExpr :: Expression Ann 
-          -> Z.TraverserT Env (State Int) (Expression Ann)
+          -> Z.ZipperT Env (State Int) (Expression Ann)
 labelExpr (ThisRef (_,_,loc)) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- M.lookup "this" env
   return (ThisRef (env,lbl,loc))
 labelExpr (DotRef (_,_,loc) expr id) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
   id' <- labelIdNoVar id
   expr' <- labelExpr expr
   return (DotRef (env,lbl,loc) expr' id')
 labelExpr (FuncExpr (_,_,loc) args stmt) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
-  args' <- Z.trDown (mapM labelId args)
-  stmt' <- Z.trDown (labelStmt stmt)
-  Z.trCanGoRight >>= (flip when Z.trRight)
+  args' <- Z.withCurrentChild (mapM labelId args)
+  stmt' <- Z.withCurrentChild (labelStmt stmt)
+  Z.shiftRight'
   return (FuncExpr (env,lbl,loc) args' stmt')
 labelExpr e = gmapM labelAny e
   
 labelStmt :: Statement Ann
-          -> Z.TraverserT Env (State Int) (Statement Ann)
+          -> Z.ZipperT Env (State Int) (Statement Ann)
 labelStmt (BreakStmt (_,_,loc) (Just id)) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
   id' <- labelIdNoVar id
   return (BreakStmt (env,lbl,loc) (Just id'))
 labelStmt (ContinueStmt (_,_,loc) (Just id)) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
   id' <- labelIdNoVar id
   return (ContinueStmt (env,lbl,loc) (Just id'))
 labelStmt (LabelledStmt (_,_,loc) id stmt) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
   id' <- labelIdNoVar id
   stmt' <- labelStmt stmt
   return (LabelledStmt (env,lbl,loc) id' stmt')  
 labelStmt (FunctionStmt (_,_,loc) id args stmt) = do
-  env <- Z.trGet
+  env <- Z.getNode
   lbl <- nextLabel
-  args' <- Z.trDown (mapM labelId args)
-  stmt' <- Z.trDown (labelStmt stmt)
-  Z.trCanGoRight >>= (flip when Z.trRight)
+  args' <- Z.withCurrentChild (mapM labelId args)
+  stmt' <- Z.withCurrentChild (labelStmt stmt)
+  Z.shiftRight'
   return (FunctionStmt (env,lbl,loc) id args' stmt')
 labelStmt e = gmapM labelAny e
 
-labelAny' :: (Data a, Typeable a) => a -> Z.TraverserT Env (State Int) a
+labelAny' :: (Data a, Typeable a) => a -> Z.ZipperT Env (State Int) a
 labelAny' a = gmapM labelAny a
 
-labelAny :: GenericM (Z.TraverserT Env (State Int)) 
+labelAny :: GenericM (Z.ZipperT Env (State Int)) 
 labelAny a = (labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
   labelExpr `extM` labelStmt) a
 
@@ -275,7 +275,8 @@ staticEnvironment stmts =
                             (Z.toLocation (Z.Node emptyPartialEnv []))
         (envTree,globals) <- runStateT (completeEnvM partialEnvTree) M.empty
         let stmts'' = map insertEmptyAnn stmts' 
-        labelledStmts <- Z.evalTraverserT (mapM labelStmt stmts'') envTree
+        labelledStmts <- Z.evalZipperT (mapM labelStmt stmts'') 
+                                       (Z.toLocation envTree)
         return (labelledStmts,globals)
       ((labelledStmts,globals),nextLabel) = runState labelM 0
     in (labelledStmts,globals,nextLabel)
