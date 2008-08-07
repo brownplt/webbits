@@ -1,7 +1,13 @@
+-- |A zipper for "Data.Tree".
 module WebBits.Data.Zipper
-  ( Tree(..)
-  , Location
+  ( 
+  -- * Functional zipper
   
+  -- $functionalZipper
+  
+    Tree(..)
+  , Location
+  , toLocation, fromLocation  
   , dfsFold 
   , dfsFoldM
   , showTree
@@ -16,9 +22,13 @@ module WebBits.Data.Zipper
   , subTree
   , top
   , canGoLeft, canGoRight, canGoUp, canGoDown -- Location a -> Bool
-
+  
+  -- * Imperative tree construction
+  
+  -- $treeBuilder
+  
   , ZipperT
-  , toLocation, fromLocation
+
   , nest                  -- Monad m => v -> ZipperT v m a -> ZipperT v m a
   , getNode               -- Monad m => ZipperT v m v
   , setNode               -- Monad m => v -> ZipperT v m ()
@@ -28,7 +38,10 @@ module WebBits.Data.Zipper
   , shiftLeft, shiftRight   -- Monad m => ZipperT v m ()
   , shiftLeft', shiftRight' -- Monad m => ZipperT v m ()
   , withCurrentChild        -- Monad m => Zipper T v m a -> ZipperT v m a
-  , maybeShiftRight
+  
+  -- * Imperative tree traversal
+  
+  -- $treeTraversal
   
   , TraverserT, Traverser, runTraverserT, evalTraverserT, execTraverserT
   , trGet, trRight, trCanGoRight, trDown
@@ -49,19 +62,23 @@ data Path a
 data Location a = Location (Tree a) (Path a)
 
 
---------------------------------------------------------------------------------
--- Tree combinators
-
-dfsFold :: (w -> v -> w) -> w -> Tree v -> Tree w
+dfsFold :: (w -> v -> w) -- ^transforms a node 'v' using the accumulated
+                         -- value 'w' from the root of the tree to 'v'
+        -> w             -- ^the initial value of the accumulator at the root
+        -> Tree v 
+        -> Tree w
 dfsFold f w (Node v ts) = Node w' (map (dfsFold f w') ts)
   where w' = f w v
 
+-- |Similar to 'dfsFold', but the transformation is done in the monad 'm'.  The
+-- sequence of operations is depth-first, left-to-right.
 dfsFoldM :: Monad m => (w -> v -> m w) -> w -> Tree v -> m (Tree w)
 dfsFoldM f w (Node v ts) = do
   w'  <- f w v
   ts' <- mapM (dfsFoldM f w') ts
   return $ Node w' ts'
 
+-- Uses 'Data.Tree.drawShow'.
 showTree :: Show a => Tree a -> String
 showTree tree =  drawTree (fmap show tree)
   
@@ -70,11 +87,14 @@ showTree tree =  drawTree (fmap show tree)
 -- Combinators!
 --
 
+-- $functionalZipper
+-- These are the core zipper functions.
+
 empty :: a -> Tree a
 empty a = Node a []
 
 up :: Location a -> Location a
-up (Location _ Top)               = error "Data/Zipper.hs: up of Top"
+up (Location _ Top)               = error " up of Top"
 up (Location t (Split v ls p rs)) = Location (Node v (reverse ls ++ (t:rs))) p
 
 down :: Location a -> Location a
@@ -146,20 +166,29 @@ getValue (Location (Node v _) _) = v
 subTree :: Location a -> Tree a
 subTree (Location node _) = node
 
+-- |Traverses to the top of the tree.
+--
+-- @
+-- up.top = undefined
+-- top.top = top
+-- @
 top :: Location a -> Location a
 top loc@(Location _ Top) = loc
 top loc@(Location _ _) = top (up loc)
-
---------------------------------------------------------------------------------
--- Zipper monad
-
-type ZipperT v m a = StateT (Location v) m a
 
 toLocation :: Tree a -> Location a
 toLocation t = Location t Top
 
 fromLocation :: Location a -> Tree a
 fromLocation (Location t _) = t
+
+
+-- $treeBuilder
+-- A state monad that carries a zipper.  It provides convenient methods to
+-- imperatively create and update a tree.
+
+type ZipperT v m a = StateT (Location v) m a
+
 
 runZipperT :: Monad m => ZipperT v m a -> Location v -> m (a, Tree v)
 runZipperT m l = do
@@ -176,6 +205,7 @@ execZipperT m l = do
   ~(_, Location t Top) <- runStateT m l
   return t
 
+-- |Creates a new node as the right-most child of the current node.
 nest :: Monad m => v -> ZipperT v m a -> ZipperT v m a
 nest v m = do
   z <- get 
@@ -209,29 +239,40 @@ shiftRight = do
   z <- get
   put (right z)
 
-maybeShiftRight :: Monad m => ZipperT v m ()
-maybeShiftRight = do
-  z <- get
-  if canGoRight z
-    then shiftRight
-    else return ()
-  
   
 shiftLeft :: Monad m => ZipperT v m ()
 shiftLeft = do
   z <- get
   put (left z)
 
+-- |Silently fails to shift right if there is no right-child.
 shiftRight' :: Monad m => ZipperT v m ()
 shiftRight' = do
   z <- get
   when (hasRight z)
        (put (right z))
 
-       
---------------------------------------------------------------------------------
---
+-- |Silently fails to shift left if there is no left-child.
+shiftLeft' :: Monad m => ZipperT v m ()
+shiftLeft' = do
+  z <- get
+  when (hasLeft z)
+       (put (left z))
 
+hasLeft :: Location a -> Bool
+hasLeft (Location _ (Split _ (_:_) _ _)) = True
+hasLeft _                                = False
+
+hasRight :: Location a -> Bool
+hasRight (Location _ (Split _ _ _ (_:_))) = True
+hasRight _                                = False
+
+       
+-- $treeTraversal
+-- A state monad that carries a zipper.  The following
+-- functions make it easy to shift position while traversing.
+
+-- TODO: Why isn't this simply location?
 data Traverser a = Traverser a [Tree a] [Tree a] (Path a)
 
 type TraverserT v m a = StateT (Traverser v) m a
@@ -244,8 +285,10 @@ runTraverserT m (Node v ns) = do
   (a, Traverser v ls rs Top) <- runStateT m (Traverser v [] ns Top)
   return (a,Node v (reverse ls ++ rs))
 
+evalTraverserT :: Monad m => TraverserT v m a -> Tree v -> m a
 evalTraverserT m t = runTraverserT m t >>= return . fst
 
+execTraverserT :: Monad m => TraverserT v m a -> Tree v -> m (Tree v)
 execTraverserT m t = runTraverserT m t >>= return . snd
 
 trGet :: Monad m => TraverserT v m v
@@ -275,20 +318,4 @@ trDown m = do
   return a
 
 
-shiftLeft' :: Monad m => ZipperT v m ()
-shiftLeft' = do
-  z <- get
-  when (hasLeft z)
-       (put (left z))
-  
--------------------------------------------------------------------------------
--- Helper functions for shiftLeft' and shiftRight'
-
-hasLeft :: Location a -> Bool
-hasLeft (Location _ (Split _ (_:_) _ _)) = True
-hasLeft _                                = False
-
-hasRight :: Location a -> Bool
-hasRight (Location _ (Split _ _ _ (_:_))) = True
-hasRight _                                = False
 

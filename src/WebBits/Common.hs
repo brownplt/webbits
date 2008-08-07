@@ -39,15 +39,20 @@ instance PrettyPrintable a => PrettyPrintable (Maybe a) where
 -- | These definitions allow us to use data structures containing 'SourcePos'
 -- values with generics.
 
+-- |We make 'SourcePos' an instance of 'Typeable' so that we can use it with
+-- generics.
 instance Typeable SourcePos where
   typeOf _  = 
     mkTyConApp (mkTyCon "Text.ParserCombinators.Parsec.Pos.SourcePos") []
     
--- Guesswork.  It works for Test.JavascriptParser.
+-- Complete guesswork.  It seems to work.
 sourcePosDatatype = mkDataType "SourcePos" [sourcePosConstr1]
 sourcePosConstr1 = mkConstr sourcePosDatatype "SourcePos" [] Prefix
 
--- | This definition is incomplete.
+-- |We make 'SourcePos' an instance of 'Typeable' so that we can use it with
+-- generics.
+--
+-- This definition is incomplete.
 instance Data SourcePos where
   -- We treat source locations as opaque.  After all, we don't have access to
   -- the constructor.
