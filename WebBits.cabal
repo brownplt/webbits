@@ -1,5 +1,5 @@
 Name:           WebBits
-Version:        0.9
+Version:        0.9.1
 Cabal-Version:	>= 1.2
 Copyright:      Copyright (c) 2007-2008 Arjun Guha and Spiridon Eliopoulos
 License:        LGPL
@@ -8,24 +8,24 @@ Author:         Arjun Guha, Spiridon Eliopoulos
 Maintainer:     Arjun Guha <arjun@cs.brown.edu>
 Homepage:       http://www.cs.brown.edu/research/plt/
 Stability:      provisional
-Category:       Tools
+Category:       Language
 Build-Type:     Custom
 Synopsis:       JavaScript analysis tools
 Description:
 
 	WebBits is a collection of libraries for working with JavaScript embeded in
   HTML files.  Highlights include:
-
-	"WebBits.JavaScript.Crawl" returns all JavaScript in an HTML page, including
-  JavaScript from imported script files ("<script src=...>").
-
-  "WebBits.JavaScript.Environment" annotates JavaScript syntax with its static
-  environment and returns a list of free identifiers.
-
-  "WebBits.JavaScript.Parser" is a JavaScript parser that is largely based on
-  JavaScript 1.5.
-
-  "WebBits.Html.Parser" is a permissive HTML parser.
+  .
+	* @WebBits.JavaScript.Crawl@ returns all JavaScript in an HTML page, including
+     JavaScript from imported script files (@\<script src=...\>@).
+  .
+  * @WebBits.JavaScript.Environment@ annotates JavaScript syntax with its static
+    environment and returns a list of free identifiers.
+  .
+  * @WebBits.JavaScript.Parser@ is a JavaScript parser that is largely based on
+    JavaScript 1.5.
+  .
+  * @WebBits.Html.Parser@ is a permissive HTML parser.
  
 Library
   Hs-Source-Dirs:
