@@ -31,7 +31,7 @@ Library
   Hs-Source-Dirs:
     src
   Build-Depends:
-    base, mtl, parsec, pretty, containers
+    base, mtl, parsec<3.0.0, pretty, containers
   ghc-options:
     -fwarn-incomplete-patterns -fglasgow-exts
   Extensions:     
