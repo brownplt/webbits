@@ -1,5 +1,5 @@
 Name:           WebBits
-Version:        0.9.2
+Version:        0.9.3
 Cabal-Version:	>= 1.2
 Copyright:      Copyright (c) 2007-2008 Arjun Guha and Spiridon Eliopoulos
 License:        LGPL
@@ -31,13 +31,13 @@ Library
   Hs-Source-Dirs:
     src
   Build-Depends:
-    base, mtl, parsec<3.0.0, pretty, containers
+    base>=4, mtl>=1.1.0.1, parsec<3.0.0, pretty>=0.1, containers>=0.1, syb>=0.1
   ghc-options:
-    -fwarn-incomplete-patterns -fglasgow-exts
+    -fwarn-incomplete-patterns
   Extensions:     
     Generics Rank2Types MultiParamTypeClasses FunctionalDependencies
     TypeSynonymInstances FlexibleInstances FlexibleContexts
-    DeriveDataTypeable NoMonomorphismRestriction
+    DeriveDataTypeable NoMonomorphismRestriction RelaxedPolyRec
   Exposed-Modules:
     WebBits.Data.Zipper
     WebBits.Html.Html WebBits.Html.Syntax WebBits.Html.PermissiveParser

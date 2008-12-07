@@ -209,12 +209,15 @@ labelProp (PropId (_,_,loc) id) = do
   return (PropId (env,lbl,loc) id')
 labelProp e = gmapM labelAny e
 
+
+
 labelExpr :: Expression Ann 
           -> Z.ZipperT Env (State Int) (Expression Ann)
 labelExpr (ThisRef (_,_,loc)) = do
   env <- Z.getNode
-  lbl <- M.lookup "this" env
-  return (ThisRef (env,lbl,loc))
+  case M.lookup "this" env of
+    Just lbl -> return $ ThisRef (env,lbl,loc)
+    Nothing -> fail "BUG: expected to find this in the environment"
 labelExpr (DotRef (_,_,loc) expr id) = do
   env <- Z.getNode
   lbl <- nextLabel
