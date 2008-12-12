@@ -5,6 +5,10 @@ module WebBits.JavaScript.Parser(parseScript,parseExpression,parseStatement
    , ParsedExpression
    , parseJavaScriptFromFile
    , parseSimpleExpr'
+   , parseBlockStmt
+   , StatementParser
+   , ExpressionParser
+   , parseAssignExpr
    ) where
 
 import WebBits.JavaScript.Lexer hiding (identifier)
@@ -18,16 +22,13 @@ import Numeric(readDec,readOct,readHex)
 import Data.Char(chr)
 
 -- We parameterize the parse tree over source-locations.
-type ParsedExpr = Expression SourcePos
-type ParsedStmt = Statement SourcePos
-
 type ParsedStatement = Statement SourcePos
 type ParsedExpression = Expression SourcePos
 
 
 -- These parsers can store some arbitrary state
-type StatementParser state = CharParser state ParsedStmt
-type ExpressionParser state = CharParser state ParsedExpr
+type StatementParser state = CharParser state ParsedStatement
+type ExpressionParser state = CharParser state ParsedExpression
 
 identifier =
   liftM2 Id getPosition Lexer.identifier
@@ -554,7 +555,7 @@ parsePrefixedExpr = do
       innerExpr <- parsePrefixedExpr
       return (PrefixExpr pos op innerExpr)
     
-exprTable:: [[Operator Char st ParsedExpr]]
+exprTable:: [[Operator Char st ParsedExpression]]
 exprTable = 
   [
    [makePrefixExpr "++" PrefixInc,
@@ -590,7 +591,7 @@ parseExpression' =
 
 --{{{ Parsing ternary operators: left factored
 
-parseTernaryExpr':: CharParser st (Maybe (ParsedExpr,ParsedExpr))
+parseTernaryExpr':: CharParser st (Maybe (ParsedExpression,ParsedExpression))
 parseTernaryExpr' =
   (do reservedOp "?"
       l <- parseTernaryExpr
@@ -611,13 +612,13 @@ parseTernaryExpr = do
 
 -- Parsing assignment operations.
 makeAssignExpr str constr = Infix parser AssocRight where
-  parser:: CharParser st (ParsedExpr -> ParsedExpr -> ParsedExpr)
+  parser:: CharParser st (ParsedExpression -> ParsedExpression -> ParsedExpression)
   parser = do
     pos <- getPosition
     reservedOp str
     return (AssignExpr pos constr)
 
-assignTable:: [[Operator Char st ParsedExpr]]
+assignTable:: [[Operator Char st ParsedExpression]]
 assignTable = [
   [makeAssignExpr "=" OpAssign, makeAssignExpr "+=" OpAssignAdd, 
     makeAssignExpr "-=" OpAssignSub, makeAssignExpr "*=" OpAssignMul,
