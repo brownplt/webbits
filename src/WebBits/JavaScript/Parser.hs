@@ -6,6 +6,7 @@ module WebBits.JavaScript.Parser(parseScript,parseExpression,parseStatement
    , parseJavaScriptFromFile
    , parseSimpleExpr'
    , parseBlockStmt
+   , parseStatement
    , StatementParser
    , ExpressionParser
    , parseAssignExpr

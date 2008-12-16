@@ -40,7 +40,7 @@ instance PrettyPrintable (ForInInit a) where
 
 instance PrettyPrintable (CaseClause a) where
   pp (CaseClause _ expr stmts) =
-    pp expr <+> colon $$ (nest 2 (vcat (map pp stmts)))
+    text "case" $+$ pp expr <+> colon $$ (nest 2 (vcat (map pp stmts)))
   pp (CaseDefault _ stmts) =
     text "default:" $$ (nest 2 (vcat (map pp stmts)))
 
