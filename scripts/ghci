@@ -1,0 +1,23 @@
+#!/bin/sh
+
+if [ -z $BASE ]; then
+    BASE=`pwd`;
+fi
+
+if [ -z $1 ]; then
+    MODE="obj";
+else
+    MODE=$1;
+fi
+
+OBJS=$BASE/dist/build/HSWebBits-0.10.0.o
+SRCS=$BASE/dist/build/autogen:$BASE/src
+PKGS="-package mtl -package parsec -package pretty -package containers"
+
+if [ $MODE = "obj" ]; then
+    # You need to ':m +' the modules you want after this.
+    ghci $PKGS $OBJS;
+elif [ $MODE = "src" ]; then
+    # You need to ':load' the modules you want after this.
+    ghci -i$SRCS;
+fi
