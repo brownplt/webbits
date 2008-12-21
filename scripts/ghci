@@ -19,5 +19,5 @@ if [ $MODE = "obj" ]; then
     ghci $PKGS $OBJS;
 elif [ $MODE = "src" ]; then
     # You need to ':load' the modules you want after this.
-    ghci -i$SRCS;
+    ghci -fglasgow-exts -i$SRCS;
 fi
