@@ -40,13 +40,13 @@ instance PrettyPrintable (ForInInit a) where
 
 instance PrettyPrintable (CaseClause a) where
   pp (CaseClause _ expr stmts) =
-    pp expr <+> colon $$ (nest 2 (vcat (map pp stmts)))
+    text "case" $+$ pp expr <+> colon $$ (nest 2 (vcat (map pp stmts)))
   pp (CaseDefault _ stmts) =
     text "default:" $$ (nest 2 (vcat (map pp stmts)))
 
 instance PrettyPrintable (CatchClause a) where
   pp (CatchClause _ id stmt) =
-    text "catch" <+> (parens.pp) id <+> pp stmt
+    text "catch" <+> (parens.pp) id <+> inBlock stmt
 
 
 instance PrettyPrintable (VarDecl a) where
@@ -92,11 +92,10 @@ instance PrettyPrintable (Statement a) where
     text "for" <+> parens (pp init <> semi <+> pp incr <> semi <+> pp test)
       $$ (nest 2 (pp body))
   pp (TryStmt _ stmt catches finally) =
-    (text "try" $$ pp stmt $$ (vcat (map pp catches)) $$ ppFinally) where
-      ppFinally = 
-        case finally of
-          Nothing -> empty
-	  (Just stmt) -> text "finally" <> pp stmt
+    text "try" $$ inBlock stmt $$ (vcat (map pp catches)) $$ ppFinally where 
+      ppFinally = case finally of
+        Nothing -> empty
+        Just stmt -> text "finally" <> inBlock stmt
   pp (ThrowStmt _ expr) =
     text "throw" <+> pp expr <> semi
   pp (WithStmt _ expr stmt) | isParenExpr expr =
