@@ -526,17 +526,35 @@ makePostfixExpr str constr = Postfix parser where
     (reservedOp str <|> reserved str)
     return (PostfixExpr pos constr) -- points-free, returns a function
 
--- apparently, expression tables can't handle multiple prefixes (which makes sense, since chaining ++ and -- doesn't 
--- make any sense)
-parsePrefixedExpr = do
-  pos <- getPosition 
-  op <- optionMaybe $ (reservedOp "!" >> return PrefixLNot) <|> (reservedOp "~" >> return PrefixBNot)
+prefixIncDecExpr = do
+  pos <- getPosition
+  op <- optionMaybe $ (reservedOp "++" >> return PrefixInc) <|>
+                      (reservedOp "--" >> return PrefixDec)
   case op of
-    Nothing -> parseSimpleExpr Nothing  -- new is treated as a simple expr
+    Nothing -> parseSimpleExpr Nothing
+    Just op -> do
+      innerExpr <- parseSimpleExpr Nothing -- TODO: must be an l-val, I think
+      return (PrefixExpr pos op innerExpr)
+
+-- apparently, expression tables can't handle immediately-nested prefixes
+
+parsePrefixedExpr = do
+  pos <- getPosition
+  op <- optionMaybe $ (reservedOp "!" >> return PrefixLNot) <|> 
+                      (reservedOp "~" >> return PrefixBNot) <|>
+                      (try (lexeme $ char '-' >> notFollowedBy (char '-')) >>
+                       return PrefixMinus) <|>
+                      (try (lexeme $ char '+' >> notFollowedBy (char '+')) >>
+                       return PrefixPlus) <|>
+                      (reserved "typeof" >> return PrefixTypeof) <|>
+                      (reserved "void" >> return PrefixVoid) <|>
+                      (reserved "delete" >> return PrefixDelete)
+  case op of
+    Nothing -> prefixIncDecExpr  -- new is treated as a simple expr
     Just op -> do
       innerExpr <- parsePrefixedExpr
       return (PrefixExpr pos op innerExpr)
-    
+
 exprTable:: [[Operator Char st ParsedExpression]]
 exprTable = 
   [
@@ -544,14 +562,6 @@ exprTable =
     makePostfixExpr "++" PostfixInc],
    [makePrefixExpr "--" PrefixDec,
     makePostfixExpr "--" PostfixDec],
-   -- What we really need here is a good, old-fashioned lexer.
-   [mkPrefix (try $ lexeme $ char '+' >> notFollowedBy (char '+')) PrefixPlus,
-    mkPrefix (try $ lexeme $ char '-' >> notFollowedBy (char '-')) PrefixMinus],
-    -- makePrefixExpr "-" PrefixMinus],
-   [makePrefixExpr "typeof" PrefixTypeof,
-    makePrefixExpr "void" PrefixVoid,
-    makePrefixExpr "delete" PrefixDelete],
-    
    [makeInfixExpr "*" OpMul, makeInfixExpr "/" OpDiv, makeInfixExpr "%" OpMod],
    [makeInfixExpr "+" OpAdd, makeInfixExpr "-" OpSub],
    [makeInfixExpr "<<" OpLShift, makeInfixExpr ">>" OpSpRShift,
