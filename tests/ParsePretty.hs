@@ -32,7 +32,7 @@ assertEqualWithoutSourcePos lhs rhs =
 testParsePrettyIdentity :: FilePath -> String -> Test
 testParsePrettyIdentity src str = TestCase $ 
   assertEqualWithoutSourcePos lhs rhs where
-    lhs = ((parse src) . pretty . (parse src)) str
+    lhs = ((parse (src ++ " (PRETTY-PRINTING)")) . pretty . (parse src)) str
     rhs = parse src str
   
 
