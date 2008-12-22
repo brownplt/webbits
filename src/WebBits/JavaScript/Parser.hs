@@ -545,8 +545,8 @@ exprTable =
    [makePrefixExpr "--" PrefixDec,
     makePostfixExpr "--" PostfixDec],
    -- What we really need here is a good, old-fashioned lexer.
-   [mkPrefix (reservedOp "+") PrefixPlus,
-    mkPrefix (reservedOp "-") PrefixMinus],
+   [mkPrefix (try $ lexeme $ char '+' >> notFollowedBy (char '+')) PrefixPlus,
+    mkPrefix (try $ lexeme $ char '-' >> notFollowedBy (char '-')) PrefixMinus],
     -- makePrefixExpr "-" PrefixMinus],
    [makePrefixExpr "typeof" PrefixTypeof,
     makePrefixExpr "void" PrefixVoid,
