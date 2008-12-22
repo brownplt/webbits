@@ -90,8 +90,8 @@ parseDoWhileStmt:: StatementParser st
 parseDoWhileStmt = do
   pos <- getPosition
   reserved "do"
-  body <- parseStatement
-  reserved "while"
+  body <- parseBlockStmt
+  reserved "while" <?> "while at the end of a do block"
   test <- parseParenExpr <?> "parenthesized test-expression in do loop"
   optional semi
   return (DoWhileStmt pos body test)
