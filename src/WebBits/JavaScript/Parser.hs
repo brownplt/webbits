@@ -587,9 +587,9 @@ parseExpression' =
 parseTernaryExpr':: CharParser st (ParsedExpression,ParsedExpression)
 parseTernaryExpr' = do
     reservedOp "?"
-    l <- parseTernaryExpr
+    l <- parseAssignExpr
     colon
-    r <- parseTernaryExpr
+    r <- parseAssignExpr
     return $(l,r)
 
 parseTernaryExpr:: ExpressionParser st
