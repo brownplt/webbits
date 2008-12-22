@@ -1,4 +1,4 @@
-module WebBits.JavaScript.Parser(parseScript,parseExpression,parseStatement
+module WebBits.JavaScript.Parser(parseScript,parseExpression
    , parseScriptFromString
    , emptyParsedJavaScript
    , ParsedStatement
@@ -397,7 +397,7 @@ parseObjectLit =
         val <- parseAssignExpr
         return (name,val)
     in do pos <- getPosition
-          props <- braces (parseProp `sepBy` comma) <?> "object literal"
+          props <- braces (parseProp `sepEndBy` comma) <?> "object literal"
           return $ ObjectLit pos props
 
 --{{{ Parsing numbers.  From pg. 17-18 of ECMA-262.
