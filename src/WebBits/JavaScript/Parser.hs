@@ -452,11 +452,31 @@ parseNumLit =
 
 --}}}
 
+------------------------------------------------------------------------------
+-- Position Helper
+------------------------------------------------------------------------------
+
+withPos cstr p = do { pos <- getPosition; e <- p; return $ cstr pos e }
+
+-------------------------------------------------------------------------------
+-- Compound Expression Parsers
+-------------------------------------------------------------------------------
+
+dotRef e = (reservedOp "." >> withPos cstr identifier) <?> "property.ref"
+    where cstr pos key = DotRef pos e key
+
+funcApp e = (parens $ withPos cstr (parseExpression `sepBy` comma)) <?> "(function application)"
+    where cstr pos args = CallExpr pos e args
+
+bracketRef e = (brackets $ withPos cstr parseExpression) <?> "[property-ref]"
+    where cstr pos key = BracketRef pos e key
+
+-------------------------------------------------------------------------------
+-- Expression Parsers
+-------------------------------------------------------------------------------
+
 parseParenExpr:: ExpressionParser st
-parseParenExpr = do
-  pos <- getPosition
-  expr <- parens parseListExpr
-  return (ParenExpr pos expr)
+parseParenExpr = withPos ParenExpr (parens parseListExpr)
 
 -- everything above expect functions
 parseExprForNew = parseThisRef <|> parseNullLit <|> parseBoolLit <|> parseStringLit 
@@ -477,44 +497,16 @@ parseNewExpr =
       return (NewExpr pos constructor arguments)) <|>
   parseSimpleExpr'
 
-parseSimpleExpr (Just e) =
-  ((do reservedOp "." <?> "property.ref"
-       pos <- getPosition
-       key <- identifier
-       parseSimpleExpr $ Just (DotRef pos e key)) <|>
-   (do pos <- getPosition
-       reservedOp "(" <?> "(function application)" 
-       args <- parseExpression `sepBy` comma
-       --reservedOp ")"
-       spaces   -- This hack is needed as the token parser parses ")+", ")-",
-       char ')' -- etc. as a single token.
-       spaces
-       parseSimpleExpr $ Just (CallExpr pos e args)) <|>
-   (do reservedOp "[" <?> "[property-ref]"
-       pos <- getPosition
-       key <- parseExpression <?> "expression (2)"
-       char ']'
-       spaces
-       --reservedOp "]"
-       parseSimpleExpr $ Just (BracketRef pos e key)) <|>
-   (return e))
+parseSimpleExpr (Just e) = (do
+    e' <- dotRef e <|> funcApp e <|> bracketRef e
+    parseSimpleExpr $ Just e') <|> (return e)
 parseSimpleExpr Nothing = do
   e <- parseNewExpr <?> "expression (3)"
   parseSimpleExpr (Just e)
-  
-parseSimpleExprForNew (Just e) =
-  ((do reservedOp "." <?> "property.ref"
-       pos <- getPosition
-       key <- identifier
-       parseSimpleExprForNew $ Just (DotRef pos e key)) <|>
-   (do reservedOp "[" <?> "[property-ref]"
-       pos <- getPosition
-       key <- parseExpression <?> "expression (2)"
-       char ']'
-       spaces
-       --reservedOp "]"
-       parseSimpleExprForNew $ Just (BracketRef pos e key)) <|>
-   (return e))
+
+parseSimpleExprForNew (Just e) = (do
+    e' <- dotRef e <|> bracketRef e
+    parseSimpleExprForNew $ Just e') <|> (return e)
 parseSimpleExprForNew Nothing = do
   e <- parseNewExpr <?> "expression (3)"
   parseSimpleExprForNew (Just e)
