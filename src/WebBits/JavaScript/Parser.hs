@@ -358,14 +358,13 @@ parseStringLit = do
   pos <- getPosition
   -- parseStringLit' takes as an argument the quote-character that opened the
   -- string.
-  str <- (char '\'' >>= parseStringLit') <|> (char '\"' >>= parseStringLit')
+  str <- lexeme $ (char '\'' >>= parseStringLit') <|> (char '\"' >>= parseStringLit')
   -- CRUCIAL: Parsec.Token parsers expect to find their token on the first
-  -- character, and read whitespaces beyond their tokens.  Without this,
-  -- expressions like:
+  -- character, and read whitespaces beyond their tokens.  Without 'lexeme'
+  -- above, expressions like:
   --   var s = "string"   ;
   -- do not parse.
-  spaces 
-  return (StringLit pos str)
+  return $ StringLit pos str
 
 --}}}
 
@@ -409,46 +408,32 @@ hexLit = do
   [(hex,"")] <- return $ Numeric.readHex digits
   return hex
 
-decimalDigit = oneOf "0123456789"
-
 -- Creates a decimal value from a whole, fractional and exponent part.
 mkDecimal:: Double -> Double -> Int -> Double
 mkDecimal w f e =
   if (f >= 1.0)
     then mkDecimal w (f / 10.0) e
-    else (w+f) * (10.0^e)
-
-decimalInteger = do
-  xs <- many1 decimalDigit
-  spaces
-  return $ (fst.head.readDec) xs
-
-{-  (try (char '0' >> spaces >> return 0)) <|>
-  (do xs <- many1 decimalDigit
-      return $ (fst.head.readDec) xs) -}
+    else (w + f) * (10.0 ^^ e)
 
 exponentPart = do
   oneOf "eE"
-  ((char '+' >> many1 decimalDigit >>= return.fst.head.readDec) <|> 
-   (char '-' >> many1 decimalDigit >>= return.negate.fst.head.readDec) <|>
-   (many1 decimalDigit >>= return.fst.head.readDec))
+  (char '+' >> decimal) <|> (char '-' >> negate `fmap` decimal) <|> decimal
   
 decLit =
-  (do whole <- decimalInteger
-      frac <- option 0 (char '.' >> decimalInteger)
+  (do whole <- decimal
+      frac <- option 0 (char '.' >> decimal)
       exp <- option 0  exponentPart
-      return $ mkDecimal (fromIntegral whole) (fromIntegral frac) exp) <|>
-  (do frac <- char '.' >> decimalInteger
+      return $ mkDecimal (fromIntegral whole) (fromIntegral frac) (fromIntegral exp)) <|>
+  (do frac <- char '.' >> decimal
       exp <- option 0  exponentPart
-      return $ mkDecimal 0.0 (fromIntegral frac) exp)
+      return $ mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp))
 
 parseNumLit:: ExpressionParser st
-parseNumLit = 
-  liftM2 NumLit getPosition
-    (do x <- hexLit <|> decLit
-        (notFollowedBy identifierStart <?> "whitespace") 
-        spaces
-        return x)
+parseNumLit = do
+    pos <- getPosition
+    num <- lexeme $ hexLit <|> decLit
+    notFollowedBy identifierStart <?> "whitespace"
+    return $ NumLit pos num
 
 --}}}
 
@@ -587,9 +572,9 @@ parseExpression' =
 parseTernaryExpr':: CharParser st (ParsedExpression,ParsedExpression)
 parseTernaryExpr' = do
     reservedOp "?"
-    l <- parseTernaryExpr
+    l <- parseAssignExpr
     colon
-    r <- parseTernaryExpr
+    r <- parseAssignExpr
     return $(l,r)
 
 parseTernaryExpr:: ExpressionParser st

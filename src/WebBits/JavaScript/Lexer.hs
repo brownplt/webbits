@@ -1,7 +1,7 @@
 {- This isn't a lexer in the sense that it provides a JavaScript token-stream.
  - This module provides character-parsers for various JavaScript tokens.
  -}
-module WebBits.JavaScript.Lexer(identifier,reserved,operator,reservedOp,charLiteral,
+module WebBits.JavaScript.Lexer(lexeme,identifier,reserved,operator,reservedOp,charLiteral,
                         stringLiteral,natural,integer,float,naturalOrFloat,
                         decimal,hexadecimal,octal,symbol,whiteSpace,parens,
                         braces,brackets,squares,semi,comma,colon,dot,
@@ -61,3 +61,4 @@ comma = T.comma	 lex
 colon = T.colon lex	
 dot = T.dot lex
 brackets = T.brackets lex
+lexeme = T.lexeme lex
