@@ -21,6 +21,7 @@ import Control.Monad(liftM,liftM2)
 import Control.Monad.Trans (MonadIO,liftIO)
 import Numeric(readDec,readOct,readHex)
 import Data.Char(chr)
+import Data.Char
 
 -- We parameterize the parse tree over source-locations.
 type ParsedStatement = Statement SourcePos
@@ -323,8 +324,8 @@ allEscapes = map fst escapeChars
 
 parseEscapeChar = do
   c <- oneOf allEscapes
-  (Just c') <- return $ lookup c escapeChars
-  return c'
+  let (Just c') = lookup c escapeChars -- will succeed due to line above
+  return c' 
 
 parseAsciiHexChar = do
   char 'x'
@@ -339,6 +340,7 @@ parseUnicodeHexChar = do
         
 isWhitespace ch = ch `elem` " \t"
 
+
 -- The endWith argument is either single-quote or double-quote, depending on how
 -- we opened the string.
 parseStringLit' endWith =
@@ -347,10 +349,12 @@ parseStringLit' endWith =
       cs <- parseStringLit' endWith
       return $ "'" ++ cs) <|>
   (do char '\\'
-      c <- (parseEscapeChar <|> parseAsciiHexChar <|> parseUnicodeHexChar <|> char '\r' <|> char '\n')
+      c <- parseEscapeChar <|> parseAsciiHexChar <|> parseUnicodeHexChar <|> 
+           char '\r' <|> char '\n'
       cs <- parseStringLit' endWith
-      -- TODO: Leading whitespace on the new line is probably meant to be ignored.
-      if c == '\r' || c == '\n' then return (c:(dropWhile isWhitespace cs)) else return cs) <|>
+      if c == '\r' || c == '\n' 
+        then return (c:(dropWhile isWhitespace cs)) 
+        else return (c:cs)) <|>
    (liftM2 (:) anyChar (parseStringLit' endWith))
 
 parseStringLit:: ExpressionParser st

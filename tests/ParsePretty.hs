@@ -5,8 +5,10 @@ import Test.HUnit.Text
 import Data.Data
 import System.Directory (getDirectoryContents)
 import System.FilePath (takeExtension, FilePath, (</>))
+import qualified Data.List as L
 
 import WebBits.Common (pp)
+import Text.ParserCombinators.Parsec (ParseError, sourceName, errorPos)
 import WebBits.JavaScript.PrettyPrint () -- instances only
 import WebBits.JavaScript.Syntax (JavaScript (..))
 import WebBits.JavaScript.Parser (parseScriptFromString, ParsedStatement)
@@ -16,9 +18,14 @@ import Text.PrettyPrint.HughesPJ (render, vcat)
 pretty :: [ParsedStatement] -> String
 pretty stmts = render $ vcat $ map pp stmts
 
+isPrettyPrintError :: ParseError -> Bool
+isPrettyPrintError pe = 
+  "(PRETTY-PRINTING)" `L.isSuffixOf` sourceName (errorPos pe)
+
 parse :: FilePath -> String -> [ParsedStatement]
 parse src str = case parseScriptFromString src str of
-  Left err -> error (show err)
+  Left err | isPrettyPrintError err -> error $ (show err) ++ "\n" ++ str
+           | otherwise -> error (show err)
   Right (Script _ stmts) -> stmts
 
 eraseSourcePos x = fmap (\_ -> ()) x

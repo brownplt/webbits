@@ -111,7 +111,7 @@ instance PrettyPrintable (Statement a) where
 
 instance PrettyPrintable (Prop a) where
   pp (PropId _ id) = pp id
-  pp (PropString _ str) = text str
+  pp (PropString _ str) = doubleQuotes (text (jsEscape str))
   pp (PropNum _ n) = text (show n)
 
 
@@ -197,8 +197,8 @@ instance PrettyPrintable AssignOp where
 -- Based on:
 --   http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Guide:Literals
 jsEscape:: String -> String
-jsEscape str =
-  if str == ""  then "" else (sel (head str)) ++ (jsEscape (tail str)) where
+jsEscape "" = ""
+jsEscape (ch:chs) = (sel ch) ++ jsEscape chs where
     sel '\b' = "\\b"
     sel '\f' = "\\f"
     sel '\n' = "\\n"
