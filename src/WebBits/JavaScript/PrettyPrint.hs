@@ -74,7 +74,7 @@ instance PrettyPrintable (Statement a) where
   pp (ReturnStmt _ expr) =
     text "return" <+> pp expr <> semi
   pp (DoWhileStmt _ stmt expr) =
-    text "do" $$ (nest 2 (pp stmt <+> inParens expr))
+    text "do" $$ (nest 2 (pp stmt <+> text "while" <+> inParens expr))
   pp (BreakStmt _ Nothing) =
     text "break;"
   pp (BreakStmt _ (Just label)) =
