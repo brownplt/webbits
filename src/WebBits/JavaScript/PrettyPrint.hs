@@ -207,6 +207,7 @@ jsEscape (ch:chs) = (sel ch) ++ jsEscape chs where
     sel '\v' = "\\v"
     sel '\'' = "\\'"
     sel '\"' = "\\\""
+    sel '\\' = "\\\\"
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
 
