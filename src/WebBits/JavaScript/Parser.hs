@@ -409,38 +409,25 @@ hexLit = do
   [(hex,"")] <- return $ Numeric.readHex digits
   return hex
 
-decimalDigit = oneOf "0123456789"
-
 -- Creates a decimal value from a whole, fractional and exponent part.
 mkDecimal:: Double -> Double -> Int -> Double
 mkDecimal w f e =
   if (f >= 1.0)
     then mkDecimal w (f / 10.0) e
-    else (w+f) * (10.0^e)
-
-decimalInteger = do
-  xs <- many1 decimalDigit
-  spaces
-  return $ (fst.head.readDec) xs
-
-{-  (try (char '0' >> spaces >> return 0)) <|>
-  (do xs <- many1 decimalDigit
-      return $ (fst.head.readDec) xs) -}
+    else (w + f) * (10.0 ^^ e)
 
 exponentPart = do
   oneOf "eE"
-  ((char '+' >> many1 decimalDigit >>= return.fst.head.readDec) <|> 
-   (char '-' >> many1 decimalDigit >>= return.negate.fst.head.readDec) <|>
-   (many1 decimalDigit >>= return.fst.head.readDec))
+  (char '+' >> decimal) <|> (char '-' >> negate `fmap` decimal) <|> decimal
   
 decLit =
-  (do whole <- decimalInteger
-      frac <- option 0 (char '.' >> decimalInteger)
+  (do whole <- decimal
+      frac <- option 0 (char '.' >> decimal)
       exp <- option 0  exponentPart
-      return $ mkDecimal (fromIntegral whole) (fromIntegral frac) exp) <|>
-  (do frac <- char '.' >> decimalInteger
+      return $ mkDecimal (fromIntegral whole) (fromIntegral frac) (fromIntegral exp)) <|>
+  (do frac <- char '.' >> decimal
       exp <- option 0  exponentPart
-      return $ mkDecimal 0.0 (fromIntegral frac) exp)
+      return $ mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp))
 
 parseNumLit:: ExpressionParser st
 parseNumLit = 
