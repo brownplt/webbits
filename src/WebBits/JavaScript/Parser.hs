@@ -358,14 +358,13 @@ parseStringLit = do
   pos <- getPosition
   -- parseStringLit' takes as an argument the quote-character that opened the
   -- string.
-  str <- (char '\'' >>= parseStringLit') <|> (char '\"' >>= parseStringLit')
+  str <- lexeme $ (char '\'' >>= parseStringLit') <|> (char '\"' >>= parseStringLit')
   -- CRUCIAL: Parsec.Token parsers expect to find their token on the first
-  -- character, and read whitespaces beyond their tokens.  Without this,
-  -- expressions like:
+  -- character, and read whitespaces beyond their tokens.  Without 'lexeme'
+  -- above, expressions like:
   --   var s = "string"   ;
   -- do not parse.
-  spaces 
-  return (StringLit pos str)
+  return $ StringLit pos str
 
 --}}}
 
@@ -430,12 +429,11 @@ decLit =
       return $ mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp))
 
 parseNumLit:: ExpressionParser st
-parseNumLit = 
-  liftM2 NumLit getPosition
-    (do x <- hexLit <|> decLit
-        (notFollowedBy identifierStart <?> "whitespace") 
-        spaces
-        return x)
+parseNumLit = do
+    pos <- getPosition
+    num <- lexeme $ hexLit <|> decLit
+    notFollowedBy identifierStart <?> "whitespace"
+    return $ NumLit pos num
 
 --}}}
 
