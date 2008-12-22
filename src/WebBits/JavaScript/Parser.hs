@@ -584,19 +584,18 @@ parseExpression' =
 
 --{{{ Parsing ternary operators: left factored
 
-parseTernaryExpr':: CharParser st (Maybe (ParsedExpression,ParsedExpression))
-parseTernaryExpr' =
-  (do reservedOp "?"
-      l <- parseTernaryExpr
-      colon
-      r <- parseTernaryExpr
-      return $ Just (l,r)) <|>
-  (return Nothing)
+parseTernaryExpr':: CharParser st (ParsedExpression,ParsedExpression)
+parseTernaryExpr' = do
+    reservedOp "?"
+    l <- parseTernaryExpr
+    colon
+    r <- parseTernaryExpr
+    return $(l,r)
 
 parseTernaryExpr:: ExpressionParser st
 parseTernaryExpr = do
   e <- parseExpression'
-  e' <- parseTernaryExpr'
+  e' <- optionMaybe parseTernaryExpr'
   case e' of
     Nothing -> return e
     Just (l,r) -> do p <- getPosition
