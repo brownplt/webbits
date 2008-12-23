@@ -379,7 +379,12 @@ parseRegexpLit = do
         return $ \f -> f ('g' `elem` flags) ('i' `elem` flags) 
   let parseEscape = char '\\' >> anyChar
   let parseChar = noneOf "/"
-  let parseRe = (char '/' >> return "") <|> (char '\\' >> liftM2 (:) anyChar parseRe) <|> (liftM2 (:) anyChar parseRe)
+  let parseRe = (char '/' >> return "") <|> 
+                (do char '\\'
+                    ch <- anyChar -- TOOD: too lenient
+                    rest <- parseRe
+                    return ('\\':ch:rest)) <|> 
+                (liftM2 (:) anyChar parseRe)
   pos <- getPosition
   char '/'
   pat <- parseRe --many1 parseChar

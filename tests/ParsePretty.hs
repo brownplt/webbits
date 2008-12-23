@@ -6,6 +6,7 @@ import Data.Data
 import System.Directory (getDirectoryContents)
 import System.FilePath (takeExtension, FilePath, (</>))
 import qualified Data.List as L
+import System.IO.Unsafe (unsafePerformIO)
 
 import WebBits.Common (pp)
 import Text.ParserCombinators.Parsec (ParseError, sourceName, errorPos)
@@ -24,11 +25,12 @@ isPrettyPrintError pe =
 
 parse :: FilePath -> String -> [ParsedStatement]
 parse src str = case parseScriptFromString src str of
-  Left err | isPrettyPrintError err -> error $ (show err) ++ "\n" ++ str
+  Left err | isPrettyPrintError err -> 
+               (unsafePerformIO $ putStrLn str) `seq` error (show err)
            | otherwise -> error (show err)
   Right (Script _ stmts) -> stmts
 
-eraseSourcePos x = fmap (\_ -> ()) x
+eraseSourcePos x = fmap (const ()) x
 
 assertEqualWithoutSourcePos lhs rhs = 
   case eraseSourcePos lhs == eraseSourcePos rhs of
