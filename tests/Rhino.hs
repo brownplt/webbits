@@ -43,11 +43,12 @@ commandIO path args stdinStr = do
   B.hPutStr hStdin stdinStr
   stdoutStr <- B.hGetContents hStdout
   stderrStr <- hGetContents hStderr
-  hPutStrLn stderr (take 50 stderrStr) -- echo errors to our stderr
+  hPutStrLn stderr stderrStr -- echo errors to our stderr
   exitCode <- waitForProcess hProcess
   case exitCode of
     ExitSuccess -> return (Just stdoutStr)
     ExitFailure n -> do
+      B.hPutStrLn stdout stdoutStr -- echo for errors
       hPutStrLn stderr $ "Sub-process died with exit code " ++ show n
       return Nothing
 
@@ -69,7 +70,9 @@ testRhino src str = TestCase $ do
   let src' = src ++ " (pretty-printed)"
   lhs <- ((rhino src') . B.pack . pretty . (parse src)) str
   rhs <- rhino src (B.pack str)
-  assertEqual ("testRhino on " ++ src) lhs rhs
+  if lhs == rhs 
+    then return ()
+    else assertFailure ("testRhino failed on " ++ src)
   
 
 main = do
