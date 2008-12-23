@@ -14,6 +14,7 @@ import System.Process
 import System.IO
 import System.Environment
 import System.Exit
+import qualified Data.ByteString.Char8 as B
 
 import WebBits.Common (pp)
 import Text.ParserCombinators.Parsec (ParseError, sourceName, errorPos)
@@ -33,16 +34,16 @@ parse src str = case parseScriptFromString src str of
 
 commandIO :: FilePath -- ^path of the executable
           -> [String] -- ^command line arguments
-          -> String  -- ^stdin
-          -> IO (Maybe String) -- ^stdout or 'Nothing' on failure
+          -> B.ByteString  -- ^stdin
+          -> IO (Maybe B.ByteString) -- ^stdout or 'Nothing' on failure
 commandIO path args stdinStr = do
   let cp = CreateProcess (RawCommand path args) Nothing Nothing CreatePipe
                          CreatePipe CreatePipe True
   (Just hStdin, Just hStdout, Just hStderr, hProcess) <- createProcess cp
-  hPutStr hStdin stdinStr
-  stdoutStr <- hGetContents hStdout
+  B.hPutStr hStdin stdinStr
+  stdoutStr <- B.hGetContents hStdout
   stderrStr <- hGetContents hStderr
-  hPutStrLn stderr stderrStr -- echo errors to our stderr
+  hPutStrLn stderr (take 50 stderrStr) -- echo errors to our stderr
   exitCode <- waitForProcess hProcess
   case exitCode of
     ExitSuccess -> return (Just stdoutStr)
@@ -51,10 +52,9 @@ commandIO path args stdinStr = do
       return Nothing
 
 rhino :: FilePath -- ^Path to the file
-      -> String -- ^JavaScript source
-      -> IO String -- ^JavaScript source, parsed and printed by Rhino
-rhino path src = do
-  hPutStrLn stderr ("Starting Rhino on " ++ path)
+      -> B.ByteString -- ^JavaScript source
+      -> IO B.ByteString -- ^JavaScript source, parsed and printed by Rhino
+rhino path {- not used -} src = do
   rhinoPath <- getEnv "RHINO"
   let classpath = rhinoPath ++ ":../java"
   result <- commandIO "/usr/bin/env" 
@@ -67,9 +67,9 @@ rhino path src = do
 testRhino:: FilePath -> String -> Test
 testRhino src str = TestCase $ do
   let src' = src ++ " (pretty-printed)"
-  lhs <- ((rhino src') . pretty . (parse src)) str
-  rhs <- rhino src str
-  assertEqual "testRhino" lhs rhs
+  lhs <- ((rhino src') . B.pack . pretty . (parse src)) str
+  rhs <- rhino src (B.pack str)
+  assertEqual ("testRhino on " ++ src) lhs rhs
   
 
 main = do
