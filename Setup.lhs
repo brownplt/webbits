@@ -6,12 +6,11 @@
 
 > isHaskellFile file = ".lhs" `L.isSuffixOf` file || ".hs" `L.isSuffixOf` file
 
-> moduleName file = L.takeWhile (\ch -> ch /= '.') file
+> moduleName file = L.takeWhile  (/= '.') file
 
 > testMain _ _ _ _ = do
 >   files <- getDirectoryContents "tests"
->   let tests = filter isHaskellFile files
->   let testModules = map moduleName tests
+>   let testModules = [moduleName f | f <- files, isHaskellFile f]
 >   let testFuncs = map (++ ".main") testModules
 >   let testExpr = "sequence [ " ++ concat (L.intersperse "," testFuncs) ++ 
 >                  " ] >>= \\cases -> runTestTT (TestList cases)"
