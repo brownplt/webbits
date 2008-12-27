@@ -242,7 +242,7 @@ instance PrettyPrintable (Expression a) where
   pp (InfixExpr _ op left right) = 
     pp left <+> pp op <+> pp right
   pp (CondExpr _ test cons alt) =
-    inParens test <+> text "?" <+> inParens cons <+> colon <+> inParens alt
+    pp test <+> text "?" <+> pp cons <+> colon <+> pp alt
   pp (AssignExpr _ op l r) =
     pp l <+> pp op <+> pp r
   pp (ParenExpr _ expr) =
