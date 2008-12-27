@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if [ -z $BASE ]; then
+    BASE=`pwd`;
+fi
+
+SCRIPT="getContents >>= print .  pp . (either (const undefined) id) . (parseScriptFromString \"stdin\")"
+
+ghc -fglasgow-exts -i:$BASE/src -e "$SCRIPT" WebBits.JavaScript.JavaScript < $1
