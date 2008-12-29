@@ -3,34 +3,21 @@
 -- Rhino's JavaScript parser and pretty-printer.
 module Rhino where
 
-import Test.HUnit.Base
-import Test.HUnit.Text
+import Control.Monad ( liftM )
+
 import Data.Data
-import System.Directory (getDirectoryContents)
-import System.FilePath (takeExtension, FilePath, (</>))
-import qualified Data.List as L
-import System.IO.Unsafe (unsafePerformIO)
+import qualified Data.ByteString.Char8 as B
+
 import System.Process
 import System.IO
 import System.Environment
 import System.Exit
-import qualified Data.ByteString.Char8 as B
 
-import WebBits.Common (pp)
-import Text.ParserCombinators.Parsec (ParseError, sourceName, errorPos)
-import WebBits.JavaScript.PrettyPrint () -- instances only
-import WebBits.JavaScript.Syntax (JavaScript (..))
-import WebBits.JavaScript.Parser (parseScriptFromString, ParsedStatement)
-import Text.PrettyPrint.HughesPJ (render, vcat)
+import Test.HUnit.Base
+import Test.HUnit.Text
 
+import WebBits.Test
 
-pretty :: [ParsedStatement] -> String
-pretty stmts = render $ vcat $ map pp stmts
-
-parse :: FilePath -> String -> [ParsedStatement]
-parse src str = case parseScriptFromString src str of
-  Left err -> error (show err)
-  Right (Script _ stmts) -> stmts
 
 commandIO :: FilePath -- ^path of the executable
           -> [String] -- ^command line arguments
@@ -76,9 +63,7 @@ testRhino src str = TestCase $ do
   
 
 main = do
-  allPaths <- getDirectoryContents "parse-pretty"
-  let testPaths = map ("parse-pretty"</>)
-                    $ filter ((== ".js") . takeExtension) allPaths
+  testPaths <- liftM concat $ mapM getJsPaths ["parse-pretty"]
   testData <- mapM readFile testPaths
   let tests = zipWith testRhino testPaths testData
   return (TestList tests)
