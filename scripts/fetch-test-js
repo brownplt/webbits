@@ -16,7 +16,7 @@ fetchlib() {
     if [ -e $BASE/tests/libs/$1-$2.js ]; then
         echo "already fetched."
     else
-        wget http://ajax.googleapis.com/ajax/libs/$1/$2/$1.js -O $BASE/tests/libs/$1-$2.js -o /dev/null
+        curl http://ajax.googleapis.com/ajax/libs/$1/$2/$1.js 2> /dev/null > $BASE/tests/libs/$1-$2.js
         echo "done."
     fi
 }
