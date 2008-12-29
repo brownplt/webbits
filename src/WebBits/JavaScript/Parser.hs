@@ -289,16 +289,11 @@ parseNullLit = do
 
 
 parseBoolLit:: ExpressionParser st
-parseBoolLit =
-  let parseTrueLit = do
-        pos <- getPosition
-        reserved "true"
-        return (BoolLit pos True)
-      parseFalseLit = do
-        pos <- getPosition
-        reserved "false"
-        return (BoolLit pos False)
-    in parseTrueLit <|> parseFalseLit
+parseBoolLit = do
+    pos <- getPosition
+    let parseTrueLit  = reserved "true"  >> return (BoolLit pos True)
+        parseFalseLit = reserved "false" >> return (BoolLit pos False)
+    parseTrueLit <|> parseFalseLit
 
 parseVarRef:: ExpressionParser st
 parseVarRef = liftM2 VarRef getPosition identifier
