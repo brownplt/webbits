@@ -24,7 +24,7 @@ testParsePrettyIdentity src str = TestCase $
     rhs = parse src str
 
 main = do
-  testPaths <- liftM concat $ mapM getJsPaths ["parse-pretty"]
+  testPaths <- liftM concat $ mapM getJsPaths ["parse-pretty", "libs"]
   testData <- mapM readFile testPaths
   let tests = zipWith testParsePrettyIdentity testPaths testData
   return (TestList tests)

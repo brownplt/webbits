@@ -1,0 +1,25 @@
+#!/bin/sh
+
+if [ -z $BASE ]; then
+    BASE=`pwd`;
+fi
+
+JQUERY_VERSION=1.2.6
+PROTO_VERSION=1.6.0.3
+
+mkdir -p $BASE/tests/libs
+
+# Use Google Ajax API to fetch javascript libraries to test against. These
+# should not be in the repository!
+fetchlib() {
+    echo -n "Fetching $1... "
+    if [ -e $BASE/tests/libs/$1-$2.js ]; then
+        echo "already fetched."
+    else
+        wget http://ajax.googleapis.com/ajax/libs/$1/$2/$1.js -O $BASE/tests/libs/$1-$2.js -o /dev/null
+        echo "done."
+    fi
+}
+
+fetchlib "jquery"    $JQUERY_VERSION
+fetchlib "prototype" $PROTO_VERSION

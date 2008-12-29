@@ -63,7 +63,7 @@ testRhino src str = TestCase $ do
   
 
 main = do
-  testPaths <- liftM concat $ mapM getJsPaths ["parse-pretty"]
+  testPaths <- liftM concat $ mapM getJsPaths ["parse-pretty", "libs"]
   testData <- mapM readFile testPaths
   let tests = zipWith testRhino testPaths testData
   return (TestList tests)
