@@ -2,7 +2,8 @@ module WebBits.Test
   ( pretty
   , parse
   , parseJavaScriptFromFile
-  , env
+  , label
+  , globals
   , isJsFile
   , getJsPaths
   , sameIds
@@ -15,6 +16,7 @@ import Data.Maybe (catMaybes)
 import qualified Data.Foldable as Foldable
 import Data.Foldable (Foldable)
 import Control.Monad
+import qualified Data.Map as M
 
 import System.Directory
 import System.FilePath
@@ -56,8 +58,12 @@ getJsPaths dpath = do
     paths <- if exists then getDirectoryContents dpath else return []
     return [dpath </> p | p <- paths, isJsFile p]
 
-env :: [ParsedStatement] -> [LabelledStatement]
-env stmts = labelledStmts where
+globals :: [ParsedStatement] -> [String]
+globals stmts = M.keys env where
+  (_,env,_) = staticEnvironment stmts
+
+label :: [ParsedStatement] -> [LabelledStatement]
+label stmts = labelledStmts where
   (labelledStmts,_,_) = staticEnvironment stmts
 
 idWithPos :: (Int,Int)

@@ -272,7 +272,7 @@ labelAny :: GenericM (Z.ZipperT Env (State Int))
 labelAny a = (labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
   labelExpr `extM` labelStmt) a
 
-topLevelPartialEnv = (M.singleton "this" 0,S.empty)
+topLevelPartialEnv = (M.empty,S.singleton "this")
 
 -- |Annotates each expression with its static environment.  In addition,
 -- a map of free identifiers is returned, along with the next valid label.

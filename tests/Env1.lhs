@@ -12,7 +12,7 @@ var x = 12;
 
 > test1 = TestCase $ do
 >   parsedStmts <- parseJavaScriptFromFile "Env1.lhs"
->   let stmts = env parsedStmts
+>   let stmts = label parsedStmts
 >   sameIds [(3,12),(3,24)] stmts
 >   sameIds [(1,5),(3,30)] stmts
 >   diffIds [(1,5),(3,24)] stmts
