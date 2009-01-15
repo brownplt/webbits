@@ -224,6 +224,11 @@ labelExpr (DotRef (_,_,loc) expr id) = do
   id' <- labelIdNoVar id
   expr' <- labelExpr expr
   return (DotRef (env,lbl,loc) expr' id')
+labelExpr (VarRef (_,_,loc) id@(Id _ name)) = do
+  env <- Z.getNode
+  case M.lookup name env of
+    Nothing -> fail $ "WebBits bug : unbound identifer " ++ name
+    Just lbl' -> return (VarRef (env,lbl',loc) id)
 labelExpr (FuncExpr (_,_,loc) args stmt) = do
   env <- Z.getNode
   lbl <- nextLabel
