@@ -210,6 +210,13 @@ labelProp (PropId (_,_,loc) id) = do
 labelProp e = gmapM labelAny e
 
 
+labelVarDecl :: VarDecl Ann
+             -> Z.ZipperT Env (State Int) (VarDecl Ann)
+labelVarDecl (VarDecl (_,_,loc) id@(Id _ name) rhs) = do
+  env <- Z.getNode
+  case M.lookup name env of
+    Nothing -> fail $ "WebBits bug: unbound id in labelVarDecl (" ++ name ++ ")"
+    Just lbl' -> return (VarDecl (env,lbl',loc) id rhs)
 
 labelExpr :: Expression Ann 
           -> Z.ZipperT Env (State Int) (Expression Ann)
@@ -270,7 +277,7 @@ labelAny' a = gmapM labelAny a
 
 labelAny :: GenericM (Z.ZipperT Env (State Int)) 
 labelAny a = (labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
-  labelExpr `extM` labelStmt) a
+  labelExpr `extM` labelStmt `extM` labelVarDecl) a
 
 topLevelPartialEnv = (M.empty,S.singleton "this")
 
