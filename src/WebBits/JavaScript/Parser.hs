@@ -1,4 +1,5 @@
 module WebBits.JavaScript.Parser(parseScript,parseExpression
+   , parseString
    , parseScriptFromString
    , emptyParsedJavaScript
    , ParsedStatement
@@ -649,3 +650,8 @@ parseScriptFromString src script = parse parseScript src script
 
 emptyParsedJavaScript = 
   Script (error "Parser.emptyParsedJavaScript--no annotation") []
+
+parseString :: String -> [Statement SourcePos]
+parseString str = case parse parseScript "" str of
+  Left err -> error (show err)
+  Right (Script _ stmts) -> stmts

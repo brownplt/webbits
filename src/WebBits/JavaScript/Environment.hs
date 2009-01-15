@@ -277,16 +277,17 @@ topLevelPartialEnv = (M.empty,S.singleton "this")
 -- |Annotates each expression with its static environment.  In addition,
 -- a map of free identifiers is returned, along with the next valid label.
 staticEnvironment :: [Statement SourcePos] 
-                  -> ([Statement Ann],Env,Int)
+                  -> ([Statement Ann],Env,Env,Int)
 staticEnvironment stmts =
   let stmts' = explicitThis stmts
       labelM = do
         partialEnvTree <- Z.execZipperT (mapM buildStmt stmts')
                             (Z.toLocation (Z.Node topLevelPartialEnv []))
-        (envTree,globals) <- runStateT (completeEnvM partialEnvTree) M.empty
+        (envTree,freeEnv) <- runStateT (completeEnvM partialEnvTree) M.empty
+        let globals = M.union freeEnv (Z.rootLabel envTree)
         let stmts'' = map insertEmptyAnn stmts' 
         labelledStmts <- Z.evalZipperT (mapM labelStmt stmts'') 
                                        (Z.toLocation envTree)
-        return (labelledStmts,globals)
-      ((labelledStmts,globals),nextLabel) = runState labelM 1
-    in (labelledStmts,globals,nextLabel)
+        return (labelledStmts,freeEnv,globals)
+      ((labelledStmts,freeEnv,globals),nextLabel) = runState labelM 1
+    in (labelledStmts,freeEnv,globals,nextLabel)

@@ -60,11 +60,11 @@ getJsPaths dpath = do
 
 globals :: [ParsedStatement] -> [String]
 globals stmts = M.keys env where
-  (_,env,_) = staticEnvironment stmts
+  (_,_,env,_) = staticEnvironment stmts
 
 label :: [ParsedStatement] -> [LabelledStatement]
 label stmts = labelledStmts where
-  (labelledStmts,_,_) = staticEnvironment stmts
+  (labelledStmts,_,_,_) = staticEnvironment stmts
 
 idWithPos :: (Int,Int)
           -> Id Ann

@@ -15,7 +15,7 @@ y = 34;
 > test1 = TestCase $ do
 >   parsedStmts <- parseJavaScriptFromFile "Env2.lhs"
 >   let names = globals parsedStmts
->   let expected = ["this","y"]
+>   let expected = ["this","x","y"]
 >   assertEqual "Env2 globals wrong" (sort expected) (sort names)
 
 > main :: IO Test
