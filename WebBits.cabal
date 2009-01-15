@@ -47,4 +47,4 @@ Library
     WebBits.JavaScript.JavaScript WebBits.JavaScript.Lexer 
     WebBits.JavaScript.Parser WebBits.JavaScript.PrettyPrint
     WebBits.JavaScript.Syntax WebBits.JavaScript.Environment
-    WebBits.JavaScript.Crawl
+    WebBits.JavaScript.Crawl WebBits.JavaScript
