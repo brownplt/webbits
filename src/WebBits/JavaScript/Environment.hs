@@ -272,6 +272,8 @@ labelAny :: GenericM (Z.ZipperT Env (State Int))
 labelAny a = (labelAny' `extM` labelEnv `extM` labelId `extM` labelProp `extM`
   labelExpr `extM` labelStmt) a
 
+topLevelPartialEnv = (M.singleton "this" 0,S.empty)
+
 -- |Annotates each expression with its static environment.  In addition,
 -- a map of free identifiers is returned, along with the next valid label.
 staticEnvironment :: [Statement SourcePos] 
@@ -280,11 +282,11 @@ staticEnvironment stmts =
   let stmts' = explicitThis stmts
       labelM = do
         partialEnvTree <- Z.execZipperT (mapM buildStmt stmts')
-                            (Z.toLocation (Z.Node emptyPartialEnv []))
+                            (Z.toLocation (Z.Node topLevelPartialEnv []))
         (envTree,globals) <- runStateT (completeEnvM partialEnvTree) M.empty
         let stmts'' = map insertEmptyAnn stmts' 
         labelledStmts <- Z.evalZipperT (mapM labelStmt stmts'') 
                                        (Z.toLocation envTree)
         return (labelledStmts,globals)
-      ((labelledStmts,globals),nextLabel) = runState labelM 0
+      ((labelledStmts,globals),nextLabel) = runState labelM 1
     in (labelledStmts,globals,nextLabel)
