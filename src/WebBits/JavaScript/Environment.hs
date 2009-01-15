@@ -216,7 +216,11 @@ labelVarDecl (VarDecl (_,_,loc) id@(Id _ name) rhs) = do
   env <- Z.getNode
   case M.lookup name env of
     Nothing -> fail $ "WebBits bug: unbound id in labelVarDecl (" ++ name ++ ")"
-    Just lbl' -> return (VarDecl (env,lbl',loc) id rhs)
+    Just lbl' -> case rhs of
+      Nothing -> return (VarDecl (env,lbl',loc) id Nothing)
+      Just expr -> do
+        expr' <- labelExpr expr
+        return (VarDecl (env,lbl',loc) id (Just expr'))
 
 labelExpr :: Expression Ann 
           -> Z.ZipperT Env (State Int) (Expression Ann)
