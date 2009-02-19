@@ -131,6 +131,13 @@ newLocalVar expr = do
   let id = Id noPos ("__webbits" ++ show n)
   return (VarDeclStmt noPos [VarDecl noPos id (Just expr)],VarRef noPos id)
 
+-- |If the expression is not a variable-reference, create a name for it.
+needVar :: Expression SourcePos
+        -> State Int (Statement SourcePos,Expression SourcePos)
+needVar expr = case expr of
+  VarRef p _ -> return (EmptyStmt p,expr)
+  otherwise -> newLocalVar expr
+
 -- |Lifts functions calls out of expressions into a sequence of
 -- statements.
 sepEffects :: Expression SourcePos 
@@ -149,20 +156,30 @@ sepEffects expr = case expr of
     (e1Stmts,e1Expr) <- sepEffects e1
     (e2Stmts,e2Expr) <- sepEffects e2
     (e3Stmts,e3Expr) <- sepEffects e3
-    case (e2Stmts,e3Stmts) of
-      ([],[]) -> return (e1Stmts,CondExpr p e1Expr e2Expr e3Expr)
-      otherwise -> do
-        (decl,ref) <- newLocalVar e1Expr
-        let e2Stmts' = BlockStmt p [BlockStmt p e2Stmts,assign ref e2Expr]
-        let e3Stmts' = BlockStmt p [BlockStmt p e3Stmts,assign ref e3Expr]
-        return ([BlockStmt p e1Stmts,IfStmt p ref e2Stmts' e3Stmts'],ref)
+    (decl,ref) <- newLocalVar e1Expr
+    let e2Stmts' = BlockStmt p [BlockStmt p e2Stmts,assign ref e2Expr]
+    let e3Stmts' = BlockStmt p [BlockStmt p e3Stmts,assign ref e3Expr]
+    return ([BlockStmt p e1Stmts,IfStmt p ref e2Stmts' e3Stmts'],ref)
   ParenExpr p e -> sepEffects e
   CallExpr p fn args -> do
     (fnStmts,fnExpr) <- sepEffects fn
     r <- mapM sepEffects args
     let (argsStmts,argExprs) = (concatMap fst r,map snd r)
-    (decl,ref) <- newLocalVar $ CallExpr p fnExpr argExprs
-    return (fnStmts ++ argsStmts ++ [decl],ref)
+    (s1,fnExpr') <- needVar fnExpr
+    r <- mapM needVar argExprs
+    let (ss2,argExprs') = unzip r
+    (decl,ref) <- newLocalVar $ CallExpr p fnExpr' argExprs'
+    return (fnStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
+  NewExpr p constr args -> do
+    (constrStmts,constr') <- sepEffects constr
+    r <- mapM sepEffects args
+    let argsStmts = concatMap fst r
+    let args' = map snd r
+    (s1,constr'') <- needVar constr'
+    r <- mapM needVar args'
+    let (ss2,args'') = unzip r
+    (decl,ref) <- newLocalVar $ NewExpr p constr'' args''
+    return (constrStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
   FuncExpr p args body -> do
     expr <- liftM (FuncExpr p args) (purifyExprs body)
     return ([],expr)
@@ -225,12 +242,6 @@ sepEffects expr = case expr of
     (e1Stmts,e1') <- sepEffects e1
     (e2Stmts,e2') <- sepEffects e2
     return (e1Stmts ++ e2Stmts,BracketRef p e1' e2')
-  NewExpr p constr args -> do
-    (constrStmts,constr') <- sepEffects constr
-    r <- mapM sepEffects args
-    let argsStmts = concatMap fst r
-    let args' = map snd r
-    return (constrStmts ++ argsStmts,NewExpr p constr' args')
 
 purifyExprs :: Statement SourcePos -> State Int (Statement SourcePos)
 purifyExprs stmt = case stmt of

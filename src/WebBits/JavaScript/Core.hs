@@ -12,12 +12,6 @@ data FOp = OpLT | OpLEq | OpGT | OpGEq  | OpIn  | OpInstanceof | OpEq | OpNEq
   | PrefixDelete | CondOp
   deriving (Show,Data,Typeable,Eq,Ord)
 
--- |Assignment
-data MOp = OpAssign | OpAssignAdd | OpAssignSub | OpAssignMul | OpAssignDiv
-  | OpAssignMod | OpAssignLShift | OpAssignSpRShift | OpAssignZfRShift
-  | OpAssignBAnd | OpAssignBXor | OpAssignBOr
-  deriving (Show,Data,Typeable,Eq,Ord)
-
 
 data Lit a
   = StringLit a String
@@ -28,14 +22,14 @@ data Lit a
   | NullLit a
   | ArrayLit a [Expr a]
   | ObjectLit a [(Id, Expr a)]
+  deriving (Show,Data,Typeable,Eq,Ord)
   
 data Expr a
-  = Lit a
+  = Lit (Lit a)
   | This a
   | VarRef a Id
   | DotRef a (Expr a) Id
   | BracketRef a (Expr a) {- container -} (Expr a) {- key -}
-  | NewExpr a (Expr a) {- constructor -} [Expr a]
   | OpExpr FOp [Expr a]
   | FuncExpr {
       funcExprX :: a,
@@ -48,7 +42,13 @@ data Expr a
 data Stmt a
   = SeqStmt a [Stmt a]
   | EmptyStmt a
-  | AssignStmt a Id MOp [Expr a]
+  | AssignStmt a Id (Expr a)
+  | NewStmt {
+      newStmtX :: a,
+      newStmtResultId :: Id,
+      newStmtConstructorId :: Id,
+      newStmtArgs :: [Id]
+    }
   | CallStmt {
       callStmtX :: a,
       callStmtResultId :: Id,
@@ -61,5 +61,6 @@ data Stmt a
   | ForInStmt a Id (Expr a) (Stmt a)
   | TryStmt a (Stmt a) Id (Stmt a) {- catch clause -} (Stmt a) {- finally -}
   | ThrowStmt a (Expr a)
-  | ReturnStmt a (Expr a)
+  | ReturnStmt a (Maybe (Expr a))
   deriving (Show,Data,Typeable,Eq,Ord)  
+
