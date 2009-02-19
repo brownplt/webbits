@@ -1,0 +1,22 @@
+function foo(x,y) {
+  var x = 23;
+  var y = 50;
+  if (z == 50) {
+    var g = 50;
+  }
+}
+
+function baz(x,y) {
+  return function (z) {
+    z = 23;
+    var w = z;
+    return z;
+  }
+  var s = 23;
+}
+
+function bar () {
+  for (var x = 0; x < 23; x++) {
+  }
+  for (var y in cows) { y.cows[y](); }
+}

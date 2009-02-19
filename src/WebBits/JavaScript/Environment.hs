@@ -192,7 +192,7 @@ labelId :: Id Ann -> Z.ZipperT Env (State Int) (Id Ann)
 labelId id@(Id (_,_,loc) s) = do
   env <- Z.getNode
   case M.lookup s env of
-    Nothing -> fail $ "BUG: unbound identifier while labelling" ++ show id
+    Nothing -> fail $ "BUG: unbound identifier while labelling " ++ show id
     Just lbl -> return (Id (env,lbl,loc) s)
     
 labelIdNoVar :: Id Ann -> Z.ZipperT Env (State Int) (Id Ann)

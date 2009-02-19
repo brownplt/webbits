@@ -16,8 +16,8 @@
 >                  " ] >>= \\cases -> runTestTT (TestList cases)"
 >   let moduleLine = concat (L.intersperse " " testModules)
 >   let cmd = "cd tests && ghc  -XNoMonomorphismRestriction -fglasgow-exts " ++
->             "-package HUnit -i:../src -e \"" ++ testExpr ++ 
->             " >> return ()\" " ++ moduleLine
+>             "-package HUnit -package parsec-2.1.0.1 -i:../src -e \"" ++ 
+>             testExpr ++ " >> return ()\" " ++ moduleLine
 >   putStrLn "Testing command is:"
 >   putStrLn cmd
 >   putStrLn "\nLoading tests..."

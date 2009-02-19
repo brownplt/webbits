@@ -2,8 +2,11 @@
 module WebBits.Common
   ( PrettyPrintable(..)
   , L.isPrefixOf
+  , initialPos
   , SourcePos
   , sourceName
+  , everythingBut
+  , excludeFunctions
   ) where
 
 import Data.Map (Map)
@@ -21,6 +24,32 @@ import qualified Data.Traversable as Traversable
 import Data.Traversable (Traversable, traverse)
 import qualified Text.PrettyPrint.HughesPJ as Pp
 import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, sourceName)
+import WebBits.JavaScript.Syntax
+
+-- |Similar to 'everything'.  'everythingBut' descends into 'term' only if
+-- the generic predicate is 'True'.  If the predicate is 'False',
+-- the query is still applied to 'term'.
+everythingBut :: (r -> r -> r)  -- ^combines results
+              -> GenericQ Bool  -- ^generic predicate that determines whether
+                                -- to descend into a value
+              -> GenericQ r     -- ^generic query
+              -> GenericQ r
+everythingBut combine canDescend query term = case canDescend term of
+  False -> query term -- does not descend
+  True  -> L.foldl' combine (query term)
+                    (gmapQ (everythingBut combine canDescend query) term)
+
+-- |For generics, this type cannot be quantified.
+isNotFuncExpr :: Expression SourcePos -> Bool
+isNotFuncExpr (FuncExpr{}) = False
+isNotFuncExpr _            = True
+
+isNotFuncStmt :: Statement SourcePos -> Bool
+isNotFuncStmt (FunctionStmt{}) = False
+isNotFuncStmt _                = True
+
+excludeFunctions :: GenericQ Bool
+excludeFunctions = (mkQ True isNotFuncExpr) `extQ` isNotFuncStmt
 
 lowercase = map toLower
 
