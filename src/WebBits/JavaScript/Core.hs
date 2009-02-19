@@ -9,7 +9,7 @@ data FOp = OpLT | OpLEq | OpGT | OpGEq  | OpIn  | OpInstanceof | OpEq | OpNEq
   | OpStrictEq | OpStrictNEq | OpLAnd | OpLOr | OpMul | OpDiv | OpMod  | OpSub 
   | OpLShift | OpSpRShift | OpZfRShift | OpBAnd | OpBXor | OpBOr | OpAdd
   | PrefixLNot | PrefixBNot | PrefixMinus | PrefixTypeof | PrefixVoid
-  | PrefixDelete | CondOp
+  | PrefixDelete
   deriving (Show,Data,Typeable,Eq,Ord)
 
 
@@ -43,6 +43,7 @@ data Stmt a
   = SeqStmt a [Stmt a]
   | EmptyStmt a
   | AssignStmt a Id (Expr a)
+  | DeleteStmt a Id {-result-} Id {-to delete-}
   | NewStmt {
       newStmtX :: a,
       newStmtResultId :: Id,
@@ -55,7 +56,6 @@ data Stmt a
       callStmtFunctionId :: Id,
       callStmtArgs :: [Id]
     }
-  | ExprStmt a (Expr a)
   | IfStmt a (Expr a) (Stmt a) (Stmt a)
   | WhileStmt a (Expr a) (Stmt a)
   | ForInStmt a Id (Expr a) (Stmt a)

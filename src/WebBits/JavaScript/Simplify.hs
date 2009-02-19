@@ -225,9 +225,10 @@ sepEffects expr = case expr of
         return (eStmts ++ [assign e' (InfixExpr p OpAdd e' (NumLit p 1))],e')
       PrefixDec ->
         return (eStmts ++ [assign e' (InfixExpr p OpSub e' (NumLit p 1))],e')
-      PrefixDelete ->
-        return (eStmts ++ [ExprStmt p (PrefixExpr p PrefixDelete e')],
-                BoolLit p True)
+      PrefixDelete -> do
+        (decl0,e'') <- needVar e'
+        (decl1,ref) <- newLocalVar (PrefixExpr p PrefixDelete e'')
+        return (eStmts ++ [decl0,decl1],ref)
       otherwise -> 
         return (eStmts,PrefixExpr p op e')
   ObjectLit p pes -> do
