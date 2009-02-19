@@ -30,6 +30,16 @@ pseudoLetBindings (FuncExpr p args body) = FuncExpr p args body' where
   binds = VarDeclStmt p (map (\name -> VarDecl p (Id p name) Nothing) locals)
   locals = S.toList (localVars [body])
 pseudoLetBindings expr = expr
+  
+removeVarDecl :: Statement SourcePos -> Statement SourcePos
+removeVarDecl (VarDeclStmt p decls) = case Y.mapMaybe unDecl decls of
+  [] -> EmptyStmt p
+  exprs -> BlockStmt p $ map (ExprStmt p) exprs
+removeVarDecl stmt                  = stmt
+
+unDecl :: VarDecl SourcePos -> Maybe (Expression SourcePos)
+unDecl (VarDecl p id Nothing) = Nothing
+unDecl (VarDecl p id (Just e)) = Just $ AssignExpr p OpAssign (VarRef p id) e 
 
 -- |Once all variables are declared at the head of each function, we can
 -- remove variable declarations from within the function body.
@@ -52,15 +62,6 @@ removeInnerVarDecls (FuncExpr p args (BlockStmt p' [binds,body])) = expr' where
   unVarForInInit init          = init
 
  
-  removeVarDecl :: Statement SourcePos -> Statement SourcePos
-  removeVarDecl (VarDeclStmt p decls) = case Y.mapMaybe unDecl decls of
-    [] -> EmptyStmt p
-    exprs -> ExprStmt p (ListExpr p exprs)
-  removeVarDecl stmt                  = stmt
-
-  unDecl :: VarDecl SourcePos -> Maybe (Expression SourcePos)
-  unDecl (VarDecl p id Nothing) = Nothing
-  unDecl (VarDecl p id (Just e)) = Just $ AssignExpr p OpAssign (VarRef p id) e 
 removeInnerVarDecls expr = expr
 
 
@@ -108,8 +109,9 @@ simplifyBlocks stmt = stmt
  
 
 simplify :: [Statement SourcePos] -> [Statement SourcePos]
-simplify script =  resimplified where
-  resimplified = everywhere (mkT simplifyBlocks)
+simplify script =  topBinds:resimplified where
+  resimplified = everywhereBut (not.excludeFunctions) (mkT removeVarDecl)
+    $ everywhere (mkT simplifyBlocks)
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings) purified
   purified = evalState (mapM purifyExprs simplified) 0
@@ -117,8 +119,10 @@ simplify script =  resimplified where
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings)
     $ everywhere (mkT removeFuncStmt) script
-
-
+ 
+  topVars = S.toList (localVars purified) -- TODO: wrong. Use globalVars!
+  topBinds = VarDeclStmt noPos $
+    map (\name -> VarDecl noPos (Id noPos name) Nothing) topVars
 
 assign :: Expression SourcePos -> Expression SourcePos -> Statement SourcePos
 assign e1 e2 = ExprStmt noPos (AssignExpr noPos OpAssign e1 e2)
@@ -186,12 +190,9 @@ sepEffects expr = case expr of
   AssignExpr p op lhs rhs -> do
     (rhsStmts,rhs') <- sepEffects rhs
     (lhsStmts,lhs') <- sepEffects lhs
-    case (rhsStmts,lhsStmts) of
-      ([],[]) -> return ([ExprStmt p expr],lhs)
-      otherwise -> do
-        let stmts = lhsStmts ++ rhsStmts ++ 
-                      [ExprStmt p (AssignExpr p op lhs' rhs')]
-        return (stmts,lhs')
+    let stmts = lhsStmts ++ rhsStmts ++ 
+                [ExprStmt p (AssignExpr p op lhs' rhs')]
+    return (stmts,lhs')
   ListExpr p es -> do
     r <- mapM sepEffects es
     return (concatMap fst r,snd $ L.last r) -- discard earlier expressions

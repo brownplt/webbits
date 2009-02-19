@@ -9,7 +9,6 @@ data FOp = OpLT | OpLEq | OpGT | OpGEq  | OpIn  | OpInstanceof | OpEq | OpNEq
   | OpStrictEq | OpStrictNEq | OpLAnd | OpLOr | OpMul | OpDiv | OpMod  | OpSub 
   | OpLShift | OpSpRShift | OpZfRShift | OpBAnd | OpBXor | OpBOr | OpAdd
   | PrefixLNot | PrefixBNot | PrefixMinus | PrefixTypeof | PrefixVoid
-  | PrefixDelete
   deriving (Show,Data,Typeable,Eq,Ord)
 
 
@@ -30,7 +29,7 @@ data Expr a
   | VarRef a Id
   | DotRef a (Expr a) Id
   | BracketRef a (Expr a) {- container -} (Expr a) {- key -}
-  | OpExpr FOp [Expr a]
+  | OpExpr a FOp [Expr a]
   | FuncExpr {
       funcExprX :: a,
       funcExprArgs :: [Id],

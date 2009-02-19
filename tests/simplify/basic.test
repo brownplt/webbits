@@ -1,3 +1,5 @@
+var caboose = 23;
+
 function foo(x,y) {
   var x = 23;
   var y = 50;

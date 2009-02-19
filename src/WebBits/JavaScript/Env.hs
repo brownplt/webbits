@@ -28,7 +28,12 @@ unId (Id _ v) = v
 localVars :: [Statement SourcePos] -> Set String
 localVars stmts = everythingBut S.union excludeFunctions query stmts where
   query :: GenericQ (Set String)
-  query = (mkQ S.empty collectVarDecl) `extQ` collectForInInit
+  query = (mkQ S.empty collectVarDecl) `extQ` collectForInInit `extQ` 
+            collectFuncStmt
+
+  collectFuncStmt :: Statement SourcePos -> Set String
+  collectFuncStmt (FunctionStmt _ id _ _) = S.singleton (unId id)
+  collectFuncStmt stmt = S.empty
 
   collectVarDecl :: VarDecl SourcePos -> Set String
   collectVarDecl (VarDecl _ v _) = S.singleton (unId v)
