@@ -32,3 +32,8 @@ function forLoops() {
     i = z + foreverIncr(i);
   }
 }
+
+function shorts() {
+  var x = 23 && 45;
+  var y = foo() && bar();
+}

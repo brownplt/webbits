@@ -4,6 +4,7 @@ module WebBits.JavaScript.CoreTransform
 
 import qualified Data.Set as S
 import qualified Data.Maybe as Y
+import qualified Data.List as L
 import Control.Monad.State
 
 import WebBits.Common
@@ -144,7 +145,7 @@ sepEffects expr = case expr of
     r <- mapM sepEffects es
     return (concatMap fst r,ArrayLit p $ map snd r)
   VarRef{} -> return ([],expr)
-  CondExpr p e1 e2 e3 -> do
+  CondExpr p e1 e2 e3 -> do 
     (e1Stmts,e1Expr) <- sepEffects e1
     (e2Stmts,e2Expr) <- sepEffects e2
     (e3Stmts,e3Expr) <- sepEffects e3
@@ -176,22 +177,61 @@ sepEffects expr = case expr of
         return (stmts,lhs')
   ListExpr p es -> do
     r <- mapM sepEffects es
-    return (concatMap fst r,ListExpr p $ map snd r)
-  InfixExpr p op lhs rhs -> do -- TODO: This is _wrong_ for short-circuiting
-    (lhsStmts,lhs') <- sepEffects lhs
-    (rhsStmts,rhs') <- sepEffects rhs
-    return (lhsStmts ++ rhsStmts, InfixExpr p op lhs' rhs')
-  otherwise -> return ([],expr)
+    return (concatMap fst r,snd $ L.last r) -- discard earlier expressions
+  InfixExpr p op lhs rhs
+    | op == OpLAnd -> do
+      (lhsStmts,lhs') <- sepEffects lhs
+      (rhsStmts,rhs') <- sepEffects rhs
+      case rhsStmts of
+        [] -> return (lhsStmts,InfixExpr p op lhs' rhs')
+        otherwise -> do
+          (decl,ref) <- newLocalVar lhs'
+          let rhsStmts' = rhsStmts ++ [assign ref rhs']
+          return ([BlockStmt p lhsStmts,
+                   IfStmt p ref (BlockStmt p rhsStmts') (EmptyStmt p)],
+                  ref)
 
-{-
-  | ObjectLit a [(Prop a, Expression a)]
-  | ThisRef a
-  | DotRef a (Expression a) (Id a)
-  | BracketRef a (Expression a) {- container -} (Expression a) {- key -}
-  | NewExpr a (Expression a) {- constructor -} [Expression a]
-  | PostfixExpr a PostfixOp (Expression a)
-  | PrefixExpr a PrefixOp (Expression a)
--}
+    | otherwise -> do
+      (lhsStmts,lhs') <- sepEffects lhs
+      (rhsStmts,rhs') <- sepEffects rhs
+      return (lhsStmts ++ rhsStmts, InfixExpr p op lhs' rhs')
+  PostfixExpr p op e -> do
+    (eStmts,e') <- sepEffects e
+    (declStmt,id) <- newLocalVar e'
+    let modifyExpr = AssignExpr p OpAssign e' $ case op of
+          PostfixInc -> InfixExpr p OpAdd e' (NumLit p 1)
+          PostfixDec -> InfixExpr p OpSub e' (NumLit p 1) 
+    return (eStmts ++ [declStmt,ExprStmt p modifyExpr],id)
+  PrefixExpr p op e -> do
+    (eStmts,e') <- sepEffects e
+    case op of
+      PrefixInc ->
+        return (eStmts ++ [assign e' (InfixExpr p OpAdd e' (NumLit p 1))],e')
+      PrefixDec ->
+        return (eStmts ++ [assign e' (InfixExpr p OpSub e' (NumLit p 1))],e')
+      PrefixDelete ->
+        return (eStmts ++ [ExprStmt p (PrefixExpr p PrefixDelete e')],
+                BoolLit p True)
+      otherwise -> 
+        return (eStmts,PrefixExpr p op e')
+  ObjectLit p pes -> do
+    let (props,exprs) = unzip pes
+    r <- mapM sepEffects exprs
+    return (concatMap fst r, ObjectLit p $ zip props (map snd r))
+  ThisRef p -> return ([],expr)
+  DotRef p e id -> do
+    (eStmts,e') <- sepEffects e
+    return (eStmts,DotRef p e' id)
+  BracketRef p e1 e2 -> do
+    (e1Stmts,e1') <- sepEffects e1
+    (e2Stmts,e2') <- sepEffects e2
+    return (e1Stmts ++ e2Stmts,BracketRef p e1' e2')
+  NewExpr p constr args -> do
+    (constrStmts,constr') <- sepEffects constr
+    r <- mapM sepEffects args
+    let argsStmts = concatMap fst r
+    let args' = map snd r
+    return (constrStmts ++ argsStmts,NewExpr p constr' args')
 
 purifyExprs :: Statement SourcePos -> State Int (Statement SourcePos)
 purifyExprs stmt = case stmt of
