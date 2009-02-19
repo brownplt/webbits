@@ -4,6 +4,8 @@ module WebBits.JavaScript.CoreTransform
 
 import qualified Data.Set as S
 import qualified Data.Maybe as Y
+import Control.Monad.State
+
 import WebBits.Common
 import Data.Generics
 
@@ -89,76 +91,150 @@ removeIfSingleStmt (IfSingleStmt p test body) =
 removeIfSingleStmt stmt = stmt
 
 simplifyStmts = removeForStmt.removeDoWhileStmt.removeIfSingleStmt
+
+-- |Applied bottom up, so it can assume its children are simplified
+simplifyBlocks :: Statement SourcePos -> Statement SourcePos
+simplifyBlocks (BlockStmt p stmts) = result where
+  result = case stmts' of
+    [] -> EmptyStmt p
+    [stmt] -> stmt
+    _ -> BlockStmt p stmts'
+  stmts' = concatMap simpl stmts
+  simpl (EmptyStmt{}) = []
+  simpl (BlockStmt p stmts) = stmts
+  simpl stmt = [stmt]
+simplifyBlocks stmt = stmt 
  
 
 simplify :: [Statement SourcePos] -> [Statement SourcePos]
-simplify script =  everywhere (mkT simplifyStmts)
-  $ everywhere (mkT removeInnerVarDecls)
-  $ everywhere (mkT pseudoLetBindings)
-  $ everywhere (mkT removeFuncStmt) script
+simplify script =  resimplified where
+  resimplified = everywhere (mkT simplifyBlocks)
+    $ everywhere (mkT removeInnerVarDecls)
+    $ everywhere (mkT pseudoLetBindings) purified
+  purified = evalState (mapM purifyExprs simplified) 0
+  simplified = everywhere (mkT simplifyStmts)
+    $ everywhere (mkT removeInnerVarDecls)
+    $ everywhere (mkT pseudoLetBindings)
+    $ everywhere (mkT removeFuncStmt) script
 
+
+
+assign :: Expression SourcePos -> Expression SourcePos -> Statement SourcePos
+assign e1 e2 = ExprStmt noPos (AssignExpr noPos OpAssign e1 e2)
+
+newLocalVar :: Expression SourcePos 
+            -> State Int (Statement SourcePos,Expression SourcePos)
+newLocalVar expr = do
+  n <- get
+  put (n+1)
+  let id = Id noPos ("__webbits" ++ show n)
+  return (VarDeclStmt noPos [VarDecl noPos id (Just expr)],VarRef noPos id)
 
 -- |Lifts functions calls out of expressions into a sequence of
 -- statements.
 sepEffects :: Expression SourcePos 
-           -> m ([Statement SourcePos],Expression SourcePos)
+           -> State Int ([Statement SourcePos],Expression SourcePos)
 sepEffects expr = case expr of
-  StringLit{} -> return expr
-  RegexpLit{} -> return expr
-  NumLit{} -> return expr
-  BoolLit -> return expr
-  NullLit{} -> return expr
+  StringLit{} -> return ([],expr)
+  RegexpLit{} -> return ([],expr)
+  NumLit{} -> return ([],expr)
+  BoolLit{} -> return ([],expr)
+  NullLit{} -> return ([],expr)
   ArrayLit p es -> do
     r <- mapM sepEffects es
-    return (concatMap fst r,map snd r)
+    return (concatMap fst r,ArrayLit p $ map snd r)
+  VarRef{} -> return ([],expr)
+  CondExpr p e1 e2 e3 -> do
+    (e1Stmts,e1Expr) <- sepEffects e1
+    (e2Stmts,e2Expr) <- sepEffects e2
+    (e3Stmts,e3Expr) <- sepEffects e3
+    case (e2Stmts,e3Stmts) of
+      ([],[]) -> return (e1Stmts,CondExpr p e1Expr e2Expr e3Expr)
+      otherwise -> do
+        (decl,ref) <- newLocalVar e1Expr
+        let e2Stmts' = BlockStmt p [BlockStmt p e2Stmts,assign ref e2Expr]
+        let e3Stmts' = BlockStmt p [BlockStmt p e3Stmts,assign ref e3Expr]
+        return ([BlockStmt p e1Stmts,IfStmt p ref e2Stmts' e3Stmts'],ref)
+  ParenExpr p e -> sepEffects e
   CallExpr p fn args -> do
     (fnStmts,fnExpr) <- sepEffects fn
-    r <- mapM sepEffects fn
+    r <- mapM sepEffects args
     let (argsStmts,argExprs) = (concatMap fst r,map snd r)
-    return (fnStmts ++ argsStmts,CallExpr p fnExpr argExprs)
+    (decl,ref) <- newLocalVar $ CallExpr p fnExpr argExprs
+    return (fnStmts ++ argsStmts ++ [decl],ref)
+  FuncExpr p args body -> do
+    expr <- liftM (FuncExpr p args) (purifyExprs body)
+    return ([],expr)
+  AssignExpr p op lhs rhs -> do
+    (rhsStmts,rhs') <- sepEffects rhs
+    (lhsStmts,lhs') <- sepEffects lhs
+    case (rhsStmts,lhsStmts) of
+      ([],[]) -> return ([ExprStmt p expr],lhs)
+      otherwise -> do
+        let stmts = lhsStmts ++ rhsStmts ++ 
+                      [ExprStmt p (AssignExpr p op lhs' rhs')]
+        return (stmts,lhs')
+  ListExpr p es -> do
+    r <- mapM sepEffects es
+    return (concatMap fst r,ListExpr p $ map snd r)
+  InfixExpr p op lhs rhs -> do -- TODO: This is _wrong_ for short-circuiting
+    (lhsStmts,lhs') <- sepEffects lhs
+    (rhsStmts,rhs') <- sepEffects rhs
+    return (lhsStmts ++ rhsStmts, InfixExpr p op lhs' rhs')
+  otherwise -> return ([],expr)
 
 {-
-data Expression a
-  = StringLit a String
-  | RegexpLit a String Bool {- global? -} Bool {- case-insensitive? -}
-  | NumLit a Double -- pg. 5 of ECMA-262
-  | BoolLit a Bool
-  | NullLit a
-  | ArrayLit a [Expression a]
   | ObjectLit a [(Prop a, Expression a)]
   | ThisRef a
-  | VarRef a (Id a)
   | DotRef a (Expression a) (Id a)
   | BracketRef a (Expression a) {- container -} (Expression a) {- key -}
   | NewExpr a (Expression a) {- constructor -} [Expression a]
   | PostfixExpr a PostfixOp (Expression a)
   | PrefixExpr a PrefixOp (Expression a)
-  | InfixExpr a InfixOp (Expression a) (Expression a)
-  | CondExpr a (Expression a) (Expression a) (Expression a)
-  | AssignExpr a AssignOp (Expression a) (Expression a)
-  | ParenExpr a (Expression a)
-  | ListExpr a [Expression a]
-  | CallExpr a (Expression a) [Expression a]
-  | FuncExpr a [(Id a)] (Statement a)
-  deriving (Show,Data,Typeable,Eq,Ord)
-
-  
-data Statement a
-  = BlockStmt a [Statement a]
-  | EmptyStmt a
-  | ExprStmt a (Expression a)
-  | IfStmt a (Expression a) (Statement a) (Statement a)
-  | SwitchStmt a (Expression a) [CaseClause a]
-  | WhileStmt a (Expression a) (Statement a)
-  | BreakStmt a (Maybe (Id a))
-  | ContinueStmt a (Maybe (Id a))
-  | LabelledStmt a (Id a) (Statement a)
-  | ForInStmt a (ForInInit a) (Expression a) (Statement a)
-  | TryStmt a (Statement a) {-body-} [CatchClause a] {-catches-}
-      (Maybe (Statement a)) {-finally-}
-  | ThrowStmt a (Expression a)
-  | ReturnStmt a (Maybe (Expression a))
-  | WithStmt a (Expression a) (Statement a)
-  deriving (Show,Data,Typeable,Eq,Ord)  
-
 -}
+
+purifyExprs :: Statement SourcePos -> State Int (Statement SourcePos)
+purifyExprs stmt = case stmt of
+  BlockStmt p stmts -> liftM (BlockStmt p) (mapM purifyExprs stmts)
+  EmptyStmt{} -> return stmt
+  ExprStmt p e -> do
+    (stmts,_) <- sepEffects e -- discard the pure expression
+    return $ if null stmts then (EmptyStmt p) else (BlockStmt p stmts)
+  IfStmt p e s1 s2 -> do
+    (ess,e') <- sepEffects e
+    s1' <- purifyExprs s1
+    s2' <- purifyExprs s2
+    return (BlockStmt p [BlockStmt p ess,IfStmt p e' s1' s2'])
+  SwitchStmt p e cases -> fail "cannot handle switch yet"
+  WhileStmt p e s -> do
+    (ess,e') <- sepEffects e
+    s' <- purifyExprs s
+    return (BlockStmt p [BlockStmt p ess,WhileStmt p e' s'])
+  BreakStmt{} -> return stmt
+  ContinueStmt{} -> return stmt
+  ForInStmt p init expr body -> do
+    (exprStmts,expr') <- sepEffects expr
+    body' <- purifyExprs body
+    return (BlockStmt p [BlockStmt p exprStmts,ForInStmt p init expr' body']) 
+  TryStmt p body catches finally -> fail "cannot handle try yet"
+  ThrowStmt p e -> do
+    (es,e') <- sepEffects e
+    return (BlockStmt p [BlockStmt p es,ThrowStmt p e'])
+  ReturnStmt p Nothing -> return stmt
+  ReturnStmt p (Just e) -> do
+    (es,e') <- sepEffects e
+    return (BlockStmt p [BlockStmt p es,ReturnStmt p (Just e')])
+  WithStmt{} -> fail "cannot handle With yet"
+  VarDeclStmt p decls -> do
+    r <- mapM purifyDecl decls
+    return (BlockStmt p [BlockStmt p (concatMap fst r), 
+                         VarDeclStmt p (map snd r)])
+  otherwise -> fail $ "purifyExpr received " ++ show stmt
+
+purifyDecl :: VarDecl SourcePos 
+           -> State Int ([Statement SourcePos],VarDecl SourcePos)
+purifyDecl decl@(VarDecl p id rhs) = case rhs of
+  Nothing -> return ([],decl)
+  Just expr -> do
+    (ss,e) <- sepEffects expr
+    return (ss,VarDecl p id (Just e))

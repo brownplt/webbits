@@ -29,6 +29,6 @@ function forLoops() {
   for (;;) { forever(); }
 
   for (;; i++) {
-    foreverIncr(i);
+    i = z + foreverIncr(i);
   }
 }
