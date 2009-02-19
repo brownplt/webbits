@@ -3,7 +3,7 @@ module Main where
 import Control.Monad (liftM )
 
 import WebBits.Test
-import WebBits.JavaScript.CoreTransform (simplify)
+import WebBits.JavaScript.Simplify (simplify)
 
 main = do
   str <- getContents

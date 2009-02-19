@@ -1,4 +1,4 @@
-module WebBits.JavaScript.CoreTransform 
+module WebBits.JavaScript.Simplify
   ( simplify
   ) where
 
@@ -190,7 +190,6 @@ sepEffects expr = case expr of
           return ([BlockStmt p lhsStmts,
                    IfStmt p ref (BlockStmt p rhsStmts') (EmptyStmt p)],
                   ref)
-
     | otherwise -> do
       (lhsStmts,lhs') <- sepEffects lhs
       (rhsStmts,rhs') <- sepEffects rhs
