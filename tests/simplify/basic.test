@@ -20,3 +20,15 @@ function bar () {
   }
   for (var y in cows) { y.cows[y](); }
 }
+
+function forLoops() {
+  for (var x = 0; x < 23; x++) {
+    peaches();
+  }
+
+  for (;;) { forever(); }
+
+  for (;; i++) {
+    foreverIncr(i);
+  }
+}

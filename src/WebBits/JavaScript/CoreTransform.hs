@@ -60,90 +60,64 @@ removeInnerVarDecls (FuncExpr p args (BlockStmt p' [binds,body])) = expr' where
   unDecl (VarDecl p id (Just e)) = Just $ AssignExpr p OpAssign (VarRef p id) e 
 removeInnerVarDecls expr = expr
 
-{-
-removeForStmt :: Statement SourcePos -> Statement SourcePos
-removeForStmt (ForStmt p
- | ForStmt a (ForInit a)        
-              (Maybe (Expression a)) -- increment
-              (Maybe (Expression a)) -- test
-              (Statement a)          -- body -}
-  
 
+removeForStmt :: Statement SourcePos -> Statement SourcePos
+removeForStmt (ForStmt p init maybeTest maybeIncr body) = stmts where
+  stmts = BlockStmt p [prelude,WhileStmt p whileTest whileBody]
+  prelude = case init of
+    NoInit -> EmptyStmt p
+    ExprInit e -> ExprStmt p e
+    -- following shouldn't happen, but allows this function to be used alone
+    VarInit decls -> VarDeclStmt p decls
+  whileTest = case maybeTest of
+    Nothing -> BoolLit p True
+    Just e -> e
+  whileBody = BlockStmt p [body,whileIncr]
+  whileIncr = case maybeIncr of
+    Nothing -> EmptyStmt p
+    Just e -> ExprStmt p e
+removeForStmt stmt = stmt 
+
+removeDoWhileStmt :: Statement SourcePos -> Statement SourcePos
+removeDoWhileStmt (DoWhileStmt p body test) = stmts where
+  stmts = BlockStmt p [body,WhileStmt p test body]
+removeDoWhileStmt stmt = stmt
+
+removeIfSingleStmt :: Statement SourcePos -> Statement SourcePos
+removeIfSingleStmt (IfSingleStmt p test body) =
+  IfStmt p test body (EmptyStmt p)
+removeIfSingleStmt stmt = stmt
+
+simplifyStmts = removeForStmt.removeDoWhileStmt.removeIfSingleStmt
+ 
 
 simplify :: [Statement SourcePos] -> [Statement SourcePos]
-simplify script =  everywhere (mkT removeInnerVarDecls)
+simplify script =  everywhere (mkT simplifyStmts)
+  $ everywhere (mkT removeInnerVarDecls)
   $ everywhere (mkT pseudoLetBindings)
   $ everywhere (mkT removeFuncStmt) script
 
+
+-- |Lifts functions calls out of expressions into a sequence of
+-- statements.
+sepEffects :: Expression SourcePos 
+           -> m ([Statement SourcePos],Expression SourcePos)
+sepEffects expr = case expr of
+  StringLit{} -> return expr
+  RegexpLit{} -> return expr
+  NumLit{} -> return expr
+  BoolLit -> return expr
+  NullLit{} -> return expr
+  ArrayLit p es -> do
+    r <- mapM sepEffects es
+    return (concatMap fst r,map snd r)
+  CallExpr p fn args -> do
+    (fnStmts,fnExpr) <- sepEffects fn
+    r <- mapM sepEffects fn
+    let (argsStmts,argExprs) = (concatMap fst r,map snd r)
+    return (fnStmts ++ argsStmts,CallExpr p fnExpr argExprs)
+
 {-
-
-javascript :: JavaScript SourcePos
-           -> [Core.Stmt SourcePos]
-javascript (Script _ stmts) = concatMap stmt stmts
-
-stmt :: Statement SourcePos
-     -> [Core.Stmt SourcePos]
-stmt (BlockStmt p stmts) = Core.SeqStmt p (concatMap stmt stmts)
-stmt (EmptyStmt p) = Core.EmptyStmt p
--- discard the effect-free expression
-stmt (ExprStmt p e) = fst (expr e)
-stmt (IfStmt p e s1 s2) = s' ++ (Core.IfStmt p e' s1' s2') where
-  (s',e') = expr e
-  s1' = Core.SeqStmt p (stmt s1)
-  s2' = Core.SeqStmt p (stmt s2) 
-data Statement a
-  = BlockStmt a [Statement a]
-  | EmptyStmt a
-  | ExprStmt a (Expression a)
-  | IfStmt a (Expression a) (Statement a) (Statement a)
-  | IfSingleStmt a (Expression a) (Statement a)
-  | SwitchStmt a (Expression a) [CaseClause a]
-  | WhileStmt a (Expression a) (Statement a)
-  | DoWhileStmt a (Statement a) (Expression a)
-  | BreakStmt a (Maybe (Id a))
-  | ContinueStmt a (Maybe (Id a))
-  | LabelledStmt a (Id a) (Statement a)
-  | ForInStmt a (ForInInit a) (Expression a) (Statement a)
-  | ForStmt a (ForInit a)        
-              (Maybe (Expression a)) -- increment
-              (Maybe (Expression a)) -- test
-              (Statement a)          -- body
-  | TryStmt a (Statement a) {-body-} [CatchClause a] {-catches-}
-      (Maybe (Statement a)) {-finally-}
-  | ThrowStmt a (Expression a)
-  | ReturnStmt a (Maybe (Expression a))
-  | WithStmt a (Expression a) (Statement a)
-  | VarDeclStmt a [VarDecl a]
-  | FunctionStmt a (Id a) {-name-} [(Id a)] {-args-} (Statement a) {-body-}
-  deriving (Show,Data,Typeable,Eq,Ord)  
-
-data Id a = Id a String deriving (Show,Eq,Ord,Data,Typeable)
-
--- http://developer.mozilla.org/en/docs/
---   Core_JavaScript_1.5_Reference:Operators:Operator_Precedence
-data InfixOp = OpLT | OpLEq | OpGT | OpGEq  | OpIn  | OpInstanceof | OpEq | OpNEq
-             | OpStrictEq | OpStrictNEq | OpLAnd | OpLOr 
-             | OpMul | OpDiv | OpMod  | OpSub | OpLShift | OpSpRShift
-             | OpZfRShift | OpBAnd | OpBXor | OpBOr | OpAdd
-    deriving (Show,Data,Typeable,Eq,Ord,Enum)
-
-data AssignOp = OpAssign | OpAssignAdd | OpAssignSub | OpAssignMul | OpAssignDiv
-  | OpAssignMod | OpAssignLShift | OpAssignSpRShift | OpAssignZfRShift
-  | OpAssignBAnd | OpAssignBXor | OpAssignBOr
-  deriving (Show,Data,Typeable,Eq,Ord)
-
-data PrefixOp = PrefixInc | PrefixDec | PrefixLNot | PrefixBNot | PrefixPlus
-  | PrefixMinus | PrefixTypeof | PrefixVoid | PrefixDelete
-  deriving (Show,Data,Typeable,Eq,Ord)
-  
-data PostfixOp 
-  = PostfixInc | PostfixDec
-  deriving (Show,Data,Typeable,Eq,Ord)
-  
-data Prop a 
-  = PropId a (Id a) | PropString a String | PropNum a Integer
-  deriving (Show,Data,Typeable,Eq,Ord)
-
 data Expression a
   = StringLit a String
   | RegexpLit a String Bool {- global? -} Bool {- case-insensitive? -}
@@ -168,78 +142,23 @@ data Expression a
   | FuncExpr a [(Id a)] (Statement a)
   deriving (Show,Data,Typeable,Eq,Ord)
 
-data CaseClause a 
-  = CaseClause a (Expression a) [Statement a]
-  | CaseDefault a [Statement a]
-  deriving (Show,Data,Typeable,Eq,Ord)
-  
-data CatchClause a 
-  = CatchClause a (Id a) (Statement a) 
-  deriving (Show,Data,Typeable,Eq,Ord)
-
-data VarDecl a 
-  = VarDecl a (Id a) (Maybe (Expression a)) 
-  deriving (Show,Data,Typeable,Eq,Ord)
-  
-data ForInit a
-  = NoInit
-  | VarInit [VarDecl a]
-  | ExprInit (Expression a)
-  deriving (Show,Data,Typeable,Eq,Ord)
-
-data ForInInit a
- = ForInVar (Id a)
- | ForInNoVar (Id a)
- deriving (Show,Data,Typeable,Eq,Ord)
-
-data Stmt a
-  = SeqStmt a [Stmt a]
-  | EmptyStmt a
-  | AssignStmt a Id MOp [Expr a]
-  | CallStmt {
-      callStmtX :: a,
-      callStmtResultId :: Id,
-      callStmtFunctionId :: Id,
-      callStmtArgs :: [Id]
-    }
-  | ExprStmt a (Expr a)
-  | IfStmt a (Expr a) (Stmt a) (Stmt a)
-  | WhileStmt a (Expr a) (Stmt a)
-  | ForInStmt a Id (Expr a) (Stmt a)
-  | TryStmt a (Stmt a) Id (Stmt a) {- catch clause -} (Stmt a) {- finally -}
-  | ThrowStmt a (Expr a)
-  | ReturnStmt a (Expr a)
-
-stmt :: Statement SourcePos -> [Core.Stmt SourcePos]
-stmt (BlockStmt p stmts) = concatMap stmt stmts
-stmt (EmptyStmt p) = Core.EmptyStmt p
-stmt (ExprStmt p 
-  
   
 data Statement a
   = BlockStmt a [Statement a]
   | EmptyStmt a
   | ExprStmt a (Expression a)
   | IfStmt a (Expression a) (Statement a) (Statement a)
-  | IfSingleStmt a (Expression a) (Statement a)
   | SwitchStmt a (Expression a) [CaseClause a]
   | WhileStmt a (Expression a) (Statement a)
-  | DoWhileStmt a (Statement a) (Expression a)
   | BreakStmt a (Maybe (Id a))
   | ContinueStmt a (Maybe (Id a))
   | LabelledStmt a (Id a) (Statement a)
   | ForInStmt a (ForInInit a) (Expression a) (Statement a)
-  | ForStmt a (ForInit a)        
-              (Maybe (Expression a)) -- increment
-              (Maybe (Expression a)) -- test
-              (Statement a)          -- body
   | TryStmt a (Statement a) {-body-} [CatchClause a] {-catches-}
       (Maybe (Statement a)) {-finally-}
   | ThrowStmt a (Expression a)
   | ReturnStmt a (Maybe (Expression a))
   | WithStmt a (Expression a) (Statement a)
-  | VarDeclStmt a [VarDecl a]
-  | FunctionStmt a (Id a) {-name-} [(Id a)] {-args-} (Statement a) {-body-}
   deriving (Show,Data,Typeable,Eq,Ord)  
 
 -}
