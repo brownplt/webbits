@@ -114,7 +114,7 @@ simplify script =  topBinds:resimplified where
     $ everywhere (mkT simplifyBlocks)
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings) purified
-  purified = evalState (mapM purifyExprs simplified) 0
+  purified = evalState (mapM purifyStmt simplified) 0
   simplified = everywhere (mkT simplifyStmts)
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings)
@@ -144,30 +144,30 @@ needVar expr = case expr of
 
 -- |Lifts functions calls out of expressions into a sequence of
 -- statements.
-sepEffects :: Expression SourcePos 
+purifyExpr :: Expression SourcePos 
            -> State Int ([Statement SourcePos],Expression SourcePos)
-sepEffects expr = case expr of
+purifyExpr expr = case expr of
   StringLit{} -> return ([],expr)
   RegexpLit{} -> return ([],expr)
   NumLit{} -> return ([],expr)
   BoolLit{} -> return ([],expr)
   NullLit{} -> return ([],expr)
   ArrayLit p es -> do
-    r <- mapM sepEffects es
+    r <- mapM purifyExpr es
     return (concatMap fst r,ArrayLit p $ map snd r)
   VarRef{} -> return ([],expr)
   CondExpr p e1 e2 e3 -> do 
-    (e1Stmts,e1Expr) <- sepEffects e1
-    (e2Stmts,e2Expr) <- sepEffects e2
-    (e3Stmts,e3Expr) <- sepEffects e3
+    (e1Stmts,e1Expr) <- purifyExpr e1
+    (e2Stmts,e2Expr) <- purifyExpr e2
+    (e3Stmts,e3Expr) <- purifyExpr e3
     (decl,ref) <- newLocalVar e1Expr
     let e2Stmts' = BlockStmt p [BlockStmt p e2Stmts,assign ref e2Expr]
     let e3Stmts' = BlockStmt p [BlockStmt p e3Stmts,assign ref e3Expr]
     return ([BlockStmt p e1Stmts,IfStmt p ref e2Stmts' e3Stmts'],ref)
-  ParenExpr p e -> sepEffects e
+  ParenExpr p e -> purifyExpr e
   CallExpr p fn args -> do
-    (fnStmts,fnExpr) <- sepEffects fn
-    r <- mapM sepEffects args
+    (fnStmts,fnExpr) <- purifyExpr fn
+    r <- mapM purifyExpr args
     let (argsStmts,argExprs) = (concatMap fst r,map snd r)
     (s1,fnExpr') <- needVar fnExpr
     r <- mapM needVar argExprs
@@ -175,8 +175,8 @@ sepEffects expr = case expr of
     (decl,ref) <- newLocalVar $ CallExpr p fnExpr' argExprs'
     return (fnStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
   NewExpr p constr args -> do
-    (constrStmts,constr') <- sepEffects constr
-    r <- mapM sepEffects args
+    (constrStmts,constr') <- purifyExpr constr
+    r <- mapM purifyExpr args
     let argsStmts = concatMap fst r
     let args' = map snd r
     (s1,constr'') <- needVar constr'
@@ -185,21 +185,21 @@ sepEffects expr = case expr of
     (decl,ref) <- newLocalVar $ NewExpr p constr'' args''
     return (constrStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
   FuncExpr p args body -> do
-    expr <- liftM (FuncExpr p args) (purifyExprs body)
+    expr <- liftM (FuncExpr p args) (purifyStmt body)
     return ([],expr)
   AssignExpr p op lhs rhs -> do
-    (rhsStmts,rhs') <- sepEffects rhs
-    (lhsStmts,lhs') <- sepEffects lhs
+    (rhsStmts,rhs') <- purifyExpr rhs
+    (lhsStmts,lhs') <- purifyExpr lhs
     let stmts = lhsStmts ++ rhsStmts ++ 
                 [ExprStmt p (AssignExpr p op lhs' rhs')]
     return (stmts,lhs')
   ListExpr p es -> do
-    r <- mapM sepEffects es
+    r <- mapM purifyExpr es
     return (concatMap fst r,snd $ L.last r) -- discard earlier expressions
   InfixExpr p op lhs rhs
     | op == OpLAnd -> do
-      (lhsStmts,lhs') <- sepEffects lhs
-      (rhsStmts,rhs') <- sepEffects rhs
+      (lhsStmts,lhs') <- purifyExpr lhs
+      (rhsStmts,rhs') <- purifyExpr rhs
       case rhsStmts of
         [] -> return (lhsStmts,InfixExpr p op lhs' rhs')
         otherwise -> do
@@ -209,18 +209,18 @@ sepEffects expr = case expr of
                    IfStmt p ref (BlockStmt p rhsStmts') (EmptyStmt p)],
                   ref)
     | otherwise -> do
-      (lhsStmts,lhs') <- sepEffects lhs
-      (rhsStmts,rhs') <- sepEffects rhs
+      (lhsStmts,lhs') <- purifyExpr lhs
+      (rhsStmts,rhs') <- purifyExpr rhs
       return (lhsStmts ++ rhsStmts, InfixExpr p op lhs' rhs')
   PostfixExpr p op e -> do
-    (eStmts,e') <- sepEffects e
+    (eStmts,e') <- purifyExpr e
     (declStmt,id) <- newLocalVar e'
     let modifyExpr = AssignExpr p OpAssign e' $ case op of
           PostfixInc -> InfixExpr p OpAdd e' (NumLit p 1)
           PostfixDec -> InfixExpr p OpSub e' (NumLit p 1) 
     return (eStmts ++ [declStmt,ExprStmt p modifyExpr],id)
   PrefixExpr p op e -> do
-    (eStmts,e') <- sepEffects e
+    (eStmts,e') <- purifyExpr e
     case op of
       PrefixInc ->
         return (eStmts ++ [assign e' (InfixExpr p OpAdd e' (NumLit p 1))],e')
@@ -234,47 +234,47 @@ sepEffects expr = case expr of
         return (eStmts,PrefixExpr p op e')
   ObjectLit p pes -> do
     let (props,exprs) = unzip pes
-    r <- mapM sepEffects exprs
+    r <- mapM purifyExpr exprs
     return (concatMap fst r, ObjectLit p $ zip props (map snd r))
   ThisRef p -> return ([],expr)
   DotRef p e id -> do
-    (eStmts,e') <- sepEffects e
+    (eStmts,e') <- purifyExpr e
     return (eStmts,DotRef p e' id)
   BracketRef p e1 e2 -> do
-    (e1Stmts,e1') <- sepEffects e1
-    (e2Stmts,e2') <- sepEffects e2
+    (e1Stmts,e1') <- purifyExpr e1
+    (e2Stmts,e2') <- purifyExpr e2
     return (e1Stmts ++ e2Stmts,BracketRef p e1' e2')
 
-purifyExprs :: Statement SourcePos -> State Int (Statement SourcePos)
-purifyExprs stmt = case stmt of
-  BlockStmt p stmts -> liftM (BlockStmt p) (mapM purifyExprs stmts)
+purifyStmt :: Statement SourcePos -> State Int (Statement SourcePos)
+purifyStmt stmt = case stmt of
+  BlockStmt p stmts -> liftM (BlockStmt p) (mapM purifyStmt stmts)
   EmptyStmt{} -> return stmt
   ExprStmt p e -> do
-    (stmts,_) <- sepEffects e -- discard the pure expression
+    (stmts,_) <- purifyExpr e -- discard the pure expression
     return $ if null stmts then (EmptyStmt p) else (BlockStmt p stmts)
   IfStmt p e s1 s2 -> do
-    (ess,e') <- sepEffects e
-    s1' <- purifyExprs s1
-    s2' <- purifyExprs s2
+    (ess,e') <- purifyExpr e
+    s1' <- purifyStmt s1
+    s2' <- purifyStmt s2
     return (BlockStmt p [BlockStmt p ess,IfStmt p e' s1' s2'])
   SwitchStmt p e cases -> fail "cannot handle switch yet"
   WhileStmt p e s -> do
-    (ess,e') <- sepEffects e
-    s' <- purifyExprs s
+    (ess,e') <- purifyExpr e
+    s' <- purifyStmt s
     return (BlockStmt p [BlockStmt p ess,WhileStmt p e' s'])
   BreakStmt{} -> return stmt
   ContinueStmt{} -> return stmt
   ForInStmt p init expr body -> do
-    (exprStmts,expr') <- sepEffects expr
-    body' <- purifyExprs body
+    (exprStmts,expr') <- purifyExpr expr
+    body' <- purifyStmt body
     return (BlockStmt p [BlockStmt p exprStmts,ForInStmt p init expr' body']) 
   TryStmt p body catches finally -> fail "cannot handle try yet"
   ThrowStmt p e -> do
-    (es,e') <- sepEffects e
+    (es,e') <- purifyExpr e
     return (BlockStmt p [BlockStmt p es,ThrowStmt p e'])
   ReturnStmt p Nothing -> return stmt
   ReturnStmt p (Just e) -> do
-    (es,e') <- sepEffects e
+    (es,e') <- purifyExpr e
     return (BlockStmt p [BlockStmt p es,ReturnStmt p (Just e')])
   WithStmt{} -> fail "cannot handle With yet"
   VarDeclStmt p decls -> do
@@ -288,5 +288,5 @@ purifyDecl :: VarDecl SourcePos
 purifyDecl decl@(VarDecl p id rhs) = case rhs of
   Nothing -> return ([],decl)
   Just expr -> do
-    (ss,e) <- sepEffects expr
+    (ss,e) <- purifyExpr expr
     return (ss,VarDecl p id (Just e))
