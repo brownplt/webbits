@@ -71,6 +71,10 @@ stmt (ReturnStmt p maybeE) = Core.ReturnStmt p (liftM expr maybeE)
 stmt s = error $ "cannot translate this statement to core syntax:\n" ++ 
   (render $ pp s) ++ "\n" ++ show s
 
+field (PropString _ s,e) = (Left s,expr e)
+field (PropNum _ n,e) = (Right n,expr e)
+field (PropId _ (Id _ s),e) = (Left s,expr e) 
+
 expr :: Show a => Expression a -> Core.Expr a
 expr (StringLit p s) =  Core.Lit (Core.StringLit p s)
 expr (RegexpLit p s b0 b1) = Core.Lit (Core.RegexpLit p s b0 b1)
@@ -78,7 +82,7 @@ expr (NumLit p x) = Core.Lit (Core.NumLit p x)
 expr (BoolLit p b) = Core.Lit (Core.BoolLit p b)
 expr (NullLit p) = Core.Lit (Core.NullLit p)
 expr (ArrayLit p es) = Core.Lit (Core.ArrayLit p (map expr es))
-expr (ObjectLit p fields) = error "object failure"
+expr (ObjectLit p fields) = Core.Lit (Core.ObjectLit p $ map field fields)
 expr (VarRef p (Id _ v)) = Core.VarRef p v
 expr (FuncExpr p args (BlockStmt _ ((VarDeclStmt p' decls):body))) = 
  Core.FuncExpr p (map unId args) (map unDecl decls) (stmt (BlockStmt p' body)) 

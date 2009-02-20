@@ -20,7 +20,7 @@ data Lit a
   | BoolLit a Bool
   | NullLit a
   | ArrayLit a [Expr a]
-  | ObjectLit a [(Id, Expr a)]
+  | ObjectLit a [(Either String Integer, Expr a)]
   deriving (Show,Data,Typeable,Eq,Ord)
   
 data Expr a
