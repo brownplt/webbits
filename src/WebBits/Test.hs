@@ -8,6 +8,8 @@ module WebBits.Test
   , getJsPaths
   , sameIds
   , diffIds
+  , commandIO
+  , module Test.HUnit 
   ) where
 
 import qualified Data.List as L
@@ -23,6 +25,11 @@ import System.FilePath
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.Generics
 import Test.HUnit
+
+import qualified Data.ByteString.Char8 as B
+import System.Process
+import System.IO
+import System.Exit
 
 import Text.PrettyPrint.HughesPJ ( render, vcat )
 import Text.ParserCombinators.Parsec (ParseError,sourceName,sourceLine,
@@ -108,3 +115,23 @@ diffIds idLocs stmts = do
   when (L.nub lbls /= lbls) $
     assertFailure $ "diffIds : some labels are the same in " ++ show lbls
   return ()
+
+commandIO :: FilePath -- ^path of the executable
+          -> [String] -- ^command line arguments
+          -> B.ByteString  -- ^stdin
+          -> IO (Maybe B.ByteString) -- ^stdout or 'Nothing' on failure
+commandIO path args stdinStr = do
+  let cp = CreateProcess (RawCommand path args) Nothing Nothing CreatePipe
+                         CreatePipe CreatePipe True
+  (Just hStdin, Just hStdout, Just hStderr, hProcess) <- createProcess cp
+  B.hPutStr hStdin stdinStr
+  stdoutStr <- B.hGetContents hStdout
+  stderrStr <- hGetContents hStderr
+  hPutStrLn stderr stderrStr -- echo errors to our stderr
+  exitCode <- waitForProcess hProcess
+  case exitCode of
+    ExitSuccess -> return (Just stdoutStr)
+    ExitFailure n -> do
+      B.hPutStrLn stdout stdoutStr -- echo for errors
+      hPutStrLn stderr $ "Sub-process died with exit code " ++ show n
+      return Nothing
