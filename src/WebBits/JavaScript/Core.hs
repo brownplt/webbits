@@ -55,6 +55,20 @@ data Stmt a
       callStmtFunctionId :: Id,
       callStmtArgs :: [Id]
     }
+  | MethodCallStmt {
+      methodCallStmtX :: a,
+      methodCallStmtResultId :: Id,
+      methodCallStmtObjectId :: Id,
+      methodCallStmtMethodName :: Id,
+      methodCallStmtArgs :: [Id]
+    }
+  | IndirectMethodCallStmt {
+      indirectMethodCallStmtX :: a,
+      indirectMethodCallStmtResultId :: Id,
+      indirectMethodCallStmtObjectId :: Id,
+      indirectMethodCallStmtMethodId :: Id,
+      indirectMethodCallStmtArgs :: [Id]
+    }
   | IfStmt a (Expr a) (Stmt a) (Stmt a)
   | WhileStmt a (Expr a) (Stmt a)
   | ForInStmt a Id (Expr a) (Stmt a)

@@ -149,6 +149,47 @@ needVar expr = case expr of
   VarRef p _ -> return (EmptyStmt p,expr)
   otherwise -> newLocalVar expr
 
+-- These checks is necessary because the following transformation is illegal:
+--
+-- f.x()
+--
+-- to
+--
+-- t0 = f.x;
+-- t1 = t0()
+--
+-- and similarly for f["x"]()
+purifyCall p (DotRef p' obj method) args = do
+  (objStmts,objExpr) <- purifyExpr obj
+  r <- mapM purifyExpr args
+  let (argsStmts,argExprs) = (concatMap fst r,map snd r)
+  (s1,objExpr') <- needVar objExpr
+  r <- mapM needVar argExprs
+  let (ss2,argExprs') = unzip r
+  (decl,ref) <- newLocalVar $ CallExpr p (DotRef p' objExpr' method) argExprs'
+  return (objStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
+purifyCall p (BracketRef p' obj method) args = do
+  (objStmts,objExpr) <- purifyExpr obj
+  (methodStmts,methodExpr) <- purifyExpr method
+  r <- mapM purifyExpr args
+  let (argsStmts,argExprs) = (concatMap fst r,map snd r)
+  (s1,objExpr') <- needVar objExpr
+  r <- mapM needVar argExprs
+  let (ss2,argExprs') = unzip r
+  (s3,methodExpr') <- needVar methodExpr
+  (decl,ref) <- newLocalVar $ 
+    CallExpr p (BracketRef p' objExpr' methodExpr') argExprs'
+  return (objStmts ++ methodStmts ++ argsStmts ++ (s1:s3:ss2) ++ [decl],ref)
+purifyCall p fn args = do
+  (fnStmts,fnExpr) <- purifyExpr fn
+  r <- mapM purifyExpr args
+  let (argsStmts,argExprs) = (concatMap fst r,map snd r)
+  (s1,fnExpr') <- needVar fnExpr
+  r <- mapM needVar argExprs
+  let (ss2,argExprs') = unzip r
+  (decl,ref) <- newLocalVar $ CallExpr p fnExpr' argExprs'
+  return (fnStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
+
 -- |Lifts functions calls out of expressions into a sequence of
 -- statements.
 purifyExpr :: Expression SourcePos 
@@ -172,15 +213,7 @@ purifyExpr expr = case expr of
     let e3Stmts' = BlockStmt p [BlockStmt p e3Stmts,assign ref e3Expr]
     return ([BlockStmt p e1Stmts,IfStmt p ref e2Stmts' e3Stmts'],ref)
   ParenExpr p e -> purifyExpr e
-  CallExpr p fn args -> do
-    (fnStmts,fnExpr) <- purifyExpr fn
-    r <- mapM purifyExpr args
-    let (argsStmts,argExprs) = (concatMap fst r,map snd r)
-    (s1,fnExpr') <- needVar fnExpr
-    r <- mapM needVar argExprs
-    let (ss2,argExprs') = unzip r
-    (decl,ref) <- newLocalVar $ CallExpr p fnExpr' argExprs'
-    return (fnStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
+  CallExpr p fn args -> purifyCall p fn args
   NewExpr p constr args -> do
     (constrStmts,constr') <- purifyExpr constr
     r <- mapM purifyExpr args

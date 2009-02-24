@@ -59,6 +59,10 @@ stmt :: Show a => Statement a -> Core.Stmt a
 stmt (BlockStmt p ss) = Core.SeqStmt p (map stmt ss)
 stmt (EmptyStmt p) = Core.EmptyStmt p
 stmt (ExprStmt p (AssignExpr _ OpAssign (VarRef _ (Id _ r))  rhs)) = case rhs of
+  CallExpr p (DotRef _ f id) args ->
+    Core.MethodCallStmt p r (unVar f) (unId id) (map unVar args)
+  CallExpr p (BracketRef _ f m) args ->
+    Core.IndirectMethodCallStmt p r (unVar f) (unVar m) (map unVar args)
   CallExpr p f args -> Core.CallStmt p r (unVar f) (map unVar args)
   NewExpr p f args -> Core.NewStmt p r (unVar f) (map unVar args)
   PrefixExpr p PrefixDelete id -> Core.DeleteStmt p r (unVar id)
