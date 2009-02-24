@@ -8,32 +8,37 @@ import Control.Monad
 
 import WebBits.Test
 import WebBits.JavaScript
+import qualified Data.ByteString.Char8 as B
 
 isTestCall :: Statement SourcePos -> Bool
 isTestCall (ExprStmt _ (ListExpr _ [CallExpr _ (VarRef _ (Id _ "test")) _])) 
   = True
 isTestCall _ = False
 
-prepareMozillaTestCase :: [FilePath] -- ^support files, in order
+data MozillaTestCase
+  = MozillaTestCase FilePath -- ^support file
+                    FilePath -- ^test file
+                    [Statement SourcePos] -- ^support file statements
+                    [Statement SourcePos] -- ^statements before test(..)
+                    [Statement SourcePos] -- ^statements after test(..)
+                    (Statement SourcePos) -- ^the test(..) statement
+  | InvalidMozillaTestCase FilePath -- ^test file
+                           String -- ^details
+
+prepareMozillaTestCase :: FilePath -- ^support file
                        -> FilePath -- ^test file
-                       -- |Returns statements from the support file, from the
-                       -- test file, upto the call to test(..) and statements
-                       -- after the call to test(..).
-                       -- If a test(..) call is found, it is returned as the
-                       -- fourth result.
-                       -> IO ([Statement SourcePos],
-                              [Statement SourcePos],
-                              [Statement SourcePos],
-                              Maybe (Statement SourcePos))
-prepareMozillaTestCase supportFiles testFile = do
-  supportStmts <- liftM concat (mapM parseJavaScriptFromFile supportFiles) 
+                       -> IO MozillaTestCase
+prepareMozillaTestCase supportFile testFile = do
+  supportStmts <- parseJavaScriptFromFile supportFile
   suiteStmts <- parseJavaScriptFromFile testFile
   let (testStmts,testSupportStmts) = L.break isTestCall suiteStmts
   case testSupportStmts of
     (testStmt:testSupportStmts') -> 
-      return (supportStmts,testStmts,testSupportStmts',Just testStmt)
-    otherwise ->
-      return (supportStmts,testStmts,testSupportStmts,Nothing)
+      return $ MozillaTestCase supportFile testFile supportStmts suiteStmts
+                               testSupportStmts' testStmt
+    otherwise -> 
+      return $ InvalidMozillaTestCase testFile "could not find test(..)"
+
 isInterestingPath p = case takeFileName p of
   "."  -> False
   ".." -> False
@@ -55,30 +60,43 @@ allFiles path = do
   return (files ++ files')
 
 getMozillaTestCasesInCategory :: FilePath
-                              -> IO [([FilePath],FilePath)]
+                              -> IO [(FilePath,FilePath)]
 getMozillaTestCasesInCategory category = do
   files <- allFiles category
   let jsFiles = filter (\f -> takeExtension f == ".js") files
   case jsFiles of
-    (shell_js:files) -> return $ map ((,)[shell_js]) files
+    (shell_js:files) -> return $ map ((,)shell_js) files
     otherwise -> return []
   
 -- |Returns a list of ([support-file, ...],test-file)
-getMozillaTestCases :: IO [([FilePath],FilePath)]
+getMozillaTestCases :: IO [(FilePath,FilePath)]
 getMozillaTestCases = do
   let suiteDir = "webkit-moz-suite"
   categories' <- getDirectoryContents suiteDir
   let categories = filter isInterestingPath categories'
   liftM concat $ mapM (getMozillaTestCasesInCategory.(suiteDir</>)) categories
 
-prepareMozillaTestCases :: IO [([Statement SourcePos],
-                                [Statement SourcePos],
-                                [Statement SourcePos],
-                                Maybe (Statement SourcePos))]
-prepareMozillaTestCases = do
-  cases <- getMozillaTestCases
-  mapM (uncurry prepareMozillaTestCase) cases
 
-main :: IO ()
-main = return ()
+
+mozillaTestCase :: MozillaTestCase -> Test
+mozillaTestCase (InvalidMozillaTestCase path "") = TestCase $
+  assertFailure $ "unknown error in " ++ path
+mozillaTestCase (InvalidMozillaTestCase path msg) = TestCase $
+  assertFailure $ "error in " ++ path ++ ":\n" ++ msg
+mozillaTestCase (MozillaTestCase supportPath testPath 
+                                 prefixStmts testStmts 
+                                 suffixStmts testCallStmt) = TestCase $ do
+  let stmts = prefixStmts ++ suffixStmts ++ testStmts ++ [testCallStmt]
+  r <- rhinoIOFile (B.pack $ pretty stmts)
+  case r of
+    Right _ -> return ()
+    Left stderr -> assertFailure $ 
+      "failed on " ++ testPath ++ "\n" ++
+      "stderr is:\n" ++                       
+      (B.unpack stderr)
+
+main = do
+  testCaseFiles <- getMozillaTestCases
+  testCaseData <- mapM (uncurry prepareMozillaTestCase) testCaseFiles
+  return $ TestList $ map mozillaTestCase testCaseData
 

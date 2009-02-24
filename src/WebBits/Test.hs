@@ -9,6 +9,8 @@ module WebBits.Test
   , sameIds
   , diffIds
   , commandIO
+  , rhinoIO
+  , rhinoIOFile
   , module Test.HUnit 
   ) where
 
@@ -30,6 +32,7 @@ import qualified Data.ByteString.Char8 as B
 import System.Process
 import System.IO
 import System.Exit
+import Control.Exception as E
 
 import Text.PrettyPrint.HughesPJ ( render, vcat )
 import Text.ParserCombinators.Parsec (ParseError,sourceName,sourceLine,
@@ -132,3 +135,25 @@ commandIO path args stdinStr = do
   case exitCode of
     ExitSuccess -> return (Right stdoutStr)
     ExitFailure n -> return (Left stderrStr)
+
+rhinoIO :: B.ByteString -- ^stdin
+        -> IO (Either B.ByteString B.ByteString) -- ^stderr/stdout
+rhinoIO stdin =
+  commandIO "/usr/bin/env" 
+    ["java","-classpath","rhino.jar","org.mozilla.javascript.tools.shell.Main"]
+    stdin
+
+-- |Like 'rhinoIO', but the input stream is first placed in a temporary file.
+rhinoIOFile :: B.ByteString -- ^file contents
+            -> IO (Either B.ByteString B.ByteString) -- ^stderr/stdout
+rhinoIOFile instream = do
+  (path,handle) <- openTempFile "." "webbits.js" 
+  B.hPutStr handle instream
+  hClose handle
+  let cmd = commandIO "/usr/bin/env" 
+              ["java","-classpath","rhino.jar",
+               "org.mozilla.javascript.tools.shell.Main","-f",path] 
+               B.empty
+  cmd `E.finally` (removeFile path)
+
+
