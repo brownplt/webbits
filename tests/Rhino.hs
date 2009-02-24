@@ -17,8 +17,8 @@ rhino path {- not used -} src = do
               ["java", "-classpath", ".:rhino.jar", "RhinoTest"]
               src
   case result of
-    Just str -> return str
-    Nothing -> fail "RhinoTest signalled an error"
+    Right stdout -> return stdout
+    Left stderr -> fail $ "RhinoTest signalled an error:\n" ++ (B.unpack stderr)
 
 testRhino:: FilePath -> String -> Test
 testRhino src str = TestCase $ do

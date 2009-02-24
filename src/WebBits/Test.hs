@@ -119,19 +119,16 @@ diffIds idLocs stmts = do
 commandIO :: FilePath -- ^path of the executable
           -> [String] -- ^command line arguments
           -> B.ByteString  -- ^stdin
-          -> IO (Maybe B.ByteString) -- ^stdout or 'Nothing' on failure
+          -- |'Left stderr' on 'ExitFailure'. 'Right stdout' on 'ExitSuccess'.
+          -> IO (Either B.ByteString B.ByteString)
 commandIO path args stdinStr = do
   let cp = CreateProcess (RawCommand path args) Nothing Nothing CreatePipe
                          CreatePipe CreatePipe True
   (Just hStdin, Just hStdout, Just hStderr, hProcess) <- createProcess cp
   B.hPutStr hStdin stdinStr
   stdoutStr <- B.hGetContents hStdout
-  stderrStr <- hGetContents hStderr
-  hPutStrLn stderr stderrStr -- echo errors to our stderr
+  stderrStr <- B.hGetContents hStderr
   exitCode <- waitForProcess hProcess
   case exitCode of
-    ExitSuccess -> return (Just stdoutStr)
-    ExitFailure n -> do
-      B.hPutStrLn stdout stdoutStr -- echo for errors
-      hPutStrLn stderr $ "Sub-process died with exit code " ++ show n
-      return Nothing
+    ExitSuccess -> return (Right stdoutStr)
+    ExitFailure n -> return (Left stderrStr)
