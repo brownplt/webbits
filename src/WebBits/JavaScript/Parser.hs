@@ -179,7 +179,7 @@ parseForStmt =
           semi
           test <- (liftM Just parseExpression) <|> (return Nothing)
           semi
-          iter <- (liftM Just parseExpression) <|> (return Nothing)
+          iter <- (liftM Just parseListExpr) <|> (return Nothing)
           reservedOp ")" <?> "closing paren"
           stmt <- parseStatement
           return (ForStmt pos init test iter stmt)
@@ -313,7 +313,7 @@ parseFuncExpr = do
 
 escapeChars =
  [('\'','\''),('\"','\"'),('\\','\\'),('b','\b'),('f','\f'),('n','\n'),
-  ('r','\r'),('t','\t'),('v','\v'),('/','/')]
+  ('r','\r'),('t','\t'),('v','\v'),('/','/'),(' ',' ')]
 
 allEscapes:: String
 allEscapes = map fst escapeChars
@@ -408,7 +408,7 @@ parseObjectLit =
 --{{{ Parsing numbers.  From pg. 17-18 of ECMA-262.
 
 hexLit = do
-  try (string "0x")
+  try (char '0' >> oneOf "xX")
   digits <- many1 (oneOf "0123456789abcdefABCDEF")
   [(hex,"")] <- return $ Numeric.readHex digits
   return hex
@@ -423,10 +423,18 @@ mkDecimal w f e =
 exponentPart = do
   oneOf "eE"
   (char '+' >> decimal) <|> (char '-' >> negate `fmap` decimal) <|> decimal
+ 
+ -- admits 34.valueOf, 42.)
+fracPart :: CharParser st Integer
+fracPart = try $ do
+  (char '.')
+  notFollowedBy identifierStart
+  decimal <|> (return 0)
   
+ 
 decLit =
   (do whole <- decimal
-      frac <- option 0 (char '.' >> decimal)
+      frac <- option 0 fracPart
       exp <- option 0  exponentPart
       return $ mkDecimal (fromIntegral whole) (fromIntegral frac) (fromIntegral exp)) <|>
   (do frac <- char '.' >> decimal
