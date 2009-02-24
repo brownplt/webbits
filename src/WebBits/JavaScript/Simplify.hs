@@ -41,6 +41,7 @@ unDecl :: VarDecl SourcePos -> Maybe (Expression SourcePos)
 unDecl (VarDecl p id Nothing) = Nothing
 unDecl (VarDecl p id (Just e)) = Just $ AssignExpr p OpAssign (VarRef p id) e 
 
+
 -- |Once all variables are declared at the head of each function, we can
 -- remove variable declarations from within the function body.
 removeInnerVarDecls :: Expression SourcePos -> Expression SourcePos
@@ -97,21 +98,27 @@ simplifyStmts = removeForStmt.removeDoWhileStmt.removeIfSingleStmt
 -- |Applied bottom up, so it can assume its children are simplified
 simplifyBlocks :: Statement SourcePos -> Statement SourcePos
 simplifyBlocks (BlockStmt p stmts) = result where
-  result = case stmts' of
+  result = case concatMap simpl stmts of
     [] -> EmptyStmt p
     [stmt] -> stmt
-    _ -> BlockStmt p stmts'
-  stmts' = concatMap simpl stmts
+    stmts' -> BlockStmt p stmts'
   simpl (EmptyStmt{}) = []
   simpl (BlockStmt p stmts) = stmts
   simpl stmt = [stmt]
 simplifyBlocks stmt = stmt 
- 
+
+removePseudoEmptyStmts :: Statement SourcePos -> Statement SourcePos
+removePseudoEmptyStmts (VarDeclStmt p []) = EmptyStmt p
+removePseudoEmptyStmts stmt = stmt
 
 simplify :: [Statement SourcePos] -> [Statement SourcePos]
-simplify script =  topBinds:resimplified where
-  resimplified = everywhereBut (not.excludeFunctions) (mkT removeVarDecl)
-    $ everywhere (mkT simplifyBlocks)
+simplify script =  topBinds:topBlocksRemoved where
+  topBlocksRemoved = concatMap removeBlock resimplified
+  removeBlock (BlockStmt _ stmts) = stmts
+  removeBlock stmt = [stmt]
+  resimplified = everywhere (mkT simplifyBlocks)
+    $ everywhereBut (not.excludeFunctions) (mkT removeVarDecl)
+    $ everywhere (mkT removePseudoEmptyStmts)
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings) purified
   purified = evalState (mapM purifyStmt simplified) 0
