@@ -121,7 +121,7 @@ simplify script =  topBinds:topBlocksRemoved where
     $ everywhere (mkT removePseudoEmptyStmts)
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings) purified
-  purified = evalState (mapM purifyStmt simplified) 0
+  purified = evalState (mapM (purifyStmt []) simplified) 0 -- TODO: prolly wrong
   simplified = everywhere (mkT simplifyStmts)
     $ everywhere (mkT removeInnerVarDecls)
     $ everywhere (mkT pseudoLetBindings)
@@ -141,6 +141,13 @@ newLocalVar expr = do
   put (n+1)
   let id = Id noPos ("__webbits" ++ show n)
   return (VarDeclStmt noPos [VarDecl noPos id (Just expr)],VarRef noPos id)
+
+newStmtLabel :: State Int (Id SourcePos)
+newStmtLabel = do
+  n <- get
+  put (n+1)
+  return (Id noPos ("+label" ++ show n))
+   
 
 -- |If the expression is not a variable-reference, create a name for it.
 needVar :: Expression SourcePos
@@ -225,7 +232,7 @@ purifyExpr expr = case expr of
     (decl,ref) <- newLocalVar $ NewExpr p constr'' args''
     return (constrStmts ++ argsStmts ++ (s1:ss2) ++ [decl],ref)
   FuncExpr p args body -> do
-    expr <- liftM (FuncExpr p args) (purifyStmt body)
+    expr <- liftM (FuncExpr p args) (purifyStmt [] body)
     return ([],expr)
   AssignExpr p op lhs rhs -> do
     (rhsStmts,rhs') <- purifyExpr rhs
@@ -285,28 +292,79 @@ purifyExpr expr = case expr of
     (e2Stmts,e2') <- purifyExpr e2
     return (e1Stmts ++ e2Stmts,BracketRef p e1' e2')
 
-purifyStmt :: Statement SourcePos -> State Int (Statement SourcePos)
-purifyStmt stmt = case stmt of
-  BlockStmt p stmts -> liftM (BlockStmt p) (mapM purifyStmt stmts)
+
+data LabelType 
+  = ExplicitLoopLabel
+  | ExplicitLabel
+  | ImplicitLoopLabel
+  | ImplicitSwitchLabel
+
+isExplicitLabel (_,ExplicitLoopLabel) = True
+isExplicitLabel (_,ExplicitLabel) = True
+isExplicitLabel _ = False
+
+isLoopLabel (_,ExplicitLoopLabel) = True
+isLoopLabel (_,ImplicitLoopLabel) = True
+isLoopLabel _ = False
+
+isLoop (ForStmt{}) = True
+isLoop (ForInStmt{}) = True
+isLoop (WhileStmt{}) = True
+isLoop (DoWhileStmt{}) = True
+isLoop (LabelledStmt _ _ s) = isLoop s
+isLoop _ = False
+
+-- |The first argument is a list of enclosing labels, initially empty for each
+-- function.  We cons labels from labelled statements onto this list.  In
+-- addition, we generate labels for switch statements and loops.  This allows
+-- us to make all continue and break statements jump/exit to explicit 
+-- statements.  
+purifyStmt :: [(Id SourcePos,LabelType)]
+           -> Statement SourcePos -> State Int (Statement SourcePos)
+purifyStmt labels stmt = case stmt of
+  BlockStmt p stmts -> liftM (BlockStmt p) (mapM (purifyStmt labels) stmts)
   EmptyStmt{} -> return stmt
   ExprStmt p e -> do
     (stmts,_) <- purifyExpr e -- discard the pure expression
     return $ if null stmts then (EmptyStmt p) else (BlockStmt p stmts)
   IfStmt p e s1 s2 -> do
     (ess,e') <- purifyExpr e
-    s1' <- purifyStmt s1
-    s2' <- purifyStmt s2
+    s1' <- purifyStmt labels s1
+    s2' <- purifyStmt labels s2
     return (BlockStmt p [BlockStmt p ess,IfStmt p e' s1' s2'])
   SwitchStmt p e cases -> fail "cannot handle switch yet"
   WhileStmt p e s -> do
     (ess,e') <- purifyExpr e
-    s' <- purifyStmt s
-    return (BlockStmt p [BlockStmt p ess,WhileStmt p e' s'])
-  BreakStmt{} -> return stmt
-  ContinueStmt{} -> return stmt
+    l <- newStmtLabel
+    s' <- purifyStmt ((l,ImplicitLoopLabel):labels) s
+    return (BlockStmt p [BlockStmt p ess,
+                         LabelledStmt p l $ WhileStmt p e' s'])
+  -- an unlabelled break terminates the innermost enclosing switch/loop.
+  BreakStmt p Nothing -> case L.find (not.isExplicitLabel) labels of
+    Just (id,lbl) -> return $ BreakStmt p (Just id)
+    Nothing -> fail $ "syntax error at " ++ show p ++ "\nNo enclosing loop " ++
+                      "or switch to break to."
+  BreakStmt p (Just id) -> case L.lookup id labels of
+    Just _ -> return stmt
+    Nothing -> fail $ "syntax error at " ++ show p ++ "\nNo enclosing label " ++
+                      "with the name " ++ show id
+  -- continues the next iteration of the innermost enclosing loop.
+  ContinueStmt p Nothing -> case L.find isLoopLabel labels of
+    Nothing -> fail $ "syntax error at " ++ show p ++ "\nUse of continue " ++
+                     "outside a loop"
+    Just (id,_) -> return $ ContinueStmt p (Just id)
+  ContinueStmt p (Just id) -> case L.lookup id labels of
+    Nothing -> fail $ "syntax error at " ++ show p ++ "\nNo loop named " ++
+                      show id
+    -- we can't have an explicit continue to an implicitly labelled loop
+    Just ExplicitLoopLabel -> return stmt
+    otherwise -> fail $ "syntax error at " ++ show p ++ "\ncontinue jumping " ++
+                        "to a statement that is not a loop."
+    
   ForInStmt p init expr body -> do
     (exprStmts,expr') <- purifyExpr expr
-    body' <- purifyStmt body
+    l <- newStmtLabel
+    body' <- purifyStmt ((l,ImplicitLoopLabel):labels) body
     return (BlockStmt p [BlockStmt p exprStmts,ForInStmt p init expr' body']) 
   TryStmt p body catches finally -> fail "cannot handle try yet"
   ThrowStmt p e -> do
@@ -321,6 +379,11 @@ purifyStmt stmt = case stmt of
     r <- mapM purifyDecl decls
     return (BlockStmt p [BlockStmt p (concatMap fst r), 
                          VarDeclStmt p (map snd r)])
+  LabelledStmt p id s -> case isLoop s of
+    True -> do s' <- purifyStmt ((id,ExplicitLoopLabel):labels) s
+               return $ LabelledStmt p id s'
+    False -> do s' <- purifyStmt ((id,ExplicitLabel):labels) s
+                return $ LabelledStmt p id s'
   otherwise -> fail $ "purifyExpr received " ++ show stmt
 
 purifyDecl :: VarDecl SourcePos 

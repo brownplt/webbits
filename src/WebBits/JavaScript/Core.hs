@@ -75,5 +75,11 @@ data Stmt a
   | TryStmt a (Stmt a) Id (Stmt a) {- catch clause -} (Stmt a) {- finally -}
   | ThrowStmt a (Expr a)
   | ReturnStmt a (Maybe (Expr a))
+  | LabelledStmt a Id (Stmt a)
+  | BreakStmt a
+  | ContinueStmt a
+  | SwitchStmt a Id [(Lit a,Stmt a)]
+  | EnterStmt a
+  | ExitStmt a
   deriving (Show,Data,Typeable,Eq,Ord)  
 
