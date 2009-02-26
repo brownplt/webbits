@@ -101,6 +101,11 @@ single support test = do
   tc <- prepareMozillaTestCase (suiteDir</>support) (suiteDir</>test)
   runTestTT $ mozillaTestCase tc
 
+simple support test = do
+  (MozillaTestCase _ _ _ stmts _ _) <- prepareMozillaTestCase
+    (suiteDir</>support) (suiteDir</>test)
+  putStr (pretty $ simplify stmts)
+
 
 main = do
   testCaseFiles <- getMozillaTestCases
