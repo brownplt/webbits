@@ -83,6 +83,7 @@ removeForStmt (ForStmt p init maybeTest maybeIncr body) = stmts where
     Just e -> ExprStmt p e
 removeForStmt stmt = stmt 
 
+-- TODO: This won't work.  A break/continue in the body will fail.
 removeDoWhileStmt :: Statement SourcePos -> Statement SourcePos
 removeDoWhileStmt (DoWhileStmt p body test) = stmts where
   stmts = BlockStmt p [body,WhileStmt p test body]
@@ -146,7 +147,7 @@ newStmtLabel :: State Int (Id SourcePos)
 newStmtLabel = do
   n <- get
   put (n+1)
-  return (Id noPos ("+label" ++ show n))
+  return (Id noPos ("__webbitslabel" ++ show n))
    
 
 -- |If the expression is not a variable-reference, create a name for it.
@@ -332,7 +333,12 @@ purifyStmt labels stmt = case stmt of
     s1' <- purifyStmt labels s1
     s2' <- purifyStmt labels s2
     return (BlockStmt p [BlockStmt p ess,IfStmt p e' s1' s2'])
-  SwitchStmt p e cases -> fail "cannot handle switch yet"
+  SwitchStmt p e cases -> do
+    (eStmts,e') <- purifyExpr e
+    l <- newStmtLabel
+    cases' <- mapM (purifyCase ((l,ImplicitSwitchLabel):labels)) cases
+    return $ BlockStmt p [BlockStmt p eStmts,
+                          LabelledStmt p l $ SwitchStmt p e' cases']
   WhileStmt p e s -> do
     (ess,e') <- purifyExpr e
     l <- newStmtLabel
@@ -366,7 +372,15 @@ purifyStmt labels stmt = case stmt of
     l <- newStmtLabel
     body' <- purifyStmt ((l,ImplicitLoopLabel):labels) body
     return (BlockStmt p [BlockStmt p exprStmts,ForInStmt p init expr' body']) 
-  TryStmt p body catches finally -> fail "cannot handle try yet"
+  TryStmt p body catches Nothing -> do
+    body' <- purifyStmt labels body
+    catches' <- mapM (purifyCatch labels) catches
+    return (TryStmt p body' catches' Nothing)
+  TryStmt p body catches (Just finally) -> do
+    body' <- purifyStmt labels body
+    catches' <- mapM (purifyCatch labels) catches
+    finally' <- purifyStmt labels finally
+    return (TryStmt p body' catches' (Just finally'))
   ThrowStmt p e -> do
     (es,e') <- purifyExpr e
     return (BlockStmt p [BlockStmt p es,ThrowStmt p e'])
@@ -393,3 +407,25 @@ purifyDecl decl@(VarDecl p id rhs) = case rhs of
   Just expr -> do
     (ss,e) <- purifyExpr expr
     return (ss,VarDecl p id (Just e))
+
+-- TODO: binding for id?
+purifyCatch labels (CatchClause p id s) = do
+  s' <- purifyStmt labels s
+  return (CatchClause p id s')
+
+
+-- |Assumes that the head of 'labels' is an 'ImplicitSwitchLabel'.  After
+-- purification, the list of statements in the body is a single block
+-- statement.
+purifyCase :: [(Id SourcePos,LabelType)]
+           -> CaseClause SourcePos -> State Int (CaseClause SourcePos)
+purifyCase labels (CaseDefault p ss) = do
+  s' <- purifyStmt labels (BlockStmt p ss)
+  return (CaseDefault p [s'])
+purifyCase labels (CaseClause p e ss) = do
+  (es,e') <- purifyExpr e
+  case es of
+    [] -> do s' <- purifyStmt labels (BlockStmt p ss)
+             return (CaseClause p e' [s'])
+    otherwise -> fail $ "semantic error(!!!) at " ++ show p ++ "\n" ++
+                        "the case expression should be side-effect free"

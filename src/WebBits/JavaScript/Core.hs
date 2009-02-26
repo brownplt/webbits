@@ -1,6 +1,14 @@
-module WebBits.JavaScript.Core where
+module WebBits.JavaScript.Core 
+  ( Id
+  , FOp(..)
+  , Lit(..)
+  , Expr(..)
+  , Stmt(..)
+  , stmtLabel
+  ) where
 
 import Data.Generics
+import Control.Arrow (first,second,(***))
 
 type Id = String
 
@@ -76,10 +84,80 @@ data Stmt a
   | ThrowStmt a (Expr a)
   | ReturnStmt a (Maybe (Expr a))
   | LabelledStmt a Id (Stmt a)
-  | BreakStmt a
-  | ContinueStmt a
+  | BreakStmt a Int
+  | ContinueStmt a Int
   | SwitchStmt a Id [(Lit a,Stmt a)]
   | EnterStmt a
   | ExitStmt a
   deriving (Show,Data,Typeable,Eq,Ord)  
 
+stmtLabel :: Stmt a -> a
+stmtLabel stmt = case stmt of
+  (SeqStmt a ss) -> a
+  (EmptyStmt a) -> a
+  (AssignStmt a v e) -> a
+  (DeleteStmt a v1 v2) -> a
+  (NewStmt a result constr args) -> a
+  (CallStmt a result fn args) -> a
+  (MethodCallStmt a result obj method args) -> a
+  (IndirectMethodCallStmt a result obj method args) -> a
+  (IfStmt a e s1 s2) -> a
+  (WhileStmt a e s) -> a
+  (ForInStmt a v e s) -> a
+  (TryStmt a s1 v s2 s3) -> a
+  (ReturnStmt a Nothing) -> a
+  (ReturnStmt a (Just e)) -> a
+  (LabelledStmt a v s) -> a
+  (BreakStmt a v) -> a
+  (ContinueStmt a v) -> a
+  (SwitchStmt a v cs) -> a
+  (EnterStmt a) -> a
+  (ExitStmt a) -> a
+
+
+-- Instances
+
+instance Functor Lit where
+  fmap f (StringLit a s) = StringLit (f a) s
+  fmap f (RegexpLit a s g ci) = RegexpLit (f a) s g ci
+  fmap f (NumLit a d) = NumLit (f a) d
+  fmap f (IntLit a n) = IntLit (f a) n
+  fmap f (BoolLit a b) = BoolLit (f a) b
+  fmap f (NullLit a) = NullLit (f a)
+  fmap f (ArrayLit a es) = ArrayLit (f a) (map (fmap f) es)
+  fmap f (ObjectLit a es) = ObjectLit (f a) (map (second (fmap f)) es)
+
+instance Functor Expr where
+  fmap f (Lit l) = Lit (fmap f l)
+  fmap f (This a) = This (f a)
+  fmap f (VarRef a v) = VarRef (f a) v
+  fmap f (BracketRef a e1 e2) = BracketRef (f a) (fmap f e1) (fmap f e2)
+  fmap f (OpExpr a op es) = OpExpr (f a) op (map (fmap f) es)
+  fmap f (FuncExpr a args locals s) =
+    FuncExpr (f a) args locals (fmap f s)
+
+instance Functor Stmt where
+  fmap f (SeqStmt a ss) = SeqStmt (f a) (map (fmap f) ss)
+  fmap f (EmptyStmt a) = EmptyStmt (f a)
+  fmap f (AssignStmt a v e) = AssignStmt (f a) v (fmap f e)
+  fmap f (DeleteStmt a v1 v2) = DeleteStmt (f a) v1 v2
+  fmap f (NewStmt a result constr args) = NewStmt (f a) result constr args
+  fmap f (CallStmt a result fn args) = CallStmt (f a) result fn args
+  fmap f (MethodCallStmt a result obj method args) =
+    MethodCallStmt (f a) result obj method args
+  fmap f (IndirectMethodCallStmt a result obj method args) =
+    IndirectMethodCallStmt (f a) result obj method args
+  fmap f (IfStmt a e s1 s2) = IfStmt (f a) (fmap f e) (fmap f s1) (fmap f s2)
+  fmap f (WhileStmt a e s) = WhileStmt (f a) (fmap f e) (fmap f s)
+  fmap f (ForInStmt a v e s) = ForInStmt (f a) v (fmap f e) (fmap f s)
+  fmap f (TryStmt a s1 v s2 s3) = 
+    TryStmt (f a) (fmap f s1) v (fmap f s2) (fmap f s3)
+  fmap f (ReturnStmt a Nothing) = ReturnStmt (f a) Nothing
+  fmap f (ReturnStmt a (Just e)) = ReturnStmt (f a) (Just (fmap f e))
+  fmap f (LabelledStmt a v s) = LabelledStmt (f a) v (fmap f s)
+  fmap f (BreakStmt a v) = BreakStmt (f a) v
+  fmap f (ContinueStmt a v) = ContinueStmt (f a) v
+  fmap f (SwitchStmt a v cs) =
+    SwitchStmt (f a) v (map (fmap f *** fmap f) cs)
+  fmap f (EnterStmt a) = EnterStmt (f a)
+  fmap f (ExitStmt a) = ExitStmt (f a)
