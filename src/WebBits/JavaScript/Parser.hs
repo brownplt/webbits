@@ -25,42 +25,13 @@ import Data.Char(chr)
 import Data.Char
 
 -- We parameterize the parse tree over source-locations.
-type ParserAnnotation = (SourcePos,Maybe String)
-type ParsedStatement = Statement ParserAnnotation
-type ParsedExpression = Expression ParserAnnotation
+type ParsedStatement = Statement SourcePos
+type ParsedExpression = Expression SourcePos
 
 
 -- These parsers can store some arbitrary state
 type StatementParser state = CharParser state ParsedStatement
 type ExpressionParser state = CharParser state ParsedExpression
-
-withPos cstr p = do
-  pos <- getPosition
-  e <- p
-  return $ cstr (pos,Nothing) e
-
-stmtConstr1 :: String -- ^reserved word that denotes the statement
-            -> (ParserAnnotation -> a -> ParsedStatement) -- constructor
-            -> CharParser st a -- ^argument parser
-            -> StatementParser st
-stmtConstr1 word constr arg = do
-  pos <- getPosition
-  (_,comment) <- reserved word
-  a <- arg
-  return (constr (pos,comment) a)
-
-stmtConstr2 :: String -- ^reserved word that denotes the statement
-            -> (ParserAnnotation -> a0 -> a1 -> ParsedStatement) -- constructor
-            -> CharParser st a0 -- ^argument parser
-            -> CharParser st a1 -- ^argument parser
-            -> StatementParser st
-stmtConstr2 word constr arg0 arg1 = do
-  pos <- getPosition
-  (_,comment) <- reserved word
-  a0 <- arg0
-  a1 <- arg1
-  return (constr (pos,comment) a0 a1)
-  
 
 identifier =
   liftM2 Id getPosition Lexer.identifier
@@ -79,69 +50,76 @@ identifier =
 parseIfStmt:: StatementParser st  
 parseIfStmt = do
   pos <- getPosition
-  (_,c) <- reserved "if"
-  
+  reserved "if"
   test <- parseParenExpr <?> "parenthesized test-expression in if statement"
   consequent <- parseStatement <?> "true-branch of if statement"
   optional semi -- TODO: in spec?
   ((do reserved "else"
        alternate <- parseStatement
-       return (IfStmt (pos,c) test consequent alternate))
-    <|> return (IfSingleStmt (pos,c) test consequent))
+       return (IfStmt pos test consequent alternate))
+    <|> return (IfSingleStmt pos test consequent))
 
 parseSwitchStmt:: StatementParser st
-parseSwitchStmt = do
+parseSwitchStmt =
   let parseDefault = do
         pos <- getPosition
-        (_,c) <- reserved "default"
+        reserved "default"
         colon
         statements <- many parseStatement
-        return (CaseDefault (pos,c) statements)
-  let parseCase = do
-        pos <- getPosition
-        (_,c) <- reserved "case"
-        condition <- parseListExpr
-        colon
-        actions <- many parseStatement
-        return (CaseClause (pos,c) condition actions)
-  let clauses = 
-        (liftM2 (:) parseCase clauses) <|> 
-        (parseDefault >>= \final -> return [final]) <|>
-        (return [])
-  stmtConstr2 "switch" SwitchStmt parseParenExpr (braces clauses)
+        return (CaseDefault pos statements)
+      parseCase = do
+         pos <- getPosition
+         reserved "case"
+         condition <- parseListExpr
+         colon
+         actions <- many parseStatement
+         return (CaseClause pos condition actions)
+    in do pos <- getPosition
+          reserved "switch"
+          test <- parseParenExpr
+          clauses <- braces $ many $ parseDefault <|> parseCase
+          return (SwitchStmt pos test clauses)
 
 parseWhileStmt:: StatementParser st
-parseWhileStmt = stmtConstr2 "while" WhileStmt
-  (parseParenExpr <?> "parenthesized test-expression in while loop")
-  parseStatement
+parseWhileStmt = do
+  pos <- getPosition
+  reserved "while"
+  test <- parseParenExpr <?> "parenthesized test-expression in while loop"
+  body <- parseStatement
+  return (WhileStmt pos test body)
 
 parseDoWhileStmt:: StatementParser st
-parseDoWhileStmt = stmtConstr2 "do" DoWhileStmt
-  parseBlockStmt
-  (reserved "while" >> parseParenExpr)
+parseDoWhileStmt = do
+  pos <- getPosition
+  reserved "do"
+  body <- parseBlockStmt
+  reserved "while" <?> "while at the end of a do block"
+  test <- parseParenExpr <?> "parenthesized test-expression in do loop"
+  optional semi
+  return (DoWhileStmt pos body test)
 
 parseContinueStmt:: StatementParser st
 parseContinueStmt = do
   pos <- getPosition
-  (_,c) <- reserved "continue"
+  reserved "continue"
   pos' <- getPosition
   -- Ensure that the identifier is on the same line as 'continue.'
   id <- (if (sourceLine pos == sourceLine pos')
            then (liftM Just identifier) <|> (return Nothing)
            else return Nothing)
-  return (ContinueStmt (pos,c) id)
+  return (ContinueStmt pos id)
 
 parseBreakStmt:: StatementParser st
 parseBreakStmt = do
   pos <- getPosition
-  (_,c) <- reserved "break"
+  reserved "break"
   pos' <- getPosition
   -- Ensure that the identifier is on the same line as 'break.'
   id <- (if (sourceLine pos == sourceLine pos')
            then (liftM Just identifier) <|> (return Nothing)
            else return Nothing)
   optional semi           
-  return (BreakStmt (pos,c) id)
+  return (BreakStmt pos id)
 
 parseBlockStmt:: StatementParser st
 parseBlockStmt = do
@@ -472,6 +450,11 @@ parseNumLit = do
 
 --}}}
 
+------------------------------------------------------------------------------
+-- Position Helper
+------------------------------------------------------------------------------
+
+withPos cstr p = do { pos <- getPosition; e <- p; return $ cstr pos e }
 
 -------------------------------------------------------------------------------
 -- Compound Expression Parsers
@@ -529,7 +512,7 @@ parseSimpleExprForNew Nothing = do
 --}}}
 
 makeInfixExpr str constr = Infix parser AssocLeft where
-  parser:: CharParser st (ParsedExpression -> ParsedExpression -> ParsedExpression)
+  parser:: CharParser st (Expression SourcePos -> Expression SourcePos -> Expression SourcePos)
   parser = do
     pos <- getPosition
     reservedOp str
@@ -657,12 +640,12 @@ parseListExpr =
 
 --}}}
 
-parseScript:: CharParser state (JavaScript ParserAnnotation)
+parseScript:: CharParser state (JavaScript SourcePos)
 parseScript = do
   whiteSpace
   liftM2 Script getPosition (parseStatement `sepBy` whiteSpace)
   
-parseJavaScriptFromFile :: MonadIO m => String -> m [ParsedStatement]
+parseJavaScriptFromFile :: MonadIO m => String -> m [Statement SourcePos]
 parseJavaScriptFromFile filename = do
   chars <- liftIO $ readFile filename
   case parse parseScript filename chars of
@@ -670,14 +653,13 @@ parseJavaScriptFromFile filename = do
     Right (Script _ stmts) -> return stmts
 
 
-parseScriptFromString :: String -> String 
-                      -> Either ParseError (JavaScript ParserAnnotation)
+parseScriptFromString:: String -> String -> Either ParseError (JavaScript SourcePos)
 parseScriptFromString src script = parse parseScript src script
 
 emptyParsedJavaScript = 
   Script (error "Parser.emptyParsedJavaScript--no annotation") []
 
-parseString :: String -> [ParsedStatement]
+parseString :: String -> [Statement SourcePos]
 parseString str = case parse parseScript "" str of
   Left err -> error (show err)
   Right (Script _ stmts) -> stmts
