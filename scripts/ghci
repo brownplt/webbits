@@ -12,12 +12,12 @@ fi
 
 OBJS=$BASE/dist/build/HSWebBits-0.10.0.o
 SRCS=$BASE/dist/build/autogen:$BASE/src
-PKGS="-package mtl -package parsec -package pretty -package containers"
+PKGS="-package mtl -package parsec-2.1.0.1 -package pretty -package containers"
 
 if [ $MODE = "obj" ]; then
     # You need to ':m +' the modules you want after this.
     ghci $PKGS $OBJS;
 elif [ $MODE = "src" ]; then
     # You need to ':load' the modules you want after this.
-    ghci -fglasgow-exts -i$SRCS;
+    ghci -fglasgow-exts $PKGS -i$SRCS;
 fi

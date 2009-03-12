@@ -84,8 +84,8 @@ data Stmt a
   | ThrowStmt a (Expr a)
   | ReturnStmt a (Maybe (Expr a))
   | LabelledStmt a Id (Stmt a)
-  | BreakStmt a Int
-  | ContinueStmt a Int
+  | BreakStmt a String
+  | ContinueStmt a String
   | SwitchStmt a Id [(Lit a,Stmt a)]
   | EnterStmt a
   | ExitStmt a

@@ -1,6 +1,9 @@
 -- |Generates an intraprocedural control flow graph for a single JavaScript
 -- procedure.
-module WebBits.JavaScript.Intraprocedural where
+module WebBits.JavaScript.Intraprocedural
+  ( intraprocGraph
+  , Edges
+  )  where
 
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -38,17 +41,24 @@ mapM2 f (x:xs) (y:ys) = do
 
 -- ^The control stack of statements, along with the next statement
 -- for each statement in this stack.
-type Stack = [(Stmt (Int,SourcePos),Stmt (Int,SourcePos))]
+type Stack = [(String,(Stmt (Int,SourcePos),Stmt (Int,SourcePos)))]
 
 type Edges = M.Map Int [Int]
 
-nextStmt :: Int -> Stack -> Stmt (Int,SourcePos)
-nextStmt n stack = case L.find ((==n).fst.stmtLabel.fst) stack of
+stackReturn :: Stack -> Stmt (Int,SourcePos)
+stackReturn [] = error "stackReturn : empty stack (should have return)"
+stackReturn stack = fst $ snd $ L.last stack
+
+initStack :: Stmt (Int,SourcePos) -> Stack
+initStack exitStmt = [("$exit not find",(exitStmt,error "next of ExitStmt"))]
+
+nextStmt :: String -> Stack -> Stmt (Int,SourcePos)
+nextStmt n stack = case lookup n stack of
   Just (_,s) -> s
   Nothing -> error "nextStmt: not on stack"
 
-toStmt :: Int -> Stack -> Stmt (Int,SourcePos)
-toStmt n stack = case L.find ((==n).fst.stmtLabel.fst) stack of
+toStmt :: String -> Stack -> Stmt (Int,SourcePos)
+toStmt n stack = case lookup n stack of
   Just (s,_) -> s
   Nothing -> error "toStmt: not on stack"
 
@@ -59,16 +69,18 @@ edge s1 s2 = do
   let l2 = fst $ stmtLabel s2
   put (M.insertWith' (const $ (l2:)) l1 [l2] m)
 
+
 stmt :: Stack
-     -- |The next statement.  We will usually add an edge to this statement.
+     -- ^The control stack is used to translate "structured gotos"
      -> Stmt (Int,SourcePos)
+     -- ^The next statement.  We will usually add an edge to this statement.
      -> Stmt (Int,SourcePos)
      -> State Edges ()
 stmt stack next s = case s of
   SeqStmt a [] -> fail "empty sequence"
   SeqStmt a ss -> do
     edge s (head ss)
-    mapM2 (stmt ((s,next):stack)) ss (tail ss ++ [next])
+    mapM2 (stmt stack) ss (tail ss ++ [next])
     return ()
   BreakStmt a n ->
     edge s (nextStmt n stack)
@@ -83,32 +95,32 @@ stmt stack next s = case s of
   IfStmt _ _ s1 s2 -> do
     edge s s1
     edge s s2
-    stmt ((s,next):stack) next s1
-    stmt ((s,next):stack) next s2
+    stmt stack next s1
+    stmt stack next s2
   WhileStmt _ _ s1 -> do
     -- The next statement after executing the body, is to renter the loop
-    stmt ((s,next):stack) s s1
+    stmt stack s s1
     -- Eventually, the loop condition will be false and the next statement will
     -- be next.  The only way to directly jump to next out of the body, is to
     -- break.
     edge s next
   ForInStmt _ _ _ s1 -> do
-    stmt ((s,next):stack) s s1
+    stmt stack s s1
     edge s next
   TryStmt _ body _ catch finally -> do
     -- TODO: account for catch
     -- TODO: This treatment of finally is incorrect
-    stmt ((s,finally):stack) finally body
-    stmt ((s,next):stack) next finally
+    stmt stack finally body
+    stmt stack next finally
   ThrowStmt _ _ -> return () -- TODO: um...
   ReturnStmt _  _ -> 
-    edge s (fst $ L.last stack)
-  LabelledStmt _ _ s1 -> do
+    edge s (stackReturn stack)
+  LabelledStmt _ lbl s1 -> do
     edge s s1
-    stmt stack next s1
+    stmt ((lbl,(s,next)):stack) next s1
   SwitchStmt _ _ cases -> do
     mapM (edge s) (map snd cases)
-    mapM2 (stmt ((s,next):stack)) (map snd cases) 
+    mapM2 (stmt stack) (map snd cases) 
           (map snd (tail cases) ++ [next])
     return ()
   ExitStmt _ -> return () -- next == s for convenience
@@ -128,7 +140,7 @@ intraprocGraph enterPos exitPos body = (full,graph) where
   full@(SeqStmt _ [labelledBody,labelledExitStmt]) =  numberStmts body'
 
   graph = execState 
-            (stmt [(labelledExitStmt, error "next of ExitStmt")]
+            (stmt (initStack labelledExitStmt)
                   labelledExitStmt
                   labelledBody)
             M.empty

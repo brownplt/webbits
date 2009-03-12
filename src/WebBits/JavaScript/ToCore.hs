@@ -15,20 +15,9 @@ import qualified WebBits.JavaScript.Core as Core
 import WebBits.JavaScript
 import WebBits.JavaScript.Simplify (simplify)
 
-
-numberStmts :: [Statement SourcePos] -> [Statement (Int,SourcePos)]
-numberStmts stmts = evalState (gmapM (mkM numberM) stmts') 0 where
-  stmts' :: [Statement (Int,SourcePos)]
-  stmts' = map (fmap (\p -> (0,p))) stmts
-  numberM :: (Int,SourcePos) -> State Int (Int,SourcePos)
-  numberM (_,p) = do
-    n <- get
-    put (n+1)
-    return (n,p)
-
 jsToCore :: [Statement SourcePos]
-         -> [Core.Stmt (Int,SourcePos)]
-jsToCore (VarDeclStmt{}:stmts) = map (stmt M.empty) (numberStmts stmts)
+         -> [Core.Stmt SourcePos]
+jsToCore (VarDeclStmt{}:stmts) = map stmt stmts
 jsToCore stmts = error $ "jsToCore: missing global vars:\n" ++ show stmts
 
 unId (Id _ v) = v
@@ -80,12 +69,11 @@ getLabel f = case Foldable.find (const True) f of
   Nothing -> error "getLabel failed"
 
 -- Takes a map from string labels to statement numbers
-stmt :: M.Map String Int
-     -> Statement (Int,SourcePos)
-     -> Core.Stmt (Int,SourcePos)
-stmt lbl (BlockStmt p ss) = Core.SeqStmt p (map (stmt lbl) ss)
-stmt lbl (EmptyStmt p) = Core.EmptyStmt p
-stmt lbl (ExprStmt p (AssignExpr _ OpAssign (VarRef _ (Id _ r))  rhs)) = 
+stmt :: Statement SourcePos
+     -> Core.Stmt SourcePos
+stmt (BlockStmt p ss) = Core.SeqStmt p (map (stmt) ss)
+stmt (EmptyStmt p) = Core.EmptyStmt p
+stmt (ExprStmt p (AssignExpr _ OpAssign (VarRef _ (Id _ r))  rhs)) = 
   case rhs of
     CallExpr p (DotRef _ f id) args ->
       Core.MethodCallStmt p r (unVar f) (unId id) (map unVar args)
@@ -95,21 +83,15 @@ stmt lbl (ExprStmt p (AssignExpr _ OpAssign (VarRef _ (Id _ r))  rhs)) =
     NewExpr p f args -> Core.NewStmt p r (unVar f) (map unVar args)
     PrefixExpr p PrefixDelete id -> Core.DeleteStmt p r (unVar id)
     e -> Core.AssignStmt p r (expr e) 
-stmt lbl (IfStmt p e s1 s2) = Core.IfStmt p (expr e) (stmt lbl s1) (stmt lbl s2)
-stmt lbl (WhileStmt p e s) = Core.WhileStmt p (expr e) (stmt lbl s)
-stmt lbl (ForInStmt p (ForInNoVar id) e s) =
-  Core.ForInStmt p (unId id) (expr e) (stmt lbl s)
-stmt lbl (ReturnStmt p maybeE) = Core.ReturnStmt p (liftM expr maybeE)
-stmt lbl (LabelledStmt p (Id _ id) s) =
-  stmt (M.insert id (fst $ getLabel $ unlabelled s) lbl) s
-stmt lbl (BreakStmt p (Just (Id _ id))) = case M.lookup id lbl of
-  Just n -> Core.BreakStmt p n
-  Nothing -> error "invalid label for break"
-stmt lbl (ContinueStmt p (Just (Id _ id))) = case M.lookup id lbl of
-  Just n -> Core.ContinueStmt p n
-  Nothing -> error "invalid label for break"
-
-stmt _ s = error $ "cannot translate this statement to core syntax:\n" ++ 
+stmt (IfStmt p e s1 s2) = Core.IfStmt p (expr e) (stmt s1) (stmt s2)
+stmt (WhileStmt p e s) = Core.WhileStmt p (expr e) (stmt s)
+stmt (ForInStmt p (ForInNoVar id) e s) =
+  Core.ForInStmt p (unId id) (expr e) (stmt s)
+stmt (ReturnStmt p maybeE) = Core.ReturnStmt p (liftM expr maybeE)
+stmt (LabelledStmt p id s) = Core.LabelledStmt p (unId id) (stmt s)
+stmt (BreakStmt p (Just id)) = Core.BreakStmt p (unId id)
+stmt (ContinueStmt p (Just id)) = Core.ContinueStmt p (unId id)
+stmt s = error $ "cannot translate this statement to core syntax:\n" ++ 
   (render $ pp s) ++ "\n" ++ show s
 
 field (PropString _ s,e) = (Left s,expr e)
@@ -126,7 +108,7 @@ expr (ObjectLit p fields) = Core.Lit (Core.ObjectLit p $ map field fields)
 expr (VarRef p (Id _ v)) = Core.VarRef p v
 expr (FuncExpr p args (BlockStmt _ ((VarDeclStmt p' decls):body))) = 
  Core.FuncExpr p (map unId args) (map unDecl decls) 
-               (stmt M.empty (BlockStmt p' body)) 
+               (stmt (BlockStmt p' body)) 
 expr (InfixExpr p op lhs rhs) =
  Core.OpExpr p (unInfix op) [expr lhs,expr rhs] 
 expr (PrefixExpr p op e) = Core.OpExpr p (unPrefix op) [expr e]
