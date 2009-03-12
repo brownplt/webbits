@@ -5,16 +5,27 @@ module WebBits.JavaScript.Intraprocedural where
 import qualified Data.List as L
 import qualified Data.Map as M
 import Control.Monad.State.Strict
-import Text.ParserCombinators.Parsec (SourcePos)
+import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos)
 import Data.Generics
 import WebBits.JavaScript.Core
 import WebBits.Common() -- Data SourcePos
 
--- 
+noPos = initialPos "Intraprocedural.hs"
+
 numStmts :: Stmt (Int,SourcePos) -> Int
 numStmts s = gcount (mkQ False isStmt) s where
   isStmt :: Stmt (Int,SourcePos) -> Bool
   isStmt _ = True
+
+numberStmts :: Stmt SourcePos -> Stmt (Int,SourcePos)
+numberStmts stmts = evalState (gmapM (mkM numberM) stmts') 0 where
+  stmts' :: Stmt (Int,SourcePos)
+  stmts' = fmap (\p -> (0,p)) stmts
+  numberM :: (Int,SourcePos) -> State Int (Int,SourcePos)
+  numberM (_,p) = do
+    n <- get
+    put (n+1)
+    return (n,p)
 
 
 mapM2 :: Monad m => (a -> b -> m c) -> [a] -> [b] -> m [c]
@@ -101,3 +112,24 @@ stmt stack next s = case s of
           (map snd (tail cases) ++ [next])
     return ()
   ExitStmt _ -> return () -- next == s for convenience
+
+-- |Build an intraprocedural graph for the body of a procedure.  This function
+--  will add the 'EnterStmt' and 'ExitStmt' nodes.  All the nodes will be
+-- labelled with integers starting from zero.
+intraprocGraph :: SourcePos -- ^location of the entry point
+               -> SourcePos -- ^location of the exit point
+               -> Stmt SourcePos -> (Stmt (Int,SourcePos), Edges)
+intraprocGraph enterPos exitPos body = (full,graph) where
+
+  -- Small trick to turn the EnterStmt and the body into a single numbered
+  -- statement.  It's always safe to add/remove additional enclosing blocks.
+  body' = SeqStmt noPos [SeqStmt noPos [EnterStmt enterPos, body], 
+                         ExitStmt exitPos]
+  full@(SeqStmt _ [labelledBody,labelledExitStmt]) =  numberStmts body'
+
+  graph = execState 
+            (stmt [(labelledExitStmt, error "next of ExitStmt")]
+                  labelledExitStmt
+                  labelledBody)
+            M.empty
+  
