@@ -9,6 +9,7 @@ module WebBits.JavaScript.Core
 
 import Data.Generics
 import Control.Arrow (first,second,(***))
+import Text.Printf
 
 type Id = String
 
@@ -89,7 +90,7 @@ data Stmt a
   | SwitchStmt a Id [(Lit a,Stmt a)]
   | EnterStmt a
   | ExitStmt a
-  deriving (Show,Data,Typeable,Eq,Ord)  
+  deriving (Data,Typeable,Eq,Ord)  
 
 stmtLabel :: Stmt a -> a
 stmtLabel stmt = case stmt of
@@ -113,6 +114,7 @@ stmtLabel stmt = case stmt of
   (SwitchStmt a v cs) -> a
   (EnterStmt a) -> a
   (ExitStmt a) -> a
+  ThrowStmt a _ -> a
 
 
 -- Instances
@@ -132,6 +134,7 @@ instance Functor Expr where
   fmap f (This a) = This (f a)
   fmap f (VarRef a v) = VarRef (f a) v
   fmap f (BracketRef a e1 e2) = BracketRef (f a) (fmap f e1) (fmap f e2)
+  fmap f (DotRef a e1 m) = DotRef (f a) (fmap f e1) m
   fmap f (OpExpr a op es) = OpExpr (f a) op (map (fmap f) es)
   fmap f (FuncExpr a args locals s) =
     FuncExpr (f a) args locals (fmap f s)
@@ -161,3 +164,32 @@ instance Functor Stmt where
     SwitchStmt (f a) v (map (fmap f *** fmap f) cs)
   fmap f (EnterStmt a) = EnterStmt (f a)
   fmap f (ExitStmt a) = ExitStmt (f a)
+  fmap f (ThrowStmt a e) = ThrowStmt (f a) (fmap f e)
+
+instance Show (Stmt a) where
+  show stmt = case stmt of
+    SeqStmt a ss -> "Seq ..."
+    EmptyStmt a -> "No-op ..."
+    AssignStmt a v e -> v ++ " := ..."
+    DeleteStmt a v1 v2 -> printf "%s := delete ..." v1
+    NewStmt a result constr args ->
+      printf "%s := new %s (...)" result constr
+    CallStmt a result fn args -> 
+      printf "%s := %s (...)" result fn
+    MethodCallStmt a result obj method args ->
+      printf "%s := %s.%s(...)" result obj method
+    IndirectMethodCallStmt a result obj method args ->
+      printf "%s := %s[%s](...)" result obj method
+    IfStmt a e s1 s2 -> "if ..."
+    WhileStmt a e s -> "while ..."
+    ForInStmt a v e s -> printf "for (%s in ..." v
+    TryStmt a s1 v s2 s3 -> "try ..."
+    ReturnStmt a Nothing -> "return;"
+    ReturnStmt a (Just e) -> "return ...;" 
+    LabelledStmt a v s -> printf "Label %s" v
+    BreakStmt a v -> printf "break %s" v
+    ContinueStmt a v -> printf "continue %s" v
+    SwitchStmt a v cs -> "switch ..."
+    EnterStmt a -> "ENTER"
+    ExitStmt a -> "EXIT"
+    ThrowStmt _ _ -> "throw ..."

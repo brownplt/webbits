@@ -12,7 +12,7 @@ fi
 
 OBJS=$BASE/dist/build/HSWebBits-0.10.0.o
 SRCS=$BASE/dist/build/autogen:$BASE/src
-PKGS="-package mtl -package parsec-2.1.0.1 -package pretty -package containers"
+PKGS="-package mtl -package parsec-2.1.0.1 -package pretty -package containers -package fgl"
 
 if [ $MODE = "obj" ]; then
     # You need to ':m +' the modules you want after this.
