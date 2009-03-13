@@ -20,11 +20,8 @@ intraprocGraphToDot gr = GV.graphToDot gr [] -- attributes
 main = do
   str <- getContents
   let script = parse "" str
-  -- putStrLn (show (localVars script))
-  putStrLn (pretty $ simplify script)
   let core = jsToCore (simplify script)
   let funcExprs = allFuncExprs core
   let graphs = map (intraprocGraph'.funcExprBody) funcExprs
-  mapM_ (putStrLn.show.(G.labEdges)) graphs
   let vizs = map (show.intraprocGraphToDot) graphs
   mapM_ (putStrLn) vizs

@@ -2,7 +2,7 @@
 module WebBits.JavaScript.Syntax(Expression(..),CaseClause(..),Statement(..),
          InfixOp(..),CatchClause(..),VarDecl(..),JavaScript(..),
          AssignOp(..),Id(..),PrefixOp(..),PostfixOp(..),Prop(..),
-         ForInit(..),ForInInit(..)) where
+         ForInit(..),ForInInit(..),unId) where
 
 import Text.ParserCombinators.Parsec(SourcePos) -- used by data JavaScript
 import Data.Generics(Data,Typeable)
@@ -15,6 +15,9 @@ data JavaScript a
   deriving (Show,Data,Typeable,Eq,Ord)
 
 data Id a = Id a String deriving (Show,Eq,Ord,Data,Typeable)
+
+unId :: Id a -> String
+unId (Id _ s) = s
 
 -- http://developer.mozilla.org/en/docs/
 --   Core_JavaScript_1.5_Reference:Operators:Operator_Precedence

@@ -143,11 +143,11 @@ newLocalVar expr = do
   let id = Id noPos ("__webbits" ++ show n)
   return (VarDeclStmt noPos [VarDecl noPos id (Just expr)],VarRef noPos id)
 
-newStmtLabel :: State Int (Id SourcePos)
+newStmtLabel :: State Int String
 newStmtLabel = do
   n <- get
   put (n+1)
-  return (Id noPos ("__webbitslabel" ++ show n))
+  return ("__webbitslabel" ++ show n)
    
 
 -- |If the expression is not a variable-reference, create a name for it.
@@ -320,7 +320,7 @@ isLoop _ = False
 -- addition, we generate labels for switch statements and loops.  This allows
 -- us to make all continue and break statements jump/exit to explicit 
 -- statements.  
-purifyStmt :: [(Id SourcePos,LabelType)]
+purifyStmt :: [(String,LabelType)]
            -> Statement SourcePos -> State Int (Statement SourcePos)
 purifyStmt labels stmt = case stmt of
   BlockStmt p stmts -> liftM (BlockStmt p) (mapM (purifyStmt labels) stmts)
@@ -340,28 +340,29 @@ purifyStmt labels stmt = case stmt of
     cases' <- mapM (purifyCase ((l,ImplicitSwitchLabel):labels)) cases
     return $ BlockStmt p [BlockStmt p eStmts,
                           s1,
-                          LabelledStmt p l $ SwitchStmt p id cases']
+                          LabelledStmt p (Id p l) $ SwitchStmt p id cases']
   WhileStmt p e s -> do
     (ess,e') <- purifyExpr e
     l <- newStmtLabel
     s' <- purifyStmt ((l,ImplicitLoopLabel):labels) s
     return (BlockStmt p [BlockStmt p ess,
-                         LabelledStmt p l $ WhileStmt p e' s'])
+                         LabelledStmt p (Id p l) $ WhileStmt p e' s'])
   -- an unlabelled break terminates the innermost enclosing switch/loop.
   BreakStmt p Nothing -> case L.find (not.isExplicitLabel) labels of
-    Just (id,lbl) -> return $ BreakStmt p (Just id)
+    Just (id,lbl) -> return $ BreakStmt p (Just (Id p id))
     Nothing -> fail $ "syntax error at " ++ show p ++ "\nNo enclosing loop " ++
                       "or switch to break to."
-  BreakStmt p (Just id) -> case L.lookup id labels of
+  BreakStmt p (Just id) -> case L.lookup (unId id) labels of
     Just _ -> return stmt
     Nothing -> fail $ "syntax error at " ++ show p ++ "\nNo enclosing label " ++
-                      "with the name " ++ show id
+                      "with the name " ++ show id ++ 
+                      "; candidates are " ++ show (map fst labels)
   -- continues the next iteration of the innermost enclosing loop.
   ContinueStmt p Nothing -> case L.find isLoopLabel labels of
     Nothing -> fail $ "syntax error at " ++ show p ++ "\nUse of continue " ++
                      "outside a loop"
-    Just (id,_) -> return $ ContinueStmt p (Just id)
-  ContinueStmt p (Just id) -> case L.lookup id labels of
+    Just (id,_) -> return $ ContinueStmt p (Just (Id p id))
+  ContinueStmt p (Just id) -> case L.lookup (unId id) labels of
     Nothing -> fail $ "syntax error at " ++ show p ++ "\nNo loop named " ++
                       show id
     -- we can't have an explicit continue to an implicitly labelled loop
@@ -396,9 +397,9 @@ purifyStmt labels stmt = case stmt of
     return (BlockStmt p [BlockStmt p (concatMap fst r), 
                          VarDeclStmt p (map snd r)])
   LabelledStmt p id s -> case isLoop s of
-    True -> do s' <- purifyStmt ((id,ExplicitLoopLabel):labels) s
+    True -> do s' <- purifyStmt ((unId id,ExplicitLoopLabel):labels) s
                return $ LabelledStmt p id s'
-    False -> do s' <- purifyStmt ((id,ExplicitLabel):labels) s
+    False -> do s' <- purifyStmt ((unId id,ExplicitLabel):labels) s
                 return $ LabelledStmt p id s'
   otherwise -> fail $ "purifyExpr received " ++ show stmt
 
@@ -419,7 +420,7 @@ purifyCatch labels (CatchClause p id s) = do
 -- |Assumes that the head of 'labels' is an 'ImplicitSwitchLabel'.  After
 -- purification, the list of statements in the body is a single block
 -- statement.
-purifyCase :: [(Id SourcePos,LabelType)]
+purifyCase :: [(String,LabelType)]
            -> CaseClause SourcePos -> State Int (CaseClause SourcePos)
 purifyCase labels (CaseDefault p ss) = do
   s' <- purifyStmt labels (BlockStmt p ss)

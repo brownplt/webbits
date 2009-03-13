@@ -20,8 +20,6 @@ jsToCore :: [Statement SourcePos]
 jsToCore (VarDeclStmt{}:stmts) = map stmt stmts
 jsToCore stmts = error $ "jsToCore: missing global vars:\n" ++ show stmts
 
-unId (Id _ v) = v
-
 unVar (VarRef _ (Id _ v)) = v
 unVar e = error $ "expected a VarRef:\n" ++ show e
 

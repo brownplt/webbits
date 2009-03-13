@@ -17,9 +17,6 @@ import Text.ParserCombinators.Parsec(SourcePos)
 import WebBits.Common
 import WebBits.JavaScript.Syntax
 
-unId (Id _ v) = v
-
-    
 -- ----------------------------------------------------------------------------
 -- Environment
 
