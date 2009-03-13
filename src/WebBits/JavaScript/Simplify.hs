@@ -335,10 +335,12 @@ purifyStmt labels stmt = case stmt of
     return (BlockStmt p [BlockStmt p ess,IfStmt p e' s1' s2'])
   SwitchStmt p e cases -> do
     (eStmts,e') <- purifyExpr e
+    (s1,id) <- needVar e'
     l <- newStmtLabel
     cases' <- mapM (purifyCase ((l,ImplicitSwitchLabel):labels)) cases
     return $ BlockStmt p [BlockStmt p eStmts,
-                          LabelledStmt p l $ SwitchStmt p e' cases']
+                          s1,
+                          LabelledStmt p l $ SwitchStmt p id cases']
   WhileStmt p e s -> do
     (ess,e') <- purifyExpr e
     l <- newStmtLabel

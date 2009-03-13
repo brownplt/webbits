@@ -91,12 +91,20 @@ stmt (ReturnStmt p maybeE) = Core.ReturnStmt p (liftM expr maybeE)
 stmt (LabelledStmt p id s) = Core.LabelledStmt p (unId id) (stmt s)
 stmt (BreakStmt p (Just id)) = Core.BreakStmt p (unId id)
 stmt (ContinueStmt p (Just id)) = Core.ContinueStmt p (unId id)
+stmt (SwitchStmt p (VarRef _ v) cases) = 
+  Core.SwitchStmt p (unId v) (map case_ cases) where
+    case_ (CaseClause _ e [s]) = (lit e,stmt s)
+    case_ c = error $ "case_: cannot translate to ANF syntax:\n" ++ show c
 stmt s = error $ "cannot translate this statement to core syntax:\n" ++ 
   (render $ pp s) ++ "\n" ++ show s
 
 field (PropString _ s,e) = (Left s,expr e)
 field (PropNum _ n,e) = (Right n,expr e)
 field (PropId _ (Id _ s),e) = (Left s,expr e) 
+
+lit e = unLit (expr e) where
+  unLit (Core.Lit l) = l
+  unLit e = error $ "unLit: not a literal " ++ show e
 
 expr (StringLit p s) =  Core.Lit (Core.StringLit p s)
 expr (RegexpLit p s b0 b1) = Core.Lit (Core.RegexpLit p s b0 b1)
@@ -116,4 +124,4 @@ expr (ThisRef p) = Core.This p
 expr (DotRef p e id) = Core.DotRef p (expr e) (unId id) 
 expr (BracketRef p e1 e2) = Core.BracketRef p (expr e1) (expr e2)
 expr e = error $ "cannot translate this expression to core syntax:\n" ++ 
-  (render $ pp e)
+  (show e)
