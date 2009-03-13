@@ -169,7 +169,7 @@ instance Functor Stmt where
 instance Show (Stmt a) where
   show stmt = case stmt of
     SeqStmt a ss -> "Seq ..."
-    EmptyStmt a -> "No-op ..."
+    EmptyStmt a -> "No-op"
     AssignStmt a v e -> v ++ " := ..."
     DeleteStmt a v1 v2 -> printf "%s := delete ..." v1
     NewStmt a result constr args ->

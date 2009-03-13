@@ -168,13 +168,17 @@ intraprocGraph enterPos exitPos body = (full,graph) where
 
   -- Small trick to turn the EnterStmt and the body into a single numbered
   -- statement.  It's always safe to add/remove additional enclosing blocks.
-  body' = SeqStmt noPos [SeqStmt noPos [EnterStmt enterPos, body], 
-                         ExitStmt exitPos]
-  full@(SeqStmt _ [labelledBody,labelledExitStmt]) =  numberStmts body'
+  body' = SeqStmt noPos [EnterStmt enterPos, body, ExitStmt exitPos]
+  full@(SeqStmt _ [labelledEnterStmt,labelledBody,labelledExitStmt]) = 
+    numberStmts body'
   
   exitNode = stmtToNode labelledExitStmt
+  enterNode = stmtToNode labelledEnterStmt
+
   initialGraph :: Gr (Stmt (Int,SourcePos)) ()
-  initialGraph = G.insNode exitNode G.empty
+  initialGraph = G.insEdge (fst enterNode,fst $ stmtLabel labelledBody,()) $
+                 G.insNode enterNode $ 
+                 G.insNode exitNode G.empty
 
   graph = execState 
             (stmt (initStack labelledExitStmt)
