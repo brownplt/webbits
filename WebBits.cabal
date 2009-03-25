@@ -48,17 +48,3 @@ Library
     WebBits.JavaScript.Parser WebBits.JavaScript.PrettyPrint
     WebBits.JavaScript.Syntax WebBits.JavaScript.Environment
     WebBits.JavaScript.Crawl WebBits.JavaScript WebBits.JavaScript.Env
-
-Executable webbits
-  Main-Is: WebBits.hs
-  Hs-Source-Dirs: src
-  Build-Depends:
-    base>=4, mtl>=1.1.0.1, parsec<3.0.0, pretty>=0.1, containers>=0.1, syb>=0.1,
-    HUnit>=1.2.0.3,filepath>=1.1.0.1,directory>=1.0.0.2,process,fgl,bytestring,
-    graphviz
-  ghc-options:
-    -fwarn-incomplete-patterns
-  Extensions:     
-    Generics Rank2Types MultiParamTypeClasses FunctionalDependencies
-    TypeSynonymInstances FlexibleInstances FlexibleContexts
-    DeriveDataTypeable NoMonomorphismRestriction RelaxedPolyRec
