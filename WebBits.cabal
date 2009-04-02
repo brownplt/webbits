@@ -1,7 +1,7 @@
 Name:           WebBits
 Version:        0.12.0
 Cabal-Version:	>= 1.2.3
-Copyright:      Copyright (c) 2007-2008 Arjun Guha and Spiridon Eliopoulos
+Copyright:      Copyright (c) 2007-2009 Arjun Guha and Spiridon Eliopoulos
 License:        LGPL
 License-file:   LICENSE
 Author:         Arjun Guha, Spiridon Eliopoulos
@@ -35,16 +35,14 @@ Library
   ghc-options:
     -fwarn-incomplete-patterns
   Extensions:     
-    Generics Rank2Types MultiParamTypeClasses FunctionalDependencies
-    TypeSynonymInstances FlexibleInstances FlexibleContexts
-    DeriveDataTypeable NoMonomorphismRestriction RelaxedPolyRec
+    Generics Rank2Types TypeSynonymInstances DeriveDataTypeable RelaxedPolyRec
   Exposed-Modules:
     WebBits.Data.Zipper
     WebBits.Html.Html WebBits.Html.Syntax WebBits.Html.PermissiveParser
     WebBits.Html.PrettyPrint WebBits.Html.Instances WebBits.Common
     WebBits.Html.RawScript WebBits.JavaScript.Combinators
     WebBits.JavaScript.HtmlEmbedding WebBits.JavaScript.Instances
-    WebBits.JavaScript.JavaScript WebBits.JavaScript.Lexer 
+    WebBits.JavaScript WebBits.JavaScript.Lexer 
     WebBits.JavaScript.Parser WebBits.JavaScript.PrettyPrint
-    WebBits.JavaScript.Syntax WebBits.JavaScript.Environment
-    WebBits.JavaScript.Crawl WebBits.JavaScript WebBits.JavaScript.Env
+    WebBits.JavaScript.Syntax 
+    WebBits.JavaScript.Crawl WebBits.JavaScript.Env

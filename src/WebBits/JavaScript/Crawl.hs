@@ -11,7 +11,7 @@ import System.IO
 import Text.ParserCombinators.Parsec(parse,setPosition,incSourceColumn,Column,sourceLine,sourceColumn)
 
 import WebBits.Html.Syntax
-import qualified WebBits.JavaScript.JavaScript as Js
+import qualified WebBits.JavaScript as Js
 
 -- |Returns the source of the script.
 scriptSrc:: Js.ParsedJsHtml -> [String]
