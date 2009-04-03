@@ -16,16 +16,16 @@ Description:
 	WebBits is a collection of libraries for working with JavaScript embeded in
   HTML files.  Highlights include:
   .
-	* @WebBits.JavaScript.Crawl@ returns all JavaScript in an HTML page, including
+	* @BrownPLT.JavaScript.Crawl@ returns all JavaScript in an HTML page, including
      JavaScript from imported script files (@\<script src=...\>@).
   .
-  * @WebBits.JavaScript.Env@ annotates JavaScript syntax with its static
+  * @BrownPLT.JavaScript.Env@ annotates JavaScript syntax with its static
     environment and returns a list of free identifiers.
   .
-  * @WebBits.JavaScript.Parser@ is a JavaScript parser that is largely based on
+  * @BrownPLT.JavaScript.Parser@ is a JavaScript parser that is largely based on
     JavaScript 1.5.
   .
-  * @WebBits.Html.Parser@ is a permissive HTML parser.
+  * @BrownPLT.Html.Parser@ is a permissive HTML parser.
  
 Library
   Hs-Source-Dirs:
@@ -37,20 +37,20 @@ Library
   Extensions:     
     Generics TypeSynonymInstances DeriveDataTypeable
   Exposed-Modules:
-    WebBits.Html.Html
-    WebBits.Html.Syntax
-    WebBits.Html.PermissiveParser
-    WebBits.Html.PrettyPrint 
-    WebBits.Html.Instances
-    WebBits.Common
-    WebBits.Html.RawScript
-    WebBits.JavaScript.Combinators
-    WebBits.JavaScript.HtmlEmbedding 
-    WebBits.JavaScript.Instances
-    WebBits.JavaScript 
-    WebBits.JavaScript.Lexer 
-    WebBits.JavaScript.Parser
-    WebBits.JavaScript.PrettyPrint
-    WebBits.JavaScript.Syntax 
-    WebBits.JavaScript.Crawl
-    WebBits.JavaScript.Environment
+    BrownPLT.Html.Html
+    BrownPLT.Html.Syntax
+    BrownPLT.Html.PermissiveParser
+    BrownPLT.Html.PrettyPrint 
+    BrownPLT.Html.Instances
+    BrownPLT.Common
+    BrownPLT.Html.RawScript
+    BrownPLT.JavaScript.Combinators
+    BrownPLT.JavaScript.HtmlEmbedding 
+    BrownPLT.JavaScript.Instances
+    BrownPLT.JavaScript 
+    BrownPLT.JavaScript.Lexer 
+    BrownPLT.JavaScript.Parser
+    BrownPLT.JavaScript.PrettyPrint
+    BrownPLT.JavaScript.Syntax 
+    BrownPLT.JavaScript.Crawl
+    BrownPLT.JavaScript.Environment

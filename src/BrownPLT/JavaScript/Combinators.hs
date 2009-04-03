@@ -1,4 +1,4 @@
-module WebBits.JavaScript.Combinators 
+module BrownPLT.JavaScript.Combinators 
   ( scriptStatements
   , isParenExpr
   , syntaxAt
@@ -10,9 +10,9 @@ import Data.Generics (Data,Typeable, everything, mkQ)
 import Text.ParserCombinators.Parsec (SourcePos)
 import qualified Data.Foldable as F
 import Data.Foldable (Foldable)
-import WebBits.JavaScript.Syntax
-import WebBits.JavaScript.Instances ()
-import WebBits.Common () 
+import BrownPLT.JavaScript.Syntax
+import BrownPLT.JavaScript.Instances ()
+import BrownPLT.Common () 
 
 scriptStatements:: JavaScript a -> [Statement a]
 scriptStatements (Script _ ss) = ss

@@ -1,11 +1,11 @@
 -- |Pretty-printing JavaScript.  This module doesn't export any names, but
 -- importing it declares PrettyPrintable instances for JavaScript.Syntax.
-module WebBits.JavaScript.PrettyPrint() where
+module BrownPLT.JavaScript.PrettyPrint() where
 
 import Text.PrettyPrint.HughesPJ
-import WebBits.JavaScript.Syntax
-import WebBits.JavaScript.Combinators
-import WebBits.Common
+import BrownPLT.JavaScript.Syntax
+import BrownPLT.JavaScript.Combinators
+import BrownPLT.Common
 
 --{{{ Helper functions for common printing patterns
 

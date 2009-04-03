@@ -1,4 +1,4 @@
-module WebBits.Html.RawScript
+module BrownPLT.Html.RawScript
   ( RawScript (..)
   , parseFromFile
   , parseFromString
@@ -9,8 +9,8 @@ import Data.Generics (Data)
 import Data.Generics (Typeable)
 import Text.PrettyPrint.HughesPJ (text)
 import Text.ParserCombinators.Parsec
-import WebBits.Common
-import WebBits.Html.Html
+import BrownPLT.Common
+import BrownPLT.Html.Html
 
 type RawHtml = Html SourcePos RawScript
 

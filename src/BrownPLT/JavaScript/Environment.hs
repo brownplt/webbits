@@ -1,4 +1,4 @@
-module WebBits.JavaScript.Environment
+module BrownPLT.JavaScript.Environment
   ( env
   , EnvTree (..)
   ) where
@@ -11,7 +11,7 @@ import qualified Data.Set as S
 import Data.Set (Set)
 import Text.ParserCombinators.Parsec.Pos (SourcePos)
 
-import WebBits.JavaScript.Syntax
+import BrownPLT.JavaScript.Syntax
 
 -- Intermediate data structure that contains locally declared names and
 -- all references to identifers.

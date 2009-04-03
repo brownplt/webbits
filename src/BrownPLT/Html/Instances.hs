@@ -1,4 +1,4 @@
-module WebBits.Html.Instances() where
+module BrownPLT.Html.Instances() where
 
 import qualified Prelude as Prelude
 import Prelude (Functor,map,fmap)
@@ -8,7 +8,7 @@ import Data.Foldable
 import Data.Traversable
 import Control.Applicative
 
-import WebBits.Html.Syntax
+import BrownPLT.Html.Syntax
 
 ltraverse:: (Traversable t, Applicative f) => (a -> f b) -> [t a] -> f [t b]
 ltraverse f [] = pure []

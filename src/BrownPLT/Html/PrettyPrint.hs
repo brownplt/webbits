@@ -1,6 +1,6 @@
 -- |Pretty-printer for HTML.  This modules exports no names.  It only defines
 -- instances of 'PrettyPrintable' for HTML. 
-module WebBits.Html.PrettyPrint
+module BrownPLT.Html.PrettyPrint
   ( -- this module exports no names
   ) where
 
@@ -8,9 +8,9 @@ import qualified Data.List as List
 import qualified Data.Char as Char
 import Text.PrettyPrint.HughesPJ
 
-import WebBits.Common (PrettyPrintable(..))
+import BrownPLT.Common (PrettyPrintable(..))
 
-import WebBits.Html.Syntax
+import BrownPLT.Html.Syntax
 
 vert [] = empty
 vert [doc] = doc

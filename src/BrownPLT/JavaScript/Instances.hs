@@ -1,5 +1,5 @@
 -- |Instances of 'Foldable' and 'Traversable' for JavaScript's syntax.
-module WebBits.JavaScript.Instances
+module BrownPLT.JavaScript.Instances
   ( -- This module does not export any names.
   ) where
 
@@ -10,7 +10,7 @@ import Data.Foldable (Foldable(..))
 import Data.Traversable(Traversable(..))
 import Control.Applicative
 
-import WebBits.JavaScript.Syntax
+import BrownPLT.JavaScript.Syntax
 
 yfoldr:: Foldable t => (a -> b -> b) -> b -> Maybe (t a) -> b
 yfoldr _ b Nothing = b

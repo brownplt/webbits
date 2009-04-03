@@ -1,5 +1,5 @@
 -- | Defines commonly used datatypes and functions.
-module WebBits.Common
+module BrownPLT.Common
   ( PrettyPrintable(..)
   , L.isPrefixOf
   , initialPos
@@ -23,7 +23,7 @@ import qualified Data.Traversable as Traversable
 import Data.Traversable (Traversable, traverse)
 import qualified Text.PrettyPrint.HughesPJ as Pp
 import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, sourceName)
-import WebBits.JavaScript.Syntax
+import BrownPLT.JavaScript.Syntax
 
 -- |For generics, this type cannot be quantified.
 isNotFuncExpr :: Expression SourcePos -> Bool

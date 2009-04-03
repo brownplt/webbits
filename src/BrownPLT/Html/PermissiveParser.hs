@@ -11,7 +11,7 @@
 -- merchantability or fitness for a particular purpose.  See 
 -- <http://www.gnu.org/copyleft/lesser.html> for details.  For other license
 -- options and consulting, contact the author.
-module WebBits.Html.PermissiveParser
+module BrownPLT.Html.PermissiveParser
   ( html
   , parseHtmlFromFile
   , parseHtmlFromString
@@ -26,8 +26,8 @@ import qualified Text.ParserCombinators.Parsec as Parsec
 import Data.Char (toLower)
 import Data.List (intersperse)
 
-import qualified WebBits.Html.Syntax as Html
-import WebBits.Html.Syntax (HtmlId,Attribute,Script(..))
+import qualified BrownPLT.Html.Syntax as Html
+import BrownPLT.Html.Syntax (HtmlId,Attribute,Script(..))
 
 type ParsedHtml s = Html.Html SourcePos s
 type ParsedAttribute s = Html.Attribute SourcePos s

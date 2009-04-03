@@ -1,17 +1,17 @@
 -- |Crawls an HTML page for JavaScript
-module WebBits.JavaScript.Crawl 
+module BrownPLT.JavaScript.Crawl 
   ( getPageJavaScript
   ) where
 
-import WebBits.Common
+import BrownPLT.Common
 import Control.Monad
 import Data.Char (toLower)
 import Data.Generics
 import System.IO
 import Text.ParserCombinators.Parsec(parse,setPosition,incSourceColumn,Column,sourceLine,sourceColumn)
 
-import WebBits.Html.Syntax
-import qualified WebBits.JavaScript as Js
+import BrownPLT.Html.Syntax
+import qualified BrownPLT.JavaScript as Js
 
 -- |Returns the source of the script.
 scriptSrc:: Js.ParsedJsHtml -> [String]

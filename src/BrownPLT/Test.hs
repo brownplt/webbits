@@ -1,4 +1,4 @@
-module WebBits.Test
+module BrownPLT.Test
   ( pretty
   , parse
   , parseJavaScriptFromFile
@@ -33,10 +33,10 @@ import Control.Exception as E
 import Text.PrettyPrint.HughesPJ ( render, vcat )
 import Text.ParserCombinators.Parsec (ParseError,sourceName,sourceLine,
   sourceColumn,errorPos,SourcePos)
-import WebBits.Common ( pp )
-import WebBits.JavaScript.PrettyPrint ()
-import WebBits.JavaScript.Syntax
-import WebBits.JavaScript.Parser (parseScriptFromString,parseJavaScriptFromFile,
+import BrownPLT.Common ( pp )
+import BrownPLT.JavaScript.PrettyPrint ()
+import BrownPLT.JavaScript.Syntax
+import BrownPLT.JavaScript.Parser (parseScriptFromString,parseJavaScriptFromFile,
   ParsedStatement)
 
 pretty :: [ParsedStatement] -> String
