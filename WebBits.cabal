@@ -19,7 +19,7 @@ Description:
 	* @WebBits.JavaScript.Crawl@ returns all JavaScript in an HTML page, including
      JavaScript from imported script files (@\<script src=...\>@).
   .
-  * @WebBits.JavaScript.Environment@ annotates JavaScript syntax with its static
+  * @WebBits.JavaScript.Env@ annotates JavaScript syntax with its static
     environment and returns a list of free identifiers.
   .
   * @WebBits.JavaScript.Parser@ is a JavaScript parser that is largely based on
@@ -37,7 +37,6 @@ Library
   Extensions:     
     Generics Rank2Types TypeSynonymInstances DeriveDataTypeable RelaxedPolyRec
   Exposed-Modules:
-    WebBits.Data.Zipper
     WebBits.Html.Html WebBits.Html.Syntax WebBits.Html.PermissiveParser
     WebBits.Html.PrettyPrint WebBits.Html.Instances WebBits.Common
     WebBits.Html.RawScript WebBits.JavaScript.Combinators
