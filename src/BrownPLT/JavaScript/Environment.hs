@@ -1,5 +1,6 @@
 module BrownPLT.JavaScript.Environment
   ( env
+  , localVars
   , EnvTree (..)
   ) where
 
@@ -137,3 +138,8 @@ env :: Map String SourcePos -- ^browser/testing environment
     -> [Statement SourcePos] 
     -> (EnvTree,Map String SourcePos)
 env globals program = makeEnvTree globals (unions $ map stmt program)
+
+localVars :: [Statement SourcePos]
+          -> Set String
+localVars body = S.fromList (M.keys locals) where
+  Partial locals _ _ = unions $ map stmt body
