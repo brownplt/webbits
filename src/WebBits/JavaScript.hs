@@ -5,7 +5,6 @@ module WebBits.JavaScript
   , module WebBits.JavaScript.Parser
   , module WebBits.JavaScript.Combinators
   , module WebBits.Common
-  , module WebBits.JavaScript.Env
   -- JavaScript.Instances exports nothing
   ) where
 
@@ -16,6 +15,5 @@ import WebBits.JavaScript.Parser
 import WebBits.JavaScript.PrettyPrint
 import WebBits.JavaScript.HtmlEmbedding
 import WebBits.JavaScript.Combinators
-import WebBits.JavaScript.Env
 
 import WebBits.JavaScript.Instances

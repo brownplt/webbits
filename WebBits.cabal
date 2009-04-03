@@ -35,13 +35,22 @@ Library
   ghc-options:
     -fwarn-incomplete-patterns
   Extensions:     
-    Generics Rank2Types TypeSynonymInstances DeriveDataTypeable RelaxedPolyRec
+    Generics TypeSynonymInstances DeriveDataTypeable
   Exposed-Modules:
-    WebBits.Html.Html WebBits.Html.Syntax WebBits.Html.PermissiveParser
-    WebBits.Html.PrettyPrint WebBits.Html.Instances WebBits.Common
-    WebBits.Html.RawScript WebBits.JavaScript.Combinators
-    WebBits.JavaScript.HtmlEmbedding WebBits.JavaScript.Instances
-    WebBits.JavaScript WebBits.JavaScript.Lexer 
-    WebBits.JavaScript.Parser WebBits.JavaScript.PrettyPrint
+    WebBits.Html.Html
+    WebBits.Html.Syntax
+    WebBits.Html.PermissiveParser
+    WebBits.Html.PrettyPrint 
+    WebBits.Html.Instances
+    WebBits.Common
+    WebBits.Html.RawScript
+    WebBits.JavaScript.Combinators
+    WebBits.JavaScript.HtmlEmbedding 
+    WebBits.JavaScript.Instances
+    WebBits.JavaScript 
+    WebBits.JavaScript.Lexer 
+    WebBits.JavaScript.Parser
+    WebBits.JavaScript.PrettyPrint
     WebBits.JavaScript.Syntax 
-    WebBits.JavaScript.Crawl WebBits.JavaScript.Env
+    WebBits.JavaScript.Crawl
+    WebBits.JavaScript.Environment

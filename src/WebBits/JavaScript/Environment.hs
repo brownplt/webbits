@@ -1,4 +1,7 @@
-module WebBits.JavaScript.Environment where
+module WebBits.JavaScript.Environment
+  ( env
+  , EnvTree (..)
+  ) where
 
 import Data.List
 import Data.Maybe
@@ -57,9 +60,7 @@ expr e = case e of
   PrefixExpr _ _ e -> expr e
   InfixExpr _ _ e1 e2 -> unions [expr e1, expr e2]
   CondExpr _ e1 e2 e3 -> unions [expr e1, expr e2, expr e3]
-  AssignExpr _ _ (VarRef _ id) e -> [ref id, expr e]
-  AssignExpr _ _ ((VarRef _ id) e -> [ref id, expr e]
-  AssignExpr _ _ (VarRef _ id) e -> [ref id, expr e]
+  AssignExpr _ _ (VarRef _ id) e -> unions [ref id, expr e]
   AssignExpr _ _ e1 e2 -> unions [expr e1, expr e2]
   ParenExpr _ e -> expr e
   ListExpr _ es -> unions (map expr es)
