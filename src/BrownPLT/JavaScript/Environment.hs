@@ -48,6 +48,7 @@ expr e = case e of
   StringLit _ _ -> empty
   RegexpLit _ _ _ _ -> empty
   NumLit _ _ -> empty
+  IntLit _ _ -> empty
   BoolLit _ _ -> empty
   NullLit _ -> empty
   ArrayLit _ es -> unions (map expr es)

@@ -45,6 +45,7 @@ instance Functor Expression where
       StringLit a s -> StringLit (f a) s
       RegexpLit a s g ci -> RegexpLit (f a) s g ci
       NumLit a n -> NumLit (f a) n
+      IntLit a n -> IntLit (f a) n
       BoolLit a b -> BoolLit (f a) b
       NullLit a -> NullLit (f a)
       ArrayLit a es -> ArrayLit (f a) (map (fmap f) es)
@@ -129,6 +130,7 @@ instance Foldable Expression where
       StringLit a _ -> f a b
       RegexpLit a _ _ _ -> f a b
       NumLit a _ -> f a b
+      IntLit a _ -> f a b
       BoolLit a _ -> f a b
       NullLit a -> f a b
       ArrayLit a es -> f a (Prelude.foldr (flip $ foldr f) b es)
@@ -209,6 +211,7 @@ instance Traversable Expression where
       StringLit a s -> StringLit <$> f a <*> pure s
       RegexpLit a s g ci -> RegexpLit <$> f a <*> pure s <*> pure g <*> pure ci
       NumLit a n -> NumLit <$> f a <*> pure n
+      IntLit a n -> IntLit <$> f a <*> pure n
       BoolLit a b -> BoolLit <$> f a <*> pure b
       NullLit a -> NullLit <$> f a
       ArrayLit a es -> ArrayLit <$> f a <*> ltraverse f es

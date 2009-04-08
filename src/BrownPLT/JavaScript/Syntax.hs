@@ -47,7 +47,8 @@ data Prop a
 data Expression a
   = StringLit a String
   | RegexpLit a String Bool {- global? -} Bool {- case-insensitive? -}
-  | NumLit a Double -- pg. 5 of ECMA-262
+  | NumLit a Double
+  | IntLit a Int
   | BoolLit a Bool
   | NullLit a
   | ArrayLit a [Expression a]

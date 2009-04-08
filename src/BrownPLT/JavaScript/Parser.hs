@@ -1,17 +1,19 @@
-module BrownPLT.JavaScript.Parser(parseScript,parseExpression
-   , parseString
-   , parseScriptFromString
-   , emptyParsedJavaScript
-   , ParsedStatement
-   , ParsedExpression
-   , parseJavaScriptFromFile
-   , parseSimpleExpr'
-   , parseBlockStmt
-   , parseStatement
-   , StatementParser
-   , ExpressionParser
-   , parseAssignExpr
-   ) where
+module BrownPLT.JavaScript.Parser
+  (parseScript
+  , parseExpression
+  , parseString
+  , parseScriptFromString
+  , emptyParsedJavaScript
+  , ParsedStatement
+  , ParsedExpression
+  , parseJavaScriptFromFile
+  , parseSimpleExpr'
+  , parseBlockStmt
+  , parseStatement
+  , StatementParser
+  , ExpressionParser
+  , parseAssignExpr
+  ) where
 
 import BrownPLT.JavaScript.Lexer hiding (identifier)
 import qualified BrownPLT.JavaScript.Lexer as Lexer
@@ -408,10 +410,10 @@ parseObjectLit =
 --{{{ Parsing numbers.  From pg. 17-18 of ECMA-262.
 
 hexLit = do
-  try (char '0' >> oneOf "xX")
+  try (string "0x")
   digits <- many1 (oneOf "0123456789abcdefABCDEF")
   [(hex,"")] <- return $ Numeric.readHex digits
-  return hex
+  return (True, hex)
 
 -- Creates a decimal value from a whole, fractional and exponent part.
 mkDecimal:: Double -> Double -> Int -> Double
@@ -423,32 +425,32 @@ mkDecimal w f e =
 exponentPart = do
   oneOf "eE"
   (char '+' >> decimal) <|> (char '-' >> negate `fmap` decimal) <|> decimal
- 
- -- admits 34.valueOf, 42.)
-fracPart :: CharParser st Integer
-fracPart = try $ do
-  (char '.')
-  notFollowedBy identifierStart
-  decimal <|> (return 0)
-  
- 
-decLit =
+
+--wrap a parser's result in a Just:
+jparser p = p >>= (return . Just) 
+
+decLit = 
   (do whole <- decimal
-      frac <- option 0 fracPart
-      exp <- option 0  exponentPart
-      return $ mkDecimal (fromIntegral whole) (fromIntegral frac) (fromIntegral exp)) <|>
+      mfrac <- option Nothing (jparser (char '.' >> decimal))
+      mexp <-  option Nothing (jparser exponentPart)
+      if (mfrac == Nothing && mexp == Nothing)
+        then return (True, fromIntegral whole)
+        else return (False, mkDecimal (fromIntegral whole) 
+                                      (fromIntegral (maybe 0 id mfrac))
+                                      (fromIntegral (maybe 0 id mexp)))) <|>
   (do frac <- char '.' >> decimal
-      exp <- option 0  exponentPart
-      return $ mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp))
+      exp <- option 0 exponentPart
+      return (False, mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp)))
 
 parseNumLit:: ExpressionParser st
 parseNumLit = do
     pos <- getPosition
-    num <- lexeme $ hexLit <|> decLit
+    (isint, num) <- lexeme $ hexLit <|> decLit
     notFollowedBy identifierStart <?> "whitespace"
-    return $ NumLit pos num
+    if isint
+      then return $ IntLit pos (round num) 
+      else return $ NumLit pos num
 
---}}}
 
 ------------------------------------------------------------------------------
 -- Position Helper
@@ -653,7 +655,8 @@ parseJavaScriptFromFile filename = do
     Right (Script _ stmts) -> return stmts
 
 
-parseScriptFromString:: String -> String -> Either ParseError (JavaScript SourcePos)
+parseScriptFromString :: String -> String 
+                      -> Either ParseError (JavaScript SourcePos)
 parseScriptFromString src script = parse parseScript src script
 
 emptyParsedJavaScript = 
