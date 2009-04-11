@@ -1,8 +1,6 @@
 -- | Defines commonly used datatypes and functions.
 module BrownPLT.Common
-  ( PrettyPrintable(..)
-  , L.isPrefixOf
-  , initialPos
+  ( initialPos
   , SourcePos
   , sourceName
   , excludeFunctions
@@ -38,15 +36,6 @@ excludeFunctions :: GenericQ Bool
 excludeFunctions = (mkQ True isNotFuncExpr) `extQ` isNotFuncStmt
 
 lowercase = map toLower
-
--- | 'PrettyPrintable' makes writing pretty-printing code for large, recursive
--- data structures shorter.
-class PrettyPrintable a where
-  pp:: a -> Pp.Doc
-  
-instance PrettyPrintable a => PrettyPrintable (Maybe a) where
-  pp (Just a) = pp a
-  pp Nothing  = Pp.empty
 
 --------------------------------------------------------------------------------
 -- Generics for SourcePos

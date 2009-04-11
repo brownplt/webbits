@@ -1,5 +1,5 @@
 Name:           WebBits
-Version:        0.13.0
+Version:        0.14.0
 Cabal-Version:	>= 1.2.3
 Copyright:      Copyright (c) 2007-2009 Arjun Guha and Spiridon Eliopoulos
 License:        LGPL
@@ -19,8 +19,8 @@ Description:
 	* @BrownPLT.JavaScript.Crawl@ returns all JavaScript in an HTML page, including
      JavaScript from imported script files (@\<script src=...\>@).
   .
-  * @BrownPLT.JavaScript.Env@ annotates JavaScript syntax with its static
-    environment and returns a list of free identifiers.
+  * @BrownPLT.JavaScript.Environment@ annotates JavaScript syntax with its 
+    static environment and returns a list of free identifiers.
   .
   * @BrownPLT.JavaScript.Parser@ is a JavaScript parser that is largely based on
     JavaScript 1.5.
@@ -37,17 +37,15 @@ Library
   Extensions:     
     Generics TypeSynonymInstances DeriveDataTypeable
   Exposed-Modules:
-    BrownPLT.Html.Html
+    BrownPLT.Html
     BrownPLT.Html.Syntax
     BrownPLT.Html.PermissiveParser
     BrownPLT.Html.PrettyPrint 
     BrownPLT.Html.Instances
-    BrownPLT.Common
     BrownPLT.Html.RawScript
-    BrownPLT.JavaScript.Combinators
+    BrownPLT.JavaScript 
     BrownPLT.JavaScript.HtmlEmbedding 
     BrownPLT.JavaScript.Instances
-    BrownPLT.JavaScript 
     BrownPLT.JavaScript.Lexer 
     BrownPLT.JavaScript.Parser
     BrownPLT.JavaScript.PrettyPrint

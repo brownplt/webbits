@@ -5,18 +5,21 @@ module BrownPLT.Html.RawScript
   , RawHtml
   ) where
 
-import Data.Generics (Data)
-import Data.Generics (Typeable)
+import Data.Generics (Data, Typeable)
 import Text.PrettyPrint.HughesPJ (text)
 import Text.ParserCombinators.Parsec
-import BrownPLT.Common
-import BrownPLT.Html.Html
+import BrownPLT.Html.Syntax
+import BrownPLT.Html.PermissiveParser
 
 type RawHtml = Html SourcePos RawScript
 
+
 data RawScript = RawScript String deriving (Show,Eq,Typeable,Data)
 
+
 instance Script RawScript where
+
+  prettyPrintScript (RawScript s) = text s
   parseInlineScript = Nothing
   
   parseAttributeScript = Nothing
@@ -25,8 +28,6 @@ instance Script RawScript where
     s <- manyTill anyChar (string "</script>")
     return (RawScript s)
     
-instance PrettyPrintable RawScript where
-  pp (RawScript s) = text s
 
 parseFromString :: String -> RawHtml
 parseFromString s = case parseHtmlFromString "" s of

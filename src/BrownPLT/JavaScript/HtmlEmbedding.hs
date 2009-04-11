@@ -4,11 +4,10 @@ module BrownPLT.JavaScript.HtmlEmbedding
   , ParsedJsHtml
   ) where
 
-import BrownPLT.Html.Syntax(Html,Script,parseScriptBlock,parseInlineScript,
-                   parseAttributeScript)
-import BrownPLT.JavaScript.Parser(parseScript)
-import BrownPLT.JavaScript.Syntax(JavaScript)
---import JavaScript.PrettyPrint -- for the instance declaration
+import BrownPLT.Html.Syntax
+import BrownPLT.JavaScript.Parser (parseScript)
+import BrownPLT.JavaScript.Syntax (JavaScript)
+import BrownPLT.JavaScript.PrettyPrint (javaScript)
 import Text.ParserCombinators.Parsec (SourcePos)
 
 type JsHtml a = Html SourcePos (JavaScript a)
@@ -18,8 +17,8 @@ type ParsedJavaScript = JavaScript SourcePos
 type ParsedJsHtml = JsHtml SourcePos
 
 instance Script ParsedJavaScript where
-  parseScriptBlock attrs = do
-    parseScript
+  prettyPrintScript s = javaScript s
+  parseScriptBlock attrs = parseScript
   parseInlineScript = Nothing
   parseAttributeScript = Nothing
     

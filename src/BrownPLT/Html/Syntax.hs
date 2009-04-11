@@ -1,16 +1,17 @@
 -- |Datatypes for HTML parameterized over an annotation type and a script type.
-module BrownPLT.Html.Syntax (
+module BrownPLT.Html.Syntax 
+  (
   -- * HTML Data Structures
-    HtmlId,AttributeValue,Attribute(..),Html(..)
+    HtmlId,AttributeValue, Attribute (..), Html (..)
   -- * The Script class
-  , Script(..)
+  , Script (..)
   -- * Miscellaneous Functions
-  , attributeValue,attributeUpdate,attributeSet,isAttributeExpr
+  , attributeValue, attributeUpdate, attributeSet, isAttributeExpr
   ) where
 
-import Text.ParserCombinators.Parsec(CharParser,SourcePos)
-import Data.Generics(Data)
-import Data.Typeable(Typeable)
+import Text.ParserCombinators.Parsec (CharParser, SourcePos)
+import Text.PrettyPrint.HughesPJ (Doc)
+import Data.Generics (Data, Typeable)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -45,6 +46,7 @@ data Html a sc
 -- locations.  The Html datatype is parameterized over a script parser (an
 -- instance of Script).
 class Script t where
+  prettyPrintScript :: t -> Doc
   parseScriptBlock:: [Attribute SourcePos t] -> CharParser a t
   -- An inline script parser, which may be Nothing if the scripting language
   -- does not support inline scripts.

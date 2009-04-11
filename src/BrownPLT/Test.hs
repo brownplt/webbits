@@ -33,14 +33,13 @@ import Control.Exception as E
 import Text.PrettyPrint.HughesPJ ( render, vcat )
 import Text.ParserCombinators.Parsec (ParseError,sourceName,sourceLine,
   sourceColumn,errorPos,SourcePos)
-import BrownPLT.Common ( pp )
-import BrownPLT.JavaScript.PrettyPrint ()
+import BrownPLT.JavaScript.PrettyPrint
 import BrownPLT.JavaScript.Syntax
 import BrownPLT.JavaScript.Parser (parseScriptFromString,parseJavaScriptFromFile,
   ParsedStatement)
 
 pretty :: [ParsedStatement] -> String
-pretty stmts = render $ vcat $ map pp stmts
+pretty stmts = renderStatements
 
 isPrettyPrintError :: ParseError -> Bool
 isPrettyPrintError pe = 
