@@ -6,8 +6,8 @@ import System.FilePath
 import System.Directory
 import Control.Monad
 
-import WebBits.Test
-import WebBits.JavaScript
+import BrownPLT.Test
+import BrownPLT.JavaScript
 import qualified Data.ByteString.Char8 as B
 
 isTestCall :: Statement SourcePos -> Bool

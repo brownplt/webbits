@@ -5,7 +5,7 @@ module Rhino where
 
 import Control.Monad
 import qualified Data.ByteString.Char8 as B
-import WebBits.Test
+import BrownPLT.Test
 
 
 

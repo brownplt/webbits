@@ -7,6 +7,7 @@ module BrownPLT.Test
   , commandIO
   , rhinoIO
   , rhinoIOFile
+  , SourcePos
   , module Test.HUnit 
   ) where
 
@@ -39,7 +40,7 @@ import BrownPLT.JavaScript.Parser (parseScriptFromString,parseJavaScriptFromFile
   ParsedStatement)
 
 pretty :: [ParsedStatement] -> String
-pretty stmts = renderStatements
+pretty stmts = renderStatements stmts
 
 isPrettyPrintError :: ParseError -> Bool
 isPrettyPrintError pe = 
