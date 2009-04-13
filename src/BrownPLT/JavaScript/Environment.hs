@@ -140,7 +140,9 @@ env :: Map String SourcePos -- ^browser/testing environment
     -> (EnvTree,Map String SourcePos)
 env globals program = makeEnvTree globals (unions $ map stmt program)
 
+
 localVars :: [Statement SourcePos]
-          -> Set String
-localVars body = S.fromList (M.keys locals) where
+          -> [(String, SourcePos)]
+localVars body = M.toList locals where
   Partial locals _ _ = unions $ map stmt body
+
