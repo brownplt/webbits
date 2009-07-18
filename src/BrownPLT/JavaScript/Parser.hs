@@ -12,7 +12,7 @@ module BrownPLT.JavaScript.Parser
   , parseStatement
   , StatementParser
   , ExpressionParser
-  , parseAssignExpr
+  , assignExpr
   ) where
 
 import BrownPLT.JavaScript.Lexer hiding (identifier)
@@ -401,7 +401,7 @@ parseObjectLit =
                 <|> (liftM2 PropId getPosition identifier)
                 <|> (liftM2 PropNum getPosition decimal)
         colon
-        val <- parseAssignExpr
+        val <- assignExpr
         return (name,val)
     in do pos <- getPosition
           props <- braces (parseProp `sepEndBy` comma) <?> "object literal"
@@ -520,35 +520,8 @@ makeInfixExpr str constr = Infix parser AssocLeft where
     reservedOp str
     return (InfixExpr pos constr)  -- points-free, returns a function
 
-makePrefixExpr str constr = Prefix parser where
-  parser = do
-    pos <- getPosition
-    (reservedOp str <|> reserved str)
-    return (PrefixExpr pos constr) -- points-free, returns a function
-    
-mkPrefix operator constr = Prefix $ do
-  pos <- getPosition
-  operator
-  return (\operand -> PrefixExpr pos constr operand)
-
-makePostfixExpr str constr = Postfix parser where
-  parser = do
-    pos <- getPosition
-    (reservedOp str <|> reserved str)
-    return (PostfixExpr pos constr) -- points-free, returns a function
-
-prefixIncDecExpr = do
-  pos <- getPosition
-  op <- optionMaybe $ (reservedOp "++" >> return PrefixInc) <|>
-                      (reservedOp "--" >> return PrefixDec)
-  case op of
-    Nothing -> parseSimpleExpr Nothing
-    Just op -> do
-      innerExpr <- parseSimpleExpr Nothing -- TODO: must be an l-val, I think
-      return (PrefixExpr pos op innerExpr)
 
 -- apparently, expression tables can't handle immediately-nested prefixes
-
 parsePrefixedExpr = do
   pos <- getPosition
   op <- optionMaybe $ (reservedOp "!" >> return PrefixLNot) <|> 
@@ -561,7 +534,7 @@ parsePrefixedExpr = do
                       (reserved "void" >> return PrefixVoid) <|>
                       (reserved "delete" >> return PrefixDelete)
   case op of
-    Nothing -> prefixIncDecExpr  -- new is treated as a simple expr
+    Nothing -> unaryAssignExpr
     Just op -> do
       innerExpr <- parsePrefixedExpr
       return (PrefixExpr pos op innerExpr)
@@ -569,10 +542,6 @@ parsePrefixedExpr = do
 exprTable:: [[Operator Char st ParsedExpression]]
 exprTable = 
   [
-   [makePrefixExpr "++" PrefixInc,
-    makePostfixExpr "++" PostfixInc],
-   [makePrefixExpr "--" PrefixDec,
-    makePostfixExpr "--" PostfixDec],
    [makeInfixExpr "*" OpMul, makeInfixExpr "/" OpDiv, makeInfixExpr "%" OpMod],
    [makeInfixExpr "+" OpAdd, makeInfixExpr "-" OpSub],
    [makeInfixExpr "<<" OpLShift, makeInfixExpr ">>" OpSpRShift,
@@ -588,18 +557,53 @@ exprTable =
    [makeInfixExpr "==" OpEq, makeInfixExpr "!=" OpNEq,
     makeInfixExpr "===" OpStrictEq, makeInfixExpr "!==" OpStrictNEq]
     ]
-  
+
 parseExpression' = 
   buildExpressionParser exprTable parsePrefixedExpr <?> "simple expression"
 
---{{{ Parsing ternary operators: left factored
+asLValue :: SourcePos
+         -> Expression SourcePos 
+         -> CharParser st (LValue SourcePos)
+asLValue p' e = case e of
+  VarRef p (Id _ x) -> return (LVar p x)
+  DotRef p e (Id _ x) -> return (LDot p e x)
+  BracketRef p e1 e2 -> return (LBracket p e1 e2)
+  otherwise -> fail $ "expeceted l-value at " ++ show p'
+
+lvalue :: CharParser st (LValue SourcePos)
+lvalue = do
+  p <- getPosition
+  e <- parseSimpleExpr Nothing
+  asLValue p e
+
+
+unaryAssignExpr :: CharParser st ParsedExpression
+unaryAssignExpr = do
+  p <- getPosition
+  let prefixInc = do
+        reservedOp "++"
+        liftM (UnaryAssignExpr p PrefixInc) lvalue
+  let prefixDec = do
+        reservedOp "--"
+        liftM (UnaryAssignExpr p PrefixDec) lvalue
+  let postfixInc e = do
+        reservedOp "++"
+        liftM (UnaryAssignExpr p PostfixInc) (asLValue p e)
+  let postfixDec e = do
+        reservedOp "--"
+        liftM (UnaryAssignExpr p PostfixDec) (asLValue p e)
+  let other = do
+        e <- parseSimpleExpr Nothing
+        postfixInc e <|> postfixDec e <|> return e
+  prefixInc <|> prefixDec <|> other
+
 
 parseTernaryExpr':: CharParser st (ParsedExpression,ParsedExpression)
 parseTernaryExpr' = do
     reservedOp "?"
-    l <- parseAssignExpr
+    l <- assignExpr
     colon
-    r <- parseAssignExpr
+    r <- assignExpr
     return $(l,r)
 
 parseTernaryExpr:: ExpressionParser st
@@ -610,37 +614,43 @@ parseTernaryExpr = do
     Nothing -> return e
     Just (l,r) -> do p <- getPosition
                      return $ CondExpr p e l r
---}}}
-
--- Parsing assignment operations.
-makeAssignExpr str constr = Infix parser AssocRight where
-  parser:: CharParser st (ParsedExpression -> ParsedExpression -> ParsedExpression)
-  parser = do
-    pos <- getPosition
-    reservedOp str
-    return (AssignExpr pos constr)
-
-assignTable:: [[Operator Char st ParsedExpression]]
-assignTable = [
-  [makeAssignExpr "=" OpAssign, makeAssignExpr "+=" OpAssignAdd, 
-    makeAssignExpr "-=" OpAssignSub, makeAssignExpr "*=" OpAssignMul,
-    makeAssignExpr "/=" OpAssignDiv, makeAssignExpr "%=" OpAssignMod,
-    makeAssignExpr "<<=" OpAssignLShift, makeAssignExpr ">>=" OpAssignSpRShift,
-    makeAssignExpr ">>>=" OpAssignZfRShift, makeAssignExpr "&=" OpAssignBAnd,
-    makeAssignExpr "^=" OpAssignBXor, makeAssignExpr "|=" OpAssignBOr
-  ]]
 
 
-parseAssignExpr:: ExpressionParser st
-parseAssignExpr = buildExpressionParser assignTable parseTernaryExpr  
+assignOp :: CharParser st AssignOp
+assignOp = 
+  (reservedOp "=" >> return OpAssign) <|>
+  (reservedOp "+=" >> return OpAssignAdd) <|>
+  (reservedOp "-=" >> return OpAssignSub) <|>
+  (reservedOp "*=" >> return OpAssignMul) <|>
+  (reservedOp "/=" >> return OpAssignDiv) <|>
+  (reservedOp "%=" >> return OpAssignMod) <|>
+  (reservedOp "<<=" >> return OpAssignLShift) <|>
+  (reservedOp ">>=" >> return OpAssignSpRShift) <|>
+  (reservedOp ">>>=" >> return OpAssignZfRShift) <|>
+  (reservedOp "&=" >> return OpAssignBAnd) <|>
+  (reservedOp "^=" >> return OpAssignBXor) <|>
+  (reservedOp "|=" >> return OpAssignBOr)
+
+
+assignExpr :: ExpressionParser st
+assignExpr = do
+  p <- getPosition
+  lhs <- parseTernaryExpr
+  let assign = do
+        op <- assignOp
+        lhs <- asLValue p lhs
+        rhs <- assignExpr
+        return (AssignExpr p op lhs rhs)
+  assign <|> (return lhs)
+
 
 parseExpression:: ExpressionParser st
-parseExpression = parseAssignExpr
+parseExpression = assignExpr
+
 
 parseListExpr =
-  liftM2 ListExpr getPosition (parseAssignExpr `sepBy1` comma)
+  liftM2 ListExpr getPosition (assignExpr `sepBy1` comma)
 
---}}}
 
 parseScript:: CharParser state (JavaScript SourcePos)
 parseScript = do

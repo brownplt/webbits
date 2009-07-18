@@ -143,8 +143,6 @@ infixOp op = text $ case op of
 
 
 prefixOp op = text $ case op of
-  PrefixInc -> "++"
-  PrefixDec -> "--"
   PrefixLNot -> "!"
   PrefixBNot -> "~"
   PrefixPlus -> "+"
@@ -152,11 +150,6 @@ prefixOp op = text $ case op of
   PrefixTypeof -> "typeof"
   PrefixVoid -> "void"
   PrefixDelete -> "delete"
-
-
-postfixOp op = text $ case op of
-  PostfixInc -> "++"
-  PostfixDec ->  "--"
 
 
 assignOp op = text $ case op of
@@ -191,6 +184,12 @@ jsEscape (ch:chs) = (sel ch) ++ jsEscape chs where
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
 
+
+lvalue :: LValue a -> Doc
+lvalue (LVar _ x) = text x
+lvalue (LDot _ e x) = expr e <> text "." <> text x
+lvalue (LBracket _ e1 e2) = expr e1 <> brackets (expr e2)
+
  
 expr :: Expression a -> Doc
 expr e = case e of 
@@ -216,11 +215,15 @@ expr e = case e of
     text "new" <+> expr constr <> 
     (parens $ cat $ punctuate comma (map expr args))
   PrefixExpr _ op e' -> prefixOp op <+> expr e'
-  PostfixExpr _ op e' -> expr e' <+> postfixOp op
   InfixExpr _ op left right -> expr left <+> infixOp op <+> expr right
   CondExpr _ test cons alt -> 
     expr test <+> text "?" <+> expr cons <+> colon <+> expr alt
-  AssignExpr _ op l r ->  expr l <+> assignOp op <+> expr r
+  AssignExpr _ op l r ->  lvalue l <+> assignOp op <+> expr r
+  UnaryAssignExpr _ op e' -> case op of
+    PrefixInc -> text "++" <> lvalue e'
+    PrefixDec -> text "--" <> lvalue e'
+    PostfixInc -> lvalue e' <> text "++"
+    PostfixDec -> lvalue e' <> text "--"
   ParenExpr _ e' ->  parens (expr e')
   ListExpr _ es ->  cat $ punctuate comma (map expr es)
   CallExpr _ f args -> 

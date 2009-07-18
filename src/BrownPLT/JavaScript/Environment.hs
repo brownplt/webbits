@@ -43,6 +43,13 @@ unions ps = Partial (M.unions (map partialLocals ps))
 javascript :: JavaScript SourcePos -> Partial
 javascript (Script _ ss) = unions (map stmt ss)
 
+
+lvalue :: LValue SourcePos -> Partial
+lvalue lv = case lv of
+  LVar p x -> ref (Id p x)
+  LDot _ e _ -> expr e
+  LBracket _ e1 e2 -> unions [expr e1, expr e2]
+
 expr :: Expression SourcePos -> Partial
 expr e = case e of
   StringLit _ _ -> empty
@@ -58,12 +65,11 @@ expr e = case e of
   DotRef _ e _ -> expr e
   BracketRef _ e1 e2 -> unions [expr e1, expr e2]
   NewExpr _ e1 es -> unions [expr e1, unions $ map expr es]
-  PostfixExpr _ _ e -> expr e
   PrefixExpr _ _ e -> expr e
   InfixExpr _ _ e1 e2 -> unions [expr e1, expr e2]
   CondExpr _ e1 e2 e3 -> unions [expr e1, expr e2, expr e3]
-  AssignExpr _ _ (VarRef _ id) e -> unions [ref id, expr e]
-  AssignExpr _ _ e1 e2 -> unions [expr e1, expr e2]
+  AssignExpr _ _ lv e -> unions [lvalue lv, expr e]
+  UnaryAssignExpr _ _ lv -> lvalue lv
   ParenExpr _ e -> expr e
   ListExpr _ es -> unions (map expr es)
   CallExpr _ e es -> unions [expr e, unions $ map expr es]

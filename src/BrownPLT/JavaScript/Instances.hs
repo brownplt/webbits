@@ -39,6 +39,12 @@ instance Functor Prop where
   fmap f (PropString a s) = PropString (f a) s
   fmap f (PropNum a n) = PropNum (f a) n
 
+instance Functor LValue where
+  fmap f lv = case lv of
+    LVar a x -> LVar (f a) x
+    LDot a e x -> LDot (f a) (fmap f e) x
+    LBracket a e1 e2 -> LBracket (f a) (fmap f e1) (fmap f e2) 
+
 instance Functor Expression where
   fmap f expression = 
     case expression of
@@ -56,11 +62,11 @@ instance Functor Expression where
       DotRef a e id -> DotRef (f a) (fmap f e) (fmap f id)
       BracketRef a e1 e2 -> BracketRef (f a) (fmap f e1) (fmap f e2)
       NewExpr a e es -> NewExpr (f a) (fmap f e) (map (fmap f) es)
-      PostfixExpr a op e -> PostfixExpr (f a) op (fmap f e)
       PrefixExpr a op e -> PrefixExpr (f a) op (fmap f e)
       InfixExpr a op e1 e2 -> InfixExpr (f a) op (fmap f e1) (fmap f e2)
       CondExpr a e1 e2 e3 -> CondExpr (f a) (fmap f e1) (fmap f e2) (fmap f e3)
       AssignExpr a op e1 e2 -> AssignExpr (f a) op (fmap f e1) (fmap f e2)
+      UnaryAssignExpr a op e -> UnaryAssignExpr (f a) op (fmap f e)
       ParenExpr a e -> ParenExpr (f a) (fmap f e)
       ListExpr a es -> ListExpr (f a) (map (fmap f) es)
       CallExpr a e es -> CallExpr (f a) (fmap f e) (map (fmap f) es)
@@ -122,6 +128,12 @@ instance Foldable Prop where
   foldr f b (PropId a id) = f a (foldr f b id)
   foldr f b (PropString a _) = f a b
   foldr f b (PropNum a _) = f a b
+
+instance Foldable LValue where
+  foldr f b (LVar a x) = f a b
+  foldr f b (LDot a e x) = f a (foldr f b e)
+  foldr f b (LBracket a e1 e2) = f a (foldr f (foldr f b e2) e1)
+
         
 instance Foldable Expression where
   -- foldr:: (a -> b -> b) -> b -> Expression a -> b
@@ -141,11 +153,11 @@ instance Foldable Expression where
       DotRef a e id -> f a (foldr f (foldr f b id) e)
       BracketRef a e1 e2 -> f a (foldr f (foldr f b e2) e1)
       NewExpr a e es -> f a (foldr f (Prelude.foldr (flip $ foldr f) b es) e)
-      PostfixExpr a _ e -> f a $ foldr f b e
       PrefixExpr a _ e -> f a $ foldr f b e
       InfixExpr a _ e1 e2 -> f a $ foldr f (foldr f b e2) e1
       CondExpr a e1 e2 e3 -> f a $ foldr f (foldr f (foldr f b e3) e2) e1
       AssignExpr a _ e1 e2 -> f a $ foldr f (foldr f b e2) e1
+      UnaryAssignExpr a _ lv -> f a (foldr f b lv)
       ParenExpr a e -> f a $ foldr f b e
       ListExpr a es -> f a $ Prelude.foldr (flip $ foldr f) b es
       CallExpr a e es -> f a $ foldr f (Prelude.foldr (flip $ foldr f) b es) e
@@ -204,6 +216,12 @@ instance Traversable Prop where
   traverse f (PropId a id) = PropId <$> f a <*> traverse f id
   traverse f (PropString a s) = PropString <$> f a <*> pure s
   traverse f (PropNum a n) = PropNum <$> f a <*> pure n
+
+instance Traversable LValue where
+  traverse f lv = case lv of
+    LVar a x -> LVar <$> f a <*> pure x
+    LDot a e x -> LDot <$> f a <*> traverse f e <*> pure x
+    LBracket a e1 e2 -> LBracket <$> f a <*> traverse f e1 <*> traverse f e2
   
 instance Traversable Expression where
   traverse f expression =
@@ -224,7 +242,6 @@ instance Traversable Expression where
       DotRef a e id -> DotRef <$> f a <*> traverse f e <*> traverse f id
       BracketRef a e es -> BracketRef <$> f a <*> traverse f e <*> traverse f es
       NewExpr a e es -> NewExpr <$> f a <*> traverse f e <*> ltraverse f es
-      PostfixExpr a op e -> PostfixExpr <$> f a <*> pure op <*> traverse f e
       PrefixExpr a op e -> PrefixExpr <$> f a <*> pure op <*> traverse f e
       InfixExpr a op e1 e2 -> InfixExpr <$> f a <*> pure op <*> traverse f e1
                                 <*> traverse f e2
@@ -232,6 +249,8 @@ instance Traversable Expression where
         CondExpr <$> f a <*> traverse f e1 <*> traverse f e2 <*> traverse f e3
       AssignExpr a op e1 e2 -> AssignExpr <$> f a <*> pure op <*> traverse f e1
         <*> traverse f e2
+      UnaryAssignExpr a op e ->
+        UnaryAssignExpr <$> f a <*> pure op <*> traverse f e
       ParenExpr a e -> ParenExpr <$> f a <*> traverse f e
       ListExpr a es -> ListExpr <$> f a <*> ltraverse f es
       CallExpr a e es -> CallExpr <$> f a <*> traverse f e <*> ltraverse f es

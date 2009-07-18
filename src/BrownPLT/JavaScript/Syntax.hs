@@ -1,8 +1,11 @@
 -- |JavaScript's syntax.
 module BrownPLT.JavaScript.Syntax(Expression(..),CaseClause(..),Statement(..),
          InfixOp(..),CatchClause(..),VarDecl(..),JavaScript(..),
-         AssignOp(..),Id(..),PrefixOp(..),PostfixOp(..),Prop(..),
-         ForInit(..),ForInInit(..),unId) where
+         AssignOp(..),Id(..),PrefixOp(..),Prop(..),
+         ForInit(..),ForInInit(..),unId
+  , UnaryAssignOp (..)
+  , LValue (..)
+  ) where
 
 import Text.ParserCombinators.Parsec(SourcePos) -- used by data JavaScript
 import Data.Generics(Data,Typeable)
@@ -32,17 +35,23 @@ data AssignOp = OpAssign | OpAssignAdd | OpAssignSub | OpAssignMul | OpAssignDiv
   | OpAssignBAnd | OpAssignBXor | OpAssignBOr
   deriving (Show,Data,Typeable,Eq,Ord)
 
-data PrefixOp = PrefixInc | PrefixDec | PrefixLNot | PrefixBNot | PrefixPlus
+data UnaryAssignOp
+  = PrefixInc | PrefixDec | PostfixInc | PostfixDec
+  deriving (Show, Data, Typeable, Eq, Ord)
+
+data PrefixOp = PrefixLNot | PrefixBNot | PrefixPlus
   | PrefixMinus | PrefixTypeof | PrefixVoid | PrefixDelete
-  deriving (Show,Data,Typeable,Eq,Ord)
-  
-data PostfixOp 
-  = PostfixInc | PostfixDec
   deriving (Show,Data,Typeable,Eq,Ord)
   
 data Prop a 
   = PropId a (Id a) | PropString a String | PropNum a Integer
   deriving (Show,Data,Typeable,Eq,Ord)
+ 
+data LValue a
+  = LVar a String
+  | LDot a (Expression a) String
+  | LBracket a (Expression a) (Expression a)
+  deriving (Show, Eq, Ord, Data, Typeable) 
 
 data Expression a
   = StringLit a String
@@ -58,11 +67,11 @@ data Expression a
   | DotRef a (Expression a) (Id a)
   | BracketRef a (Expression a) {- container -} (Expression a) {- key -}
   | NewExpr a (Expression a) {- constructor -} [Expression a]
-  | PostfixExpr a PostfixOp (Expression a)
   | PrefixExpr a PrefixOp (Expression a)
+  | UnaryAssignExpr a UnaryAssignOp (LValue a)
   | InfixExpr a InfixOp (Expression a) (Expression a)
   | CondExpr a (Expression a) (Expression a) (Expression a)
-  | AssignExpr a AssignOp (Expression a) (Expression a)
+  | AssignExpr a AssignOp (LValue a) (Expression a)
   | ParenExpr a (Expression a)
   | ListExpr a [Expression a]
   | CallExpr a (Expression a) [Expression a]
