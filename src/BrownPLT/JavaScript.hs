@@ -1,7 +1,6 @@
 -- |Re-exports commonly used modules.
 module BrownPLT.JavaScript
   ( module BrownPLT.JavaScript.Syntax
-  , module BrownPLT.JavaScript.HtmlEmbedding
   , module BrownPLT.JavaScript.Parser
   -- JavaScript.Instances exports nothing
   , renderStatements
@@ -12,6 +11,4 @@ module BrownPLT.JavaScript
 import BrownPLT.JavaScript.Syntax
 import BrownPLT.JavaScript.Parser
 import BrownPLT.JavaScript.PrettyPrint
-import BrownPLT.JavaScript.HtmlEmbedding
-
 import BrownPLT.JavaScript.Instances

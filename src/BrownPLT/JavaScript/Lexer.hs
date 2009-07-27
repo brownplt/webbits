@@ -18,7 +18,6 @@ javascriptDef =
                 "*/"
                 "//"
                 False -- no nested comments
-                {- Adapted from syntax/regexps.ss in Dave's code. -}
                 identifierStart
                 (alphaNum <|> oneOf "$_") -- identifier rest
                 (oneOf "{}<>()~.,?:|&^=!+-*/%!") -- operator start
