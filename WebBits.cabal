@@ -19,7 +19,7 @@ Library
   Hs-Source-Dirs:
     src
   Build-Depends:
-    base >= 4,
+    base >= 4 && < 5,
     mtl >= 1.1.0.1,
     parsec < 3.0.0,
     pretty >= 0.1,
