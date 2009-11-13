@@ -1,5 +1,5 @@
 Name:           WebBits
-Version:        1.0
+Version:        2.0
 Cabal-Version:	>= 1.2.3
 Copyright:      Copyright (c) 2007-2009 Arjun Guha and Spiridon Eliopoulos
 License:        BSD3
@@ -31,7 +31,6 @@ Library
     Generics DeriveDataTypeable
   Exposed-Modules:
     BrownPLT.JavaScript 
-    BrownPLT.JavaScript.Instances
     BrownPLT.JavaScript.Lexer 
     BrownPLT.JavaScript.Parser
     BrownPLT.JavaScript.PrettyPrint

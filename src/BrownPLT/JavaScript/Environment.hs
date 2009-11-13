@@ -73,7 +73,7 @@ expr e = case e of
   ParenExpr _ e -> expr e
   ListExpr _ es -> unions (map expr es)
   CallExpr _ e es -> unions [expr e, unions $ map expr es]
-  FuncExpr _ args s -> nest $ unions [unions $ map decl args, stmt s]
+  FuncExpr _ _ args s -> nest $ unions [unions $ map decl args, stmt s]
 
 caseClause :: CaseClause SourcePos -> Partial
 caseClause cc = case cc of

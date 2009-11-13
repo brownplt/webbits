@@ -228,8 +228,8 @@ expr e = case e of
   ListExpr _ es ->  cat $ punctuate comma (map expr es)
   CallExpr _ f args -> 
     expr f <> (parens $ cat $ punctuate comma (map expr args))
-  FuncExpr _ args body -> 
-    text "function" <+> 
+  FuncExpr _ name args body -> 
+    text "function" <+> text (maybe "" unId name) <+>
     (parens $ cat $ punctuate comma (map pp args)) $$ 
     inBlock body
 

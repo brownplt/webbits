@@ -75,7 +75,8 @@ data Expression a
   | ParenExpr a (Expression a)
   | ListExpr a [Expression a]
   | CallExpr a (Expression a) [Expression a]
-  | FuncExpr a [(Id a)] (Statement a)
+  --funcexprs are optionally named
+  | FuncExpr a (Maybe (Id a)) [(Id a)] (Statement a)
   deriving (Show,Data,Typeable,Eq,Ord)
 
 data CaseClause a 

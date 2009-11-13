@@ -11,4 +11,3 @@ module BrownPLT.JavaScript
 import BrownPLT.JavaScript.Syntax
 import BrownPLT.JavaScript.Parser
 import BrownPLT.JavaScript.PrettyPrint
-import BrownPLT.JavaScript.Instances

@@ -307,9 +307,10 @@ parseArrayLit = liftM2 ArrayLit getPosition (squares (parseExpression `sepBy` co
 parseFuncExpr = do
   pos <- getPosition
   reserved "function"
+  name <- (identifier >>= return . Just) <|> return Nothing
   args <- parens (identifier `sepBy` comma)
   body <- parseBlockStmt
-  return $ FuncExpr pos args body
+  return $ FuncExpr pos name args body
 
 --{{{ parsing strings
 
