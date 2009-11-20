@@ -118,8 +118,8 @@ data Statement a
   | LabelledStmt a (Id a) (Statement a)
   | ForInStmt a (ForInInit a) (Expression a) (Statement a)
   | ForStmt a (ForInit a)        
-              (Maybe (Expression a)) -- increment
               (Maybe (Expression a)) -- test
+              (Maybe (Expression a)) -- increment
               (Statement a)          -- body
   | TryStmt a (Statement a) {-body-} [CatchClause a] {-catches-}
       (Maybe (Statement a)) {-finally-}
