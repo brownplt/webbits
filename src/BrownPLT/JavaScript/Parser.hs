@@ -302,7 +302,7 @@ parseVarRef:: ExpressionParser st
 parseVarRef = liftM2 VarRef getPosition identifier
 
 parseArrayLit:: ExpressionParser st
-parseArrayLit = liftM2 ArrayLit getPosition (squares (parseExpression `sepBy` comma))
+parseArrayLit = liftM2 ArrayLit getPosition (squares (parseExpression `sepEndBy` comma))
   
 parseFuncExpr = do
   pos <- getPosition
