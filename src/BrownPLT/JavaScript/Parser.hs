@@ -316,7 +316,7 @@ parseFuncExpr = do
 
 escapeChars =
  [('\'','\''),('\"','\"'),('\\','\\'),('b','\b'),('f','\f'),('n','\n'),
-  ('r','\r'),('t','\t'),('v','\v'),('/','/'),(' ',' ')]
+  ('r','\r'),('t','\t'),('v','\v'),('/','/'),(' ',' '),('0','\0')]
 
 allEscapes:: String
 allEscapes = map fst escapeChars
