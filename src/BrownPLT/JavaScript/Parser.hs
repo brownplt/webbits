@@ -542,22 +542,44 @@ parsePrefixedExpr = do
 
 exprTable:: [[Operator Char st ParsedExpression]]
 exprTable = 
-  [
-   [makeInfixExpr "*" OpMul, makeInfixExpr "/" OpDiv, makeInfixExpr "%" OpMod],
-   [makeInfixExpr "+" OpAdd, makeInfixExpr "-" OpSub],
-   [makeInfixExpr "<<" OpLShift, makeInfixExpr ">>" OpSpRShift,
-    makeInfixExpr ">>>" OpZfRShift],
-   [makeInfixExpr "<" OpLT, makeInfixExpr "<=" OpLEq, makeInfixExpr ">" OpGT,
-    makeInfixExpr ">=" OpGEq, 
-    makeInfixExpr "instanceof" OpInstanceof, makeInfixExpr "in" OpIn],
-   [makeInfixExpr "&" OpBAnd], 
-   [makeInfixExpr "^" OpBXor], 
-   [makeInfixExpr "|" OpBOr],
-   [makeInfixExpr "&&" OpLAnd],
-   [makeInfixExpr "||" OpLOr],  
-   [makeInfixExpr "==" OpEq, makeInfixExpr "!=" OpNEq,
-    makeInfixExpr "===" OpStrictEq, makeInfixExpr "!==" OpStrictNEq]
+  [ [ makeInfixExpr "==" OpEq
+    , makeInfixExpr "!=" OpNEq
+    , makeInfixExpr "===" OpStrictEq
+    , makeInfixExpr "!==" OpStrictNEq
     ]
+
+  , [ makeInfixExpr "||" OpLOr ]
+
+  , [ makeInfixExpr "&&" OpLAnd ]
+  
+  , [ makeInfixExpr "|" OpBOr ]
+
+  , [ makeInfixExpr "^" OpBXor ]
+
+  , [ makeInfixExpr "&" OpBAnd ]
+
+  , [ makeInfixExpr "<" OpLT
+    , makeInfixExpr "<=" OpLEq
+    , makeInfixExpr ">" OpGT
+    , makeInfixExpr ">=" OpGEq
+    , makeInfixExpr "instanceof" OpInstanceof
+    , makeInfixExpr "in" OpIn
+    ]
+
+  , [ makeInfixExpr "<<" OpLShift
+    , makeInfixExpr ">>" OpSpRShift
+    , makeInfixExpr ">>>" OpZfRShift
+    ]
+
+  , [ makeInfixExpr "+" OpAdd
+    , makeInfixExpr "-" OpSub
+    ]
+
+  , [ makeInfixExpr "*" OpMul
+    , makeInfixExpr "/" OpDiv
+    , makeInfixExpr "%" OpMod
+    ]
+  ]
 
 parseExpression' = 
   buildExpressionParser exprTable parsePrefixedExpr <?> "simple expression"
