@@ -34,6 +34,7 @@ javascriptDef =
                  "[", "]", "{", "}", "(", ")","</","instanceof"]
                  True -- case-sensitive
             
+lex :: T.TokenParser st
 lex = T.makeTokenParser javascriptDef
 
 -- everything but commaSep and semiSep

@@ -35,6 +35,7 @@ type ParsedExpression = Expression SourcePos
 type StatementParser state = CharParser state ParsedStatement
 type ExpressionParser state = CharParser state ParsedExpression
 
+identifier :: CharParser st (Id SourcePos)
 identifier =
   liftM2 Id getPosition Lexer.identifier
 
@@ -376,8 +377,10 @@ parseRegexpLit = do
   let parseFlags = do
         flags <- many (oneOf "mgi")
         return $ \f -> f ('g' `elem` flags) ('i' `elem` flags) 
-  let parseEscape = char '\\' >> anyChar
-  let parseChar = noneOf "/"
+  let parseEscape :: CharParser st Char
+      parseEscape = char '\\' >> anyChar
+  let parseChar :: CharParser st Char
+      parseChar = noneOf "/"
   let parseRe = (char '/' >> return "") <|> 
                 (do char '\\'
                     ch <- anyChar -- TOOD: too lenient
