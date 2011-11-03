@@ -114,8 +114,8 @@ stmt s = case s of
   ForInStmt _ fii e s -> unions [forInInit fii, expr e, stmt s]
   ForStmt _ fi  me1 me2 s -> 
     unions [forInit fi, maybe empty expr me1, maybe empty expr me2, stmt s]
-  TryStmt _ s catches ms ->
-    unions [stmt s, unions $ map catchClause catches, maybe empty stmt ms]
+  TryStmt _ s catch ms ->
+    unions [stmt s, maybe empty catchClause catch, maybe empty stmt ms]
   ThrowStmt _ e -> expr e
   ReturnStmt _ me -> maybe empty expr me
   WithStmt _ e s -> unions [expr e, stmt s]
