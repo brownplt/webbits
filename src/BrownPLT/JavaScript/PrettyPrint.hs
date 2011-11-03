@@ -9,7 +9,7 @@ module BrownPLT.JavaScript.PrettyPrint
 
 import Text.PrettyPrint.HughesPJ
 import BrownPLT.JavaScript.Syntax
-
+import Data.Maybe (maybeToList)
 
 renderStatements :: [Statement a] -> String
 renderStatements ss = render (semiSep ss)
@@ -56,11 +56,6 @@ caseClause (CaseClause _ e ss) =
 caseClause (CaseDefault _ ss) =
   text "default:" $$ (nest 2 (semiSep ss))
 
-
-catchClause :: CatchClause a -> Doc
-catchClause (CatchClause _ id s) = text "catch" <+> (parens.pp) id <+> inBlock s
-
-
 varDecl :: VarDecl a -> Doc
 varDecl (VarDecl _ id Nothing) = pp id
 varDecl (VarDecl _ id (Just e)) = pp id <+> equals <+> expr e
@@ -93,12 +88,14 @@ stmt s = case s of
     text "for" <+> 
     parens (forInit init <> semi <+> mexpr incr <> semi <+> mexpr test) $$ 
     stmt body
-  TryStmt _ stmt catches finally ->
-    text "try" $$ inBlock stmt $$ (vcat (map catchClause catches)) $$
-    ppFinally where 
+  TryStmt _ stmt catch finally ->
+    text "try" $$ inBlock stmt $$ ppCatch $$ ppFinally where 
        ppFinally = case finally of
         Nothing -> empty
         Just stmt -> text "finally" <> inBlock stmt
+       ppCatch   = case catch of
+         Nothing -> empty
+         Just (CatchClause _ id s) -> text "catch" <+> (parens.pp) id <+> inBlock s
   ThrowStmt _ e -> text "throw" <+> expr e
   WithStmt _ expr s ->  text "with" <+> inParens expr $$ stmt s
   VarDeclStmt _ decls ->
