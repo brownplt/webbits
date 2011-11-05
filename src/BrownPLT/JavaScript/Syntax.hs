@@ -121,7 +121,7 @@ data Statement a
               (Maybe (Expression a)) -- test
               (Maybe (Expression a)) -- increment
               (Statement a)          -- body
-  | TryStmt a (Statement a) {-body-} [CatchClause a] {-catches-}
+  | TryStmt a (Statement a) {-body-} (Maybe (CatchClause a))
       (Maybe (Statement a)) {-finally-}
   | ThrowStmt a (Expression a)
   | ReturnStmt a (Maybe (Expression a))

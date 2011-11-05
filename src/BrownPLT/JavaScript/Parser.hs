@@ -198,10 +198,10 @@ parseTryStmt =
     in do reserved "try"
           pos <- getPosition
           guarded <- parseStatement
-          catches <- many parseCatchClause
+          catch <- optionMaybe parseCatchClause
           finally <- (reserved "finally" >> liftM Just parseStatement) 
                       <|> (return Nothing)
-          return (TryStmt pos guarded catches finally)
+          return (TryStmt pos guarded catch finally)
 
 parseThrowStmt:: StatementParser st
 parseThrowStmt = do

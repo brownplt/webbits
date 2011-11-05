@@ -57,8 +57,10 @@ caseClause (CaseDefault _ ss) =
   text "default:" $$ (nest 2 (semiSep ss))
 
 
-catchClause :: CatchClause a -> Doc
-catchClause (CatchClause _ id s) = text "catch" <+> (parens.pp) id <+> inBlock s
+catchClause :: Maybe (CatchClause a) -> Doc
+catchClause Nothing = empty
+catchClause (Just (CatchClause _ id s)) = 
+  text "catch" <+> (parens.pp) id <+> inBlock s
 
 
 varDecl :: VarDecl a -> Doc
@@ -93,8 +95,8 @@ stmt s = case s of
     text "for" <+> 
     parens (forInit init <> semi <+> mexpr incr <> semi <+> mexpr test) $$ 
     stmt body
-  TryStmt _ stmt catches finally ->
-    text "try" $$ inBlock stmt $$ (vcat (map catchClause catches)) $$
+  TryStmt _ stmt catch finally ->
+    text "try" $$ inBlock stmt $$ catchClause catch $$
     ppFinally where 
        ppFinally = case finally of
         Nothing -> empty
