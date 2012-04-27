@@ -38,13 +38,13 @@ Library
     BrownPLT.JavaScript.Syntax 
     BrownPLT.JavaScript.Environment
 
-Test-Suite test-webbits
-  Type: exitcode-stdio-1.0
-  Main-Is: Test/Main.hs
-  Build-Depends:
-    base >= 4 && < 5,
-    mtl >= 1.1.0.1,
-    parsec < 3.2.0,
-    pretty >= 0.1,
-    containers >= 0.1,
-    syb >= 0.1
+-- Test-Suite test-webbits
+--   Type: exitcode-stdio-1.0
+--   Main-Is: Test/Main.hs
+--   Build-Depends:
+--     base >= 4 && < 5,
+--     mtl >= 1.1.0.1,
+--     parsec < 3.2.0,
+--     pretty >= 0.1,
+--     containers >= 0.1,
+--     syb >= 0.1
