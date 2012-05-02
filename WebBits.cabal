@@ -28,7 +28,7 @@ Library
   ghc-options:
     -fwarn-incomplete-patterns
   Extensions:     
-    Generics DeriveDataTypeable
+    DeriveDataTypeable
   Exposed-Modules:
     BrownPLT.JavaScript 
     BrownPLT.JavaScript.Lexer 
