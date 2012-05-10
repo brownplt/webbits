@@ -9,6 +9,7 @@ Maintainer:     Andrey Chudnov <oss@chudnov.com>
 Homepage:       http://github.com/brownplt/webbits
 Bug-reports:    http://github.com/brownplt/webbits/issues
 Stability:      provisional
+Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
 Build-Type:     Custom
 Synopsis:       JavaScript analysis tools
