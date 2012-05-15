@@ -11,7 +11,7 @@ Bug-reports:    http://github.com/brownplt/webbits/issues
 Stability:      provisional
 Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
-Build-Type:     Custom
+Build-Type:     Simple
 Synopsis:       JavaScript analysis tools
 Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.1: the syntax of the try-catch-finally statement has been changed in accordance to the ECMAScript specification -- now it only has at most one catch clause. The original test-suite needs updating to support the current test system: patches are welcome.
 
@@ -45,3 +45,10 @@ Library
     BrownPLT.JavaScript.PrettyPrint
     BrownPLT.JavaScript.Syntax 
     BrownPLT.JavaScript.Environment
+
+Test-Suite parsePrettyConsistency
+  Type: exitcode-stdio-1.0
+  Main-is: test/parsePrettyConsistency.hs
+  Build-depends: test-framework >= 0.6 && < 0.7
+               , test-framework-hunit >= 0.2.7 && < 0.3
+               , HUnit >= 1.2 && < 2
