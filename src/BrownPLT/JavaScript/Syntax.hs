@@ -100,7 +100,7 @@ data ForInit a
 
 data ForInInit a
  = ForInVar (Id a)
- | ForInNoVar (Id a)
+ | ForInLVal (LValue a)
  deriving (Show,Data,Typeable,Eq,Ord)
   
   

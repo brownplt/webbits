@@ -1,5 +1,5 @@
 Name:           WebBits
-Version:        2.2
+Version:        2.3
 Cabal-Version:	>= 1.6
 Copyright:      Copyright (c) 2007-2011 Brown University, Claudiu Saftoiu,  Arjun Guha, Spiridon Eliopoulos, Copyright (c) 2012 Arjun Guha and Andrey Chudnov
 License:        BSD3
@@ -13,7 +13,7 @@ Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
 Build-Type:     Custom
 Synopsis:       JavaScript analysis tools
-Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.1: the syntax of the try-catch-finally statement has been changed in accordance to the ECMAScript specification -- now it only has at most one catch clause. The original test-suite needs updating to support the current test system: patches are welcome.
+Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.2: the representation of ForInInit has been patched; now it's in line with the spec and accepts a left-value instead of a "no-var" identifier.
 
 Source-repository head
    type: git
@@ -22,7 +22,7 @@ Source-repository head
 Source-repository this
    type: git
    location: git://github.com/brownplt/webbits.git
-   tag: WebBits-2.2
+   tag: WebBits-2.3
  
 Library
   Hs-Source-Dirs:
