@@ -11,7 +11,7 @@ Bug-reports:    http://github.com/brownplt/webbits/issues
 Stability:      provisional
 Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
-Build-Type:     Custom
+Build-Type:     Simple
 Synopsis:       JavaScript analysis tools
 Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.1: the syntax of the try-catch-finally statement has been changed in accordance to the ECMAScript specification -- now it only has at most one catch clause. The original test-suite needs updating to support the current test system: patches are welcome.
 
@@ -23,6 +23,25 @@ Source-repository this
    type: git
    location: git://github.com/brownplt/webbits.git
    tag: WebBits-2.2
+
+Test-Suite unittest
+  Hs-Source-Dirs: src
+  Type: exitcode-stdio-1.0
+  Main-Is: UnitTest.hs
+  Build-Depends:
+    base >= 4 && < 5,
+    mtl >= 1.1.0.1,
+    parsec < 3.2.0,
+    pretty >= 0.1,
+    containers >= 0.1,
+    syb >= 0.1,
+    directory,
+    filepath,
+    HUnit
+  Extensions:
+    DeriveDataTypeable
+  ghc-options:
+    -fwarn-incomplete-patterns
  
 Library
   Hs-Source-Dirs:
