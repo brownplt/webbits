@@ -18,18 +18,21 @@ module BrownPLT.JavaScript.Parser
 import BrownPLT.JavaScript.Lexer hiding (identifier)
 import qualified BrownPLT.JavaScript.Lexer as Lexer
 import BrownPLT.JavaScript.Syntax
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Expr
+import Text.Parsec
+import Text.Parsec.Expr
 import Control.Monad(liftM,liftM2)
 import Control.Monad.Trans (MonadIO,liftIO)
 import Numeric(readDec,readOct,readHex)
 import Data.Char(chr)
 import Data.Char
+import Control.Monad.Identity
 
 -- We parameterize the parse tree over source-locations.
 type ParsedStatement = Statement SourcePos
 type ParsedExpression = Expression SourcePos
 
+
+type CharParser state a = ParsecT String state Identity a
 
 -- These parsers can store some arbitrary state
 type StatementParser state = CharParser state ParsedStatement
@@ -543,7 +546,7 @@ parsePrefixedExpr = do
       innerExpr <- parsePrefixedExpr
       return (PrefixExpr pos op innerExpr)
 
-exprTable:: [[Operator Char st ParsedExpression]]
+exprTable:: [[Operator String st Identity ParsedExpression]]
 exprTable = 
   [ [ makeInfixExpr "==" OpEq
     , makeInfixExpr "!=" OpNEq

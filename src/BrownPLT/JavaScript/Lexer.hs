@@ -8,8 +8,8 @@ module BrownPLT.JavaScript.Lexer(lexeme,identifier,reserved,operator,reservedOp,
                         identifierStart) where
 
 import Prelude hiding (lex)
-import Text.ParserCombinators.Parsec
-import qualified Text.ParserCombinators.Parsec.Token as T
+import Text.Parsec
+import qualified Text.Parsec.Token as T
 
 identifierStart = (letter <|> oneOf "$_")
 
