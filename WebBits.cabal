@@ -52,3 +52,5 @@ Test-Suite parsePrettyConsistency
   Build-depends: test-framework >= 0.6 && < 0.7
                , test-framework-hunit >= 0.2.7 && < 0.3
                , HUnit >= 1.2 && < 2
+               , MissingH >= 1.1.1.0 && < 2
+               , filepath >= 1 && < 2
