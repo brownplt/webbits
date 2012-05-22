@@ -26,12 +26,14 @@ import Numeric(readDec,readOct,readHex)
 import Data.Char(chr)
 import Data.Char
 import Control.Monad.Identity
+import Data.Maybe (isJust)
 
 -- We parameterize the parse tree over source-locations.
 type ParsedStatement = Statement SourcePos
 type ParsedExpression = Expression SourcePos
 
 type CharParser state a = ParsecT String state Identity a
+
 
 -- These parsers can store some arbitrary state
 type StatementParser state = CharParser state ParsedStatement
@@ -182,9 +184,9 @@ parseForStmt =
           reservedOp "("
           init <- parseInit
           semi
-          test <- (liftM Just parseExpression) <|> (return Nothing)
+          test <- optionMaybe parseExpression
           semi
-          iter <- (liftM Just parseListExpr) <|> (return Nothing)
+          iter <- optionMaybe parseListExpr
           reservedOp ")" <?> "closing paren"
           stmt <- parseStatement
           return (ForStmt pos init test iter stmt)
@@ -200,10 +202,14 @@ parseTryStmt =
     in do reserved "try"
           pos <- getPosition
           guarded <- parseStatement
-          catch <- optionMaybe parseCatchClause
-          finally <- (reserved "finally" >> liftM Just parseStatement) 
-                      <|> (return Nothing)
-          return (TryStmt pos guarded catch finally)
+          mCatch <- optionMaybe parseCatchClause
+          mFinally <- optionMaybe $ reserved "finally" >> parseStatement
+          -- the spec requires at least a catch or a finally block to
+          -- be present
+          if isJust mCatch || isJust mFinally 
+            then return $ TryStmt pos guarded mCatch mFinally
+            else fail $ "A try statement should have at least a catch\ 
+                        \ or a finally block, at " ++ (show pos)
 
 parseThrowStmt:: StatementParser st
 parseThrowStmt = do
