@@ -31,7 +31,6 @@ import Control.Monad.Identity
 type ParsedStatement = Statement SourcePos
 type ParsedExpression = Expression SourcePos
 
-
 type CharParser state a = ParsecT String state Identity a
 
 -- These parsers can store some arbitrary state
@@ -161,7 +160,7 @@ parseExpressionStmt = do
 parseForInStmt:: StatementParser st
 parseForInStmt =
   let parseInit = (reserved "var" >> liftM ForInVar identifier)
-                  <|> (liftM ForInNoVar identifier)
+                  <|> (liftM ForInLVal lvalue)
     in do pos <- getPosition
           -- Lookahead, so that we don't clash with parseForStmt
           (init,expr) <- try (do reserved "for"
@@ -597,7 +596,7 @@ asLValue p' e = case e of
   VarRef p (Id _ x) -> return (LVar p x)
   DotRef p e (Id _ x) -> return (LDot p e x)
   BracketRef p e1 e2 -> return (LBracket p e1 e2)
-  otherwise -> fail $ "expeceted l-value at " ++ show p'
+  otherwise -> fail $ "expected a left-value at " ++ show p'
 
 lvalue :: CharParser st (LValue SourcePos)
 lvalue = do
@@ -671,7 +670,6 @@ assignExpr = do
         rhs <- assignExpr
         return (AssignExpr p op lhs rhs)
   assign <|> (return lhs)
-
 
 parseExpression:: ExpressionParser st
 parseExpression = assignExpr

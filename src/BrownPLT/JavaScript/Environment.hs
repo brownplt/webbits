@@ -96,7 +96,7 @@ forInit fi = case fi of
 
 forInInit :: ForInInit SourcePos -> Partial
 forInInit (ForInVar id) = decl id
-forInInit (ForInNoVar id) = ref id
+forInInit (ForInLVal lv) = lvalue lv
   
 stmt :: Statement SourcePos -> Partial
 stmt s = case s of
