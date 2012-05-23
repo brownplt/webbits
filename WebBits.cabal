@@ -1,6 +1,6 @@
 Name:           WebBits
 Version:        2.3
-Cabal-Version:	>= 1.6
+Cabal-Version:	>= 1.10
 Copyright:      Copyright (c) 2007-2011 Brown University, Claudiu Saftoiu,  Arjun Guha, Spiridon Eliopoulos, Copyright (c) 2012 Arjun Guha and Andrey Chudnov
 License:        BSD3
 License-file:   LICENSE
