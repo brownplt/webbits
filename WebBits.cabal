@@ -24,25 +24,6 @@ Source-repository this
    location: git://github.com/brownplt/webbits.git
    tag: WebBits-2.3
 
-Test-Suite unittest
-  Hs-Source-Dirs: src
-  Type: exitcode-stdio-1.0
-  Main-Is: UnitTest.hs
-  Build-Depends:
-    base >= 4 && < 5,
-    mtl >= 1.1.0.1,
-    parsec < 3.2.0,
-    pretty >= 0.1,
-    containers >= 0.1,
-    syb >= 0.1,
-    directory,
-    filepath,
-    HUnit
-  Extensions:
-    DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
-  ghc-options:
-    -fwarn-incomplete-patterns
- 
 Library
   Hs-Source-Dirs:
     src
@@ -57,8 +38,6 @@ Library
     data-default >= 0.4 && <0.5
   ghc-options:
     -fwarn-incomplete-patterns
-  Extensions:     
-    DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Exposed-Modules:
     BrownPLT.JavaScript 
     BrownPLT.JavaScript.Lexer 
@@ -68,3 +47,25 @@ Library
     BrownPLT.JavaScript.Syntax.Annotations
     BrownPLT.JavaScript.Environment
     BrownPLT.JavaScript.LabelSets
+  Default-Extensions:
+    DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
+  Default-Language: Haskell2010
+
+Test-Suite unittest
+  Hs-Source-Dirs: src
+  Type: exitcode-stdio-1.0
+  Main-Is: UnitTest.hs
+  Build-Depends:
+    base >= 4 && < 5,
+    mtl >= 1.1.0.1,
+    parsec < 3.2.0,
+    pretty >= 0.1,
+    containers >= 0.1,
+    syb >= 0.1,
+    directory,
+    filepath,
+    HUnit
+  Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
+  Default-Language: Haskell2010
+  ghc-options:
+    -fwarn-incomplete-patterns
