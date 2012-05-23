@@ -21,7 +21,7 @@ data JavaScript a
   -- but the Flapjax analogue has an inline variant and attribute-inline 
   -- variant.
   = Script a [Statement a] 
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 instance Default a => Default (JavaScript a) where
   def = Script def []
