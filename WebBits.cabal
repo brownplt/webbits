@@ -13,7 +13,7 @@ Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
 Build-Type:     Simple
 Synopsis:       JavaScript analysis tools
-Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.2: the representation of ForInInit has been patched; now it's in line with the spec and accepts a left-value instead of a "no-var" identifier.
+Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.2: 1) the representation of ForInInit has been patched -- now it's in line with the spec and accepts a left-value instead of a "no-var" identifier; 2) an additional check while parsing TryStmt -- now it's inline with the spec; 3) an additional check while parsing LabeledStmt -- now it's inline with the spec; 4) added an analysis to infer the label sets of statements -- useful when building control-flow graphs.
 
 Source-repository head
    type: git
@@ -52,15 +52,19 @@ Library
     parsec < 3.2.0,
     pretty >= 0.1,
     containers >= 0.1,
-    syb >= 0.1
+    syb >= 0.1,
+    uniplate >= 1.6 && <1.7,
+    data-default >= 0.4 && <0.5
   ghc-options:
     -fwarn-incomplete-patterns
   Extensions:     
-    DeriveDataTypeable
+    DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable
   Exposed-Modules:
     BrownPLT.JavaScript 
     BrownPLT.JavaScript.Lexer 
     BrownPLT.JavaScript.Parser
     BrownPLT.JavaScript.PrettyPrint
-    BrownPLT.JavaScript.Syntax 
+    BrownPLT.JavaScript.Syntax
+    BrownPLT.JavaScript.Syntax.Annotations
     BrownPLT.JavaScript.Environment
+    BrownPLT.JavaScript.LabelSets

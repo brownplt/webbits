@@ -18,6 +18,7 @@ module BrownPLT.JavaScript.Parser
 import BrownPLT.JavaScript.Lexer hiding (identifier)
 import qualified BrownPLT.JavaScript.Lexer as Lexer
 import BrownPLT.JavaScript.Syntax
+import Data.Default
 import Text.Parsec
 import Text.Parsec.Expr
 import Control.Monad(liftM,liftM2)
@@ -681,8 +682,7 @@ parseExpression:: ExpressionParser st
 parseExpression = assignExpr
 
 
-parseListExpr =
-  liftM2 ListExpr getPosition (assignExpr `sepBy1` comma)
+parseListExpr = liftM2 ListExpr getPosition (assignExpr `sepBy1` comma)
 
 
 parseScript:: CharParser state (JavaScript SourcePos)
@@ -702,8 +702,9 @@ parseScriptFromString :: String -> String
                       -> Either ParseError (JavaScript SourcePos)
 parseScriptFromString src script = parse parseScript src script
 
-emptyParsedJavaScript = 
-  Script (error "Parser.emptyParsedJavaScript--no annotation") []
+emptyParsedJavaScript :: Default a => JavaScript a
+emptyParsedJavaScript = def
+--  Script (error "Parser.emptyParsedJavaScript--no annotation") []
 
 parseString :: String -> [Statement SourcePos]
 parseString str = case parse parseScript "" str of

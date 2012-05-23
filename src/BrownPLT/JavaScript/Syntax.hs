@@ -5,10 +5,15 @@ module BrownPLT.JavaScript.Syntax(Expression(..),CaseClause(..),Statement(..),
          ForInit(..),ForInInit(..),unId
   , UnaryAssignOp (..)
   , LValue (..)
+  , unJavaScript
+  , SourcePos  
   ) where
 
-import Text.ParserCombinators.Parsec(SourcePos) -- used by data JavaScript
+import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
 import Data.Generics(Data,Typeable)
+import Data.Foldable (Foldable)
+import Data.Traversable (Traversable)
+import Data.Default
 
 data JavaScript a
   -- |A script in <script> ... </script> tags.  This may seem a little silly,
@@ -17,7 +22,18 @@ data JavaScript a
   = Script a [Statement a] 
   deriving (Show,Data,Typeable,Eq,Ord)
 
-data Id a = Id a String deriving (Show,Eq,Ord,Data,Typeable)
+instance Default a => Default (JavaScript a) where
+  def = Script def []
+
+-- | extracts statements from a JavaScript type
+unJavaScript :: JavaScript a -> [Statement a]
+unJavaScript (Script _ stmts) = stmts
+
+instance Default SourcePos where
+  def = initialPos ""
+
+data Id a = Id a String 
+          deriving (Show,Eq,Ord,Data,Typeable,Functor,Foldable,Traversable)
 
 unId :: Id a -> String
 unId (Id _ s) = s
@@ -42,16 +58,16 @@ data UnaryAssignOp
 data PrefixOp = PrefixLNot | PrefixBNot | PrefixPlus
   | PrefixMinus | PrefixTypeof | PrefixVoid | PrefixDelete
   deriving (Show,Data,Typeable,Eq,Ord)
-  
+
 data Prop a 
   = PropId a (Id a) | PropString a String | PropNum a Integer
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
  
 data LValue a
   = LVar a String
   | LDot a (Expression a) String
   | LBracket a (Expression a) (Expression a)
-  deriving (Show, Eq, Ord, Data, Typeable) 
+  deriving (Show, Eq, Ord, Data, Typeable, Functor,Foldable,Traversable) 
 
 data Expression a
   = StringLit a String
@@ -77,31 +93,31 @@ data Expression a
   | CallExpr a (Expression a) [Expression a]
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [(Id a)] (Statement a)
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 data CaseClause a 
   = CaseClause a (Expression a) [Statement a]
   | CaseDefault a [Statement a]
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
   
 data CatchClause a 
   = CatchClause a (Id a) (Statement a) 
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 data VarDecl a 
   = VarDecl a (Id a) (Maybe (Expression a)) 
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
   
 data ForInit a
   = NoInit
   | VarInit [VarDecl a]
   | ExprInit (Expression a)
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 data ForInInit a
  = ForInVar (Id a)
  | ForInLVal (LValue a)
- deriving (Show,Data,Typeable,Eq,Ord)
+ deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
   
   
 data Statement a
@@ -128,4 +144,5 @@ data Statement a
   | WithStmt a (Expression a) (Statement a)
   | VarDeclStmt a [VarDecl a]
   | FunctionStmt a (Id a) {-name-} [(Id a)] {-args-} (Statement a) {-body-}
-  deriving (Show,Data,Typeable,Eq,Ord)  
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
+
