@@ -13,12 +13,14 @@ module BrownPLT.JavaScript.Parser
   , StatementParser
   , ExpressionParser
   , assignExpr
+  , parse
   ) where
 
 import BrownPLT.JavaScript.Lexer hiding (identifier)
 import qualified BrownPLT.JavaScript.Lexer as Lexer
 import BrownPLT.JavaScript.Syntax
-import Text.Parsec
+import Data.Default
+import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
 import Control.Monad(liftM,liftM2)
 import Control.Monad.Trans (MonadIO,liftIO)
@@ -32,14 +34,42 @@ import Data.Maybe (isJust)
 type ParsedStatement = Statement SourcePos
 type ParsedExpression = Expression SourcePos
 
-type CharParser state a = ParsecT String state Identity a
-
+type CharParser a = ParsecT String ParserState Identity a
 
 -- These parsers can store some arbitrary state
-type StatementParser state = CharParser state ParsedStatement
-type ExpressionParser state = CharParser state ParsedExpression
+type StatementParser  = CharParser ParsedStatement
+type ExpressionParser = CharParser ParsedExpression
+-- the statement label stack
+type ParserState = [String]
 
-identifier :: CharParser st (Id SourcePos)
+initialParserState :: ParserState
+initialParserState = []
+
+-- | checks if the label is not yet on the stack, if it is -- throws
+-- an error; otherwise it pushes it onto the stack
+pushLabel :: String -> CharParser ()
+pushLabel lab = do labs <- getState
+                   pos <- getPosition
+                   if lab `elem` labs 
+                     then fail $ "Duplicate label at " ++ (show pos)
+                     else putState (lab:labs)
+
+popLabel :: CharParser ()
+popLabel = modifyState safeTail
+  where safeTail [] = []
+        safeTail (_:xs) = xs
+
+clearLabels :: ParserState -> ParserState
+clearLabels _ = []
+
+withFreshLabelStack :: CharParser a -> CharParser a
+withFreshLabelStack p = do oldState <- getState
+                           putState $ clearLabels oldState
+                           a <- p
+                           putState oldState
+                           return a
+
+identifier :: CharParser (Id SourcePos)
 identifier =
   liftM2 Id getPosition Lexer.identifier
 
@@ -54,7 +84,7 @@ identifier =
 -- reserved-word, we truly have a syntax error.  Since input has been consumed,
 -- <|> will not try its alternate in parseExpression, and we will fail.
 
-parseIfStmt:: StatementParser st  
+parseIfStmt:: StatementParser  
 parseIfStmt = do
   pos <- getPosition
   reserved "if"
@@ -66,7 +96,7 @@ parseIfStmt = do
        return (IfStmt pos test consequent alternate))
     <|> return (IfSingleStmt pos test consequent))
 
-parseSwitchStmt:: StatementParser st
+parseSwitchStmt:: StatementParser
 parseSwitchStmt =
   let parseDefault = do
         pos <- getPosition
@@ -87,7 +117,7 @@ parseSwitchStmt =
           clauses <- braces $ many $ parseDefault <|> parseCase
           return (SwitchStmt pos test clauses)
 
-parseWhileStmt:: StatementParser st
+parseWhileStmt:: StatementParser
 parseWhileStmt = do
   pos <- getPosition
   reserved "while"
@@ -95,7 +125,7 @@ parseWhileStmt = do
   body <- parseStatement
   return (WhileStmt pos test body)
 
-parseDoWhileStmt:: StatementParser st
+parseDoWhileStmt:: StatementParser
 parseDoWhileStmt = do
   pos <- getPosition
   reserved "do"
@@ -105,7 +135,7 @@ parseDoWhileStmt = do
   optional semi
   return (DoWhileStmt pos body test)
 
-parseContinueStmt:: StatementParser st
+parseContinueStmt:: StatementParser
 parseContinueStmt = do
   pos <- getPosition
   reserved "continue"
@@ -116,7 +146,7 @@ parseContinueStmt = do
            else return Nothing)
   return (ContinueStmt pos id)
 
-parseBreakStmt:: StatementParser st
+parseBreakStmt:: StatementParser
 parseBreakStmt = do
   pos <- getPosition
   reserved "break"
@@ -128,19 +158,19 @@ parseBreakStmt = do
   optional semi           
   return (BreakStmt pos id)
 
-parseBlockStmt:: StatementParser st
+parseBlockStmt:: StatementParser
 parseBlockStmt = do
   pos <- getPosition
   statements <- braces (many parseStatement)
   return (BlockStmt pos statements)
 
-parseEmptyStmt:: StatementParser st 
+parseEmptyStmt:: StatementParser 
 parseEmptyStmt = do
   pos <- getPosition
   semi
   return (EmptyStmt pos)
 
-parseLabelledStmt:: StatementParser st
+parseLabelledStmt:: StatementParser
 parseLabelledStmt = do
   pos <- getPosition
   -- Lookahead for the colon.  If we don't see it, we are parsing an identifier
@@ -148,10 +178,12 @@ parseLabelledStmt = do
   label <- try (do label <- identifier
                    colon
                    return label)
+  pushLabel $ unId label
   statement <- parseStatement
+  popLabel
   return (LabelledStmt pos label statement)
 
-parseExpressionStmt:: StatementParser st
+parseExpressionStmt:: StatementParser
 parseExpressionStmt = do
   pos <- getPosition
   expr <- parseListExpr -- TODO: spec 12.4?
@@ -159,7 +191,7 @@ parseExpressionStmt = do
   return (ExprStmt pos expr)
 
 
-parseForInStmt:: StatementParser st
+parseForInStmt:: StatementParser
 parseForInStmt =
   let parseInit = (reserved "var" >> liftM ForInVar identifier)
                   <|> (liftM ForInLVal lvalue)
@@ -173,7 +205,7 @@ parseForInStmt =
           body <- parseStatement
           return (ForInStmt pos init expr body) 
 
-parseForStmt:: StatementParser st
+parseForStmt:: StatementParser
 parseForStmt =
   let parseInit =
         (reserved "var" >> liftM VarInit (parseVarDecl `sepBy` comma)) <|>
@@ -191,7 +223,7 @@ parseForStmt =
           stmt <- parseStatement
           return (ForStmt pos init test iter stmt)
 
-parseTryStmt:: StatementParser st
+parseTryStmt:: StatementParser
 parseTryStmt =
   let parseCatchClause = do
         pos <- getPosition
@@ -211,7 +243,7 @@ parseTryStmt =
             else fail $ "A try statement should have at least a catch\ 
                         \ or a finally block, at " ++ (show pos)
 
-parseThrowStmt:: StatementParser st
+parseThrowStmt:: StatementParser
 parseThrowStmt = do
   pos <- getPosition
   reserved "throw"
@@ -219,7 +251,7 @@ parseThrowStmt = do
   optional semi
   return (ThrowStmt pos expr)
 
-parseReturnStmt:: StatementParser st
+parseReturnStmt:: StatementParser
 parseReturnStmt = do
   pos <- getPosition
   reserved "return"
@@ -227,7 +259,7 @@ parseReturnStmt = do
   optional semi
   return (ReturnStmt pos expr)
 
-parseWithStmt:: StatementParser st
+parseWithStmt:: StatementParser
 parseWithStmt = do
   pos <- getPosition
   reserved "with"
@@ -241,7 +273,7 @@ parseVarDecl = do
   init <- (reservedOp "=" >> liftM Just parseExpression) <|> (return Nothing)
   return (VarDecl pos id init)
 
-parseVarDeclStmt:: StatementParser st
+parseVarDeclStmt:: StatementParser
 parseVarDeclStmt = do 
   pos <- getPosition
   reserved "var"
@@ -249,15 +281,16 @@ parseVarDeclStmt = do
   optional semi
   return (VarDeclStmt pos decls)
 
-parseFunctionStmt:: StatementParser st
+parseFunctionStmt:: StatementParser
 parseFunctionStmt = do
   pos <- getPosition
   name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
   args <- parens (identifier `sepBy` comma)
-  body <- parseBlockStmt <?> "function body in { ... }"
+  -- label sets don't cross function boundaries
+  body <- (withFreshLabelStack parseBlockStmt) <?> "function body in { ... }"
   return (FunctionStmt pos name args body)
 
-parseStatement:: StatementParser st
+parseStatement:: StatementParser
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
   <|> parseDoWhileStmt <|> parseContinueStmt <|> parseBreakStmt 
   <|> parseBlockStmt <|> parseEmptyStmt <|> parseForInStmt <|> parseForStmt
@@ -287,30 +320,30 @@ parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt
 
 --{{{ Primary expressions
 
-parseThisRef:: ExpressionParser st
+parseThisRef:: ExpressionParser
 parseThisRef = do
   pos <- getPosition
   reserved "this"
   return (ThisRef pos)
 
-parseNullLit:: ExpressionParser st
+parseNullLit:: ExpressionParser
 parseNullLit = do
   pos <- getPosition
   reserved "null"
   return (NullLit pos)
 
 
-parseBoolLit:: ExpressionParser st
+parseBoolLit:: ExpressionParser
 parseBoolLit = do
     pos <- getPosition
     let parseTrueLit  = reserved "true"  >> return (BoolLit pos True)
         parseFalseLit = reserved "false" >> return (BoolLit pos False)
     parseTrueLit <|> parseFalseLit
 
-parseVarRef:: ExpressionParser st
+parseVarRef:: ExpressionParser
 parseVarRef = liftM2 VarRef getPosition identifier
 
-parseArrayLit:: ExpressionParser st
+parseArrayLit:: ExpressionParser
 parseArrayLit = liftM2 ArrayLit getPosition (squares (parseExpression `sepEndBy` comma))
   
 parseFuncExpr = do
@@ -318,7 +351,8 @@ parseFuncExpr = do
   reserved "function"
   name <- (identifier >>= return . Just) <|> return Nothing
   args <- parens (identifier `sepBy` comma)
-  body <- parseBlockStmt
+  -- labels don't cross function boundaries
+  body <- withFreshLabelStack $ parseBlockStmt
   return $ FuncExpr pos name args body
 
 --{{{ parsing strings
@@ -365,7 +399,7 @@ parseStringLit' endWith =
         else return (c:cs)) <|>
    (liftM2 (:) anyChar (parseStringLit' endWith))
 
-parseStringLit:: ExpressionParser st
+parseStringLit:: ExpressionParser
 parseStringLit = do
   pos <- getPosition
   -- parseStringLit' takes as an argument the quote-character that opened the
@@ -380,14 +414,14 @@ parseStringLit = do
 
 --}}}
 
-parseRegexpLit:: ExpressionParser st
+parseRegexpLit:: ExpressionParser
 parseRegexpLit = do
   let parseFlags = do
         flags <- many (oneOf "mgi")
         return $ \f -> f ('g' `elem` flags) ('i' `elem` flags) 
-  let parseEscape :: CharParser st Char
+  let parseEscape :: CharParser Char
       parseEscape = char '\\' >> anyChar
-  let parseChar :: CharParser st Char
+  let parseChar :: CharParser Char
       parseChar = noneOf "/"
   let parseRe = (char '/' >> return "") <|> 
                 (do char '\\'
@@ -402,7 +436,7 @@ parseRegexpLit = do
   spaces -- crucial for Parsec.Token parsers
   return $ flags (RegexpLit pos pat)
           
-parseObjectLit:: ExpressionParser st
+parseObjectLit:: ExpressionParser
 parseObjectLit =
   let parseProp = do
         -- Parses a string, identifier or integer as the property name.  I
@@ -454,7 +488,7 @@ decLit =
       exp <- option 0 exponentPart
       return (False, mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp)))
 
-parseNumLit:: ExpressionParser st
+parseNumLit:: ExpressionParser
 parseNumLit = do
     pos <- getPosition
     (isint, num) <- lexeme $ hexLit <|> decLit
@@ -487,7 +521,7 @@ bracketRef e = (brackets $ withPos cstr parseExpression) <?> "[property-ref]"
 -- Expression Parsers
 -------------------------------------------------------------------------------
 
-parseParenExpr:: ExpressionParser st
+parseParenExpr:: ExpressionParser
 parseParenExpr = withPos ParenExpr (parens parseListExpr)
 
 -- everything above expect functions
@@ -526,7 +560,7 @@ parseSimpleExprForNew Nothing = do
 --}}}
 
 makeInfixExpr str constr = Infix parser AssocLeft where
-  parser:: CharParser st (Expression SourcePos -> Expression SourcePos -> Expression SourcePos)
+  parser:: CharParser (Expression SourcePos -> Expression SourcePos -> Expression SourcePos)
   parser = do
     pos <- getPosition
     reservedOp str
@@ -551,7 +585,7 @@ parsePrefixedExpr = do
       innerExpr <- parsePrefixedExpr
       return (PrefixExpr pos op innerExpr)
 
-exprTable:: [[Operator String st Identity ParsedExpression]]
+exprTable:: [[Operator String ParserState Identity ParsedExpression]]
 exprTable = 
   [ [ makeInfixExpr "==" OpEq
     , makeInfixExpr "!=" OpNEq
@@ -597,21 +631,21 @@ parseExpression' =
 
 asLValue :: SourcePos
          -> Expression SourcePos 
-         -> CharParser st (LValue SourcePos)
+         -> CharParser (LValue SourcePos)
 asLValue p' e = case e of
   VarRef p (Id _ x) -> return (LVar p x)
   DotRef p e (Id _ x) -> return (LDot p e x)
   BracketRef p e1 e2 -> return (LBracket p e1 e2)
   otherwise -> fail $ "expected a left-value at " ++ show p'
 
-lvalue :: CharParser st (LValue SourcePos)
+lvalue :: CharParser (LValue SourcePos)
 lvalue = do
   p <- getPosition
   e <- parseSimpleExpr Nothing
   asLValue p e
 
 
-unaryAssignExpr :: CharParser st ParsedExpression
+unaryAssignExpr :: CharParser ParsedExpression
 unaryAssignExpr = do
   p <- getPosition
   let prefixInc = do
@@ -632,7 +666,7 @@ unaryAssignExpr = do
   prefixInc <|> prefixDec <|> other
 
 
-parseTernaryExpr':: CharParser st (ParsedExpression,ParsedExpression)
+parseTernaryExpr':: CharParser (ParsedExpression,ParsedExpression)
 parseTernaryExpr' = do
     reservedOp "?"
     l <- assignExpr
@@ -640,7 +674,7 @@ parseTernaryExpr' = do
     r <- assignExpr
     return $(l,r)
 
-parseTernaryExpr:: ExpressionParser st
+parseTernaryExpr:: ExpressionParser
 parseTernaryExpr = do
   e <- parseExpression'
   e' <- optionMaybe parseTernaryExpr'
@@ -650,7 +684,7 @@ parseTernaryExpr = do
                      return $ CondExpr p e l r
 
 
-assignOp :: CharParser st AssignOp
+assignOp :: CharParser AssignOp
 assignOp = 
   (reservedOp "=" >> return OpAssign) <|>
   (reservedOp "+=" >> return OpAssignAdd) <|>
@@ -666,7 +700,7 @@ assignOp =
   (reservedOp "|=" >> return OpAssignBOr)
 
 
-assignExpr :: ExpressionParser st
+assignExpr :: ExpressionParser
 assignExpr = do
   p <- getPosition
   lhs <- parseTernaryExpr
@@ -677,18 +711,20 @@ assignExpr = do
         return (AssignExpr p op lhs rhs)
   assign <|> (return lhs)
 
-parseExpression:: ExpressionParser st
+parseExpression:: ExpressionParser
 parseExpression = assignExpr
 
 
-parseListExpr =
-  liftM2 ListExpr getPosition (assignExpr `sepBy1` comma)
+parseListExpr = liftM2 ListExpr getPosition (assignExpr `sepBy1` comma)
 
-
-parseScript:: CharParser state (JavaScript SourcePos)
+parseScript:: CharParser (JavaScript SourcePos)
 parseScript = do
   whiteSpace
   liftM2 Script getPosition (parseStatement `sepBy` whiteSpace)
+  
+parse :: Stream s Identity t =>
+         Parsec s [String] a -> SourceName -> s -> Either ParseError a
+parse p = runParser p initialParserState
   
 parseJavaScriptFromFile :: MonadIO m => String -> m [Statement SourcePos]
 parseJavaScriptFromFile filename = do
@@ -702,8 +738,9 @@ parseScriptFromString :: String -> String
                       -> Either ParseError (JavaScript SourcePos)
 parseScriptFromString src script = parse parseScript src script
 
-emptyParsedJavaScript = 
-  Script (error "Parser.emptyParsedJavaScript--no annotation") []
+emptyParsedJavaScript :: Default a => JavaScript a
+emptyParsedJavaScript = def
+--  Script (error "Parser.emptyParsedJavaScript--no annotation") []
 
 parseString :: String -> [Statement SourcePos]
 parseString str = case parse parseScript "" str of
