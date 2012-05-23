@@ -6,7 +6,8 @@ module BrownPLT.JavaScript.Syntax(Expression(..),CaseClause(..),Statement(..),
   , UnaryAssignOp (..)
   , LValue (..)
   , unJavaScript
-  , SourcePos  
+  , SourcePos
+  , isIterationStmt
   ) where
 
 import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
@@ -146,3 +147,11 @@ data Statement a
   | FunctionStmt a (Id a) {-name-} [(Id a)] {-args-} (Statement a) {-body-}
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
 
+isIterationStmt :: Statement a -> Bool
+isIterationStmt s = case s of
+  WhileStmt _ _ _   -> True
+  DoWhileStmt _ _ _ -> True
+  ForStmt _ _ _ _ _ -> True
+  ForInStmt _ _ _ _ -> True
+  _                 -> False
+  

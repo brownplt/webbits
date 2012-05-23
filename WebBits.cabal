@@ -39,7 +39,7 @@ Test-Suite unittest
     filepath,
     HUnit
   Extensions:
-    DeriveDataTypeable
+    DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable
   ghc-options:
     -fwarn-incomplete-patterns
  
