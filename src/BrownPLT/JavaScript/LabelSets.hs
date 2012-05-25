@@ -13,12 +13,13 @@ import qualified Data.Set as Set
 import Data.Generics.Uniplate.Data
 import Data.Data (Data)
 import Control.Applicative
+import Data.Typeable (Typeable)
 
 -- | Labels are either strings (identifiers) or "empty" (see 12.12 of
 -- the spec)
 data Label = Label String
            | EmptyLabel
-             deriving (Ord, Eq)
+             deriving (Ord, Eq, Show, Data, Typeable)
 
 -- | Annotates statements with their label sets; example use:
 -- >>> let jsa = reannotate (\a -> (a, Set.empty))

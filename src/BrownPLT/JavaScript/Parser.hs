@@ -19,6 +19,7 @@ module BrownPLT.JavaScript.Parser
 import BrownPLT.JavaScript.Lexer hiding (identifier)
 import qualified BrownPLT.JavaScript.Lexer as Lexer
 import BrownPLT.JavaScript.Syntax
+import BrownPLT.JavaScript.Syntax.Annotations
 import Data.Default
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
@@ -111,10 +112,17 @@ parseSwitchStmt =
          colon
          actions <- many parseStatement
          return (CaseClause pos condition actions)
+      isCaseDefault (CaseDefault _ _) = True   
+      isCaseDefault _                 = False
+      checkClauses cs = case filter isCaseDefault cs of
+        (_:c:_) -> fail $ "duplicate default clause in switch statement at " ++
+                          (show $ getAnnotation c)
+        _ -> return ()                  
     in do pos <- getPosition
           reserved "switch"
           test <- parseParenExpr
           clauses <- braces $ many $ parseDefault <|> parseCase
+          checkClauses clauses
           return (SwitchStmt pos test clauses)
 
 parseWhileStmt:: StatementParser
