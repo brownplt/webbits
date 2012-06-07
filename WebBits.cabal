@@ -1,6 +1,6 @@
 Name:           WebBits
-Version:        2.2
-Cabal-Version:	>= 1.6
+Version:        2.3
+Cabal-Version:	>= 1.10
 Copyright:      Copyright (c) 2007-2011 Brown University, Claudiu Saftoiu,  Arjun Guha, Spiridon Eliopoulos, Copyright (c) 2012 Arjun Guha and Andrey Chudnov
 License:        BSD3
 License-file:   LICENSE
@@ -13,7 +13,7 @@ Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
 Build-Type:     Simple
 Synopsis:       JavaScript analysis tools
-Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.1: the syntax of the try-catch-finally statement has been changed in accordance to the ECMAScript specification -- now it only has at most one catch clause. The original test-suite needs updating to support the current test system: patches are welcome.
+Description:    WebBits is a collection of libraries for working with JavaScript, contains a parser, a pretty-printer and a lexical environment analyser. The original author of the package is the PLT group of Brown University (http:\/\/www.cs.brown.edu\/research\/plt\/). Changes since version 2.2: 1) the representation of ForInInit has been patched -- now it's in line with the spec and accepts a left-value instead of a "no-var" identifier; 2) an additional check while parsing TryStmt -- now it's inline with the spec; 3) an additional check while parsing LabeledStmt -- now it's inline with the spec; 4) added an analysis to infer the label sets of statements -- useful when building control-flow graphs; 5) parser now checks for duplicate @default@ clauses in switch statements.
 
 Source-repository head
    type: git
@@ -22,7 +22,34 @@ Source-repository head
 Source-repository this
    type: git
    location: git://github.com/brownplt/webbits.git
-   tag: WebBits-2.2
+   tag: WebBits-2.3
+
+Library
+  Hs-Source-Dirs:
+    src
+  Build-Depends:
+    base >= 4 && < 5,
+    mtl >= 1.1.0.1,
+    parsec < 3.2.0,
+    pretty >= 0.1,
+    containers >= 0.1,
+    syb >= 0.1,
+    uniplate >= 1.6 && <1.7,
+    data-default >= 0.4 && <0.5
+  ghc-options:
+    -fwarn-incomplete-patterns
+  Exposed-Modules:
+    BrownPLT.JavaScript 
+    BrownPLT.JavaScript.Lexer 
+    BrownPLT.JavaScript.Parser
+    BrownPLT.JavaScript.PrettyPrint
+    BrownPLT.JavaScript.Syntax
+    BrownPLT.JavaScript.Syntax.Annotations
+    BrownPLT.JavaScript.Environment
+    BrownPLT.JavaScript.LabelSets
+  Default-Extensions:
+    DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
+  Default-Language: Haskell2010
 
 Test-Suite unittest
   Hs-Source-Dirs: src
@@ -37,30 +64,9 @@ Test-Suite unittest
     syb >= 0.1,
     directory,
     filepath,
-    HUnit
-  Extensions:
-    DeriveDataTypeable
+    HUnit,
+    data-default >=0.4 && <0.5
+  Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
+  Default-Language: Haskell2010
   ghc-options:
     -fwarn-incomplete-patterns
- 
-Library
-  Hs-Source-Dirs:
-    src
-  Build-Depends:
-    base >= 4 && < 5,
-    mtl >= 1.1.0.1,
-    parsec < 3.2.0,
-    pretty >= 0.1,
-    containers >= 0.1,
-    syb >= 0.1
-  ghc-options:
-    -fwarn-incomplete-patterns
-  Extensions:     
-    DeriveDataTypeable
-  Exposed-Modules:
-    BrownPLT.JavaScript 
-    BrownPLT.JavaScript.Lexer 
-    BrownPLT.JavaScript.Parser
-    BrownPLT.JavaScript.PrettyPrint
-    BrownPLT.JavaScript.Syntax 
-    BrownPLT.JavaScript.Environment

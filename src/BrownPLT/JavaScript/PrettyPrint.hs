@@ -47,7 +47,7 @@ forInit t = case t of
 forInInit :: ForInInit a -> Doc  
 forInInit t = case t of
   ForInVar id   -> text "var" <+> pp id
-  ForInNoVar id -> pp id
+  ForInLVal lv -> lvalue lv
 
 
 caseClause :: CaseClause a -> Doc
