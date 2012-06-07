@@ -2,7 +2,6 @@
 module BrownPLT.JavaScript
   ( module BrownPLT.JavaScript.Syntax
   , module BrownPLT.JavaScript.Parser
-  -- JavaScript.Instances exports nothing
   , renderStatements
   , renderExpression
   ) where

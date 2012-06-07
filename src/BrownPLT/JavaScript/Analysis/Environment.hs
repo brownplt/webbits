@@ -1,4 +1,4 @@
-module BrownPLT.JavaScript.Environment
+module BrownPLT.JavaScript.Analysis.Environment
   ( env
   , localVars
   , EnvTree (..)

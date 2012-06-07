@@ -45,8 +45,8 @@ Library
     BrownPLT.JavaScript.PrettyPrint
     BrownPLT.JavaScript.Syntax
     BrownPLT.JavaScript.Syntax.Annotations
-    BrownPLT.JavaScript.Environment
-    BrownPLT.JavaScript.LabelSets
+    BrownPLT.JavaScript.Analysis.Environment
+    BrownPLT.JavaScript.Analysis.LabelSets
   Default-Extensions:
     DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010

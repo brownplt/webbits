@@ -3,8 +3,8 @@
 -- section 12.12. The result of this analysis are useful for building
 -- control-flow graphs.
 
-module BrownPLT.JavaScript.LabelSets (annotateLabelSets 
-                                     ,Label(..)) where
+module BrownPLT.JavaScript.Analysis.LabelSets (annotateLabelSets 
+                                              ,Label(..)) where
 
 import BrownPLT.JavaScript.Syntax
 import BrownPLT.JavaScript.Syntax.Annotations
