@@ -1,5 +1,5 @@
--- |JavaScript's syntax.
-module BrownPLT.JavaScript.Syntax(Expression(..),CaseClause(..),Statement(..),
+-- |ECMAScript 3 syntax.
+module Language.ECMAScript3.Syntax(Expression(..),CaseClause(..),Statement(..),
          InfixOp(..),CatchClause(..),VarDecl(..),JavaScript(..),
          AssignOp(..),Id(..),PrefixOp(..),Prop(..),
          ForInit(..),ForInInit(..),unId

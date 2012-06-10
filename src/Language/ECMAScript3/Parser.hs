@@ -1,4 +1,4 @@
-module BrownPLT.JavaScript.Parser
+module Language.ECMAScript3.Parser
   (parseScript
   , parseExpression
   , parseString
@@ -16,10 +16,10 @@ module BrownPLT.JavaScript.Parser
   , parse
   ) where
 
-import BrownPLT.JavaScript.Lexer hiding (identifier)
-import qualified BrownPLT.JavaScript.Lexer as Lexer
-import BrownPLT.JavaScript.Syntax
-import BrownPLT.JavaScript.Syntax.Annotations
+import Language.ECMAScript3.Lexer hiding (identifier)
+import qualified Language.ECMAScript3.Lexer as Lexer
+import Language.ECMAScript3.Syntax
+import Language.ECMAScript3.Syntax.Annotations
 import Data.Default
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr

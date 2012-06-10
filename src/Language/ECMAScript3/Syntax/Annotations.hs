@@ -1,8 +1,7 @@
 -- | A few helpers to work with the AST annotations
+module Language.ECMAScript3.Syntax.Annotations where
 
-module BrownPLT.JavaScript.Syntax.Annotations where
-
-import BrownPLT.JavaScript.Syntax
+import Language.ECMAScript3.Syntax
 import Data.Traversable
 import Control.Applicative
 import Control.Arrow

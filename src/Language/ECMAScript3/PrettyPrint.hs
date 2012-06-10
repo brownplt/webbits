@@ -1,5 +1,5 @@
 -- |Pretty-printing JavaScript.
-module BrownPLT.JavaScript.PrettyPrint
+module Language.ECMAScript3.PrettyPrint
   ( stmt
   , expr
   , javaScript
@@ -8,7 +8,7 @@ module BrownPLT.JavaScript.PrettyPrint
   ) where
 
 import Text.PrettyPrint.HughesPJ
-import BrownPLT.JavaScript.Syntax
+import Language.ECMAScript3.Syntax
 
 
 renderStatements :: [Statement a] -> String

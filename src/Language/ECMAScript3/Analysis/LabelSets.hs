@@ -3,11 +3,11 @@
 -- section 12.12. The result of this analysis are useful for building
 -- control-flow graphs.
 
-module BrownPLT.JavaScript.Analysis.LabelSets (annotateLabelSets 
+module Language.ECMAScript3.Analysis.LabelSets (annotateLabelSets 
                                               ,Label(..)) where
 
-import BrownPLT.JavaScript.Syntax
-import BrownPLT.JavaScript.Syntax.Annotations
+import Language.ECMAScript3.Syntax
+import Language.ECMAScript3.Syntax.Annotations
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Generics.Uniplate.Data

@@ -39,14 +39,14 @@ Library
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
-    BrownPLT.JavaScript 
-    BrownPLT.JavaScript.Lexer 
-    BrownPLT.JavaScript.Parser
-    BrownPLT.JavaScript.PrettyPrint
-    BrownPLT.JavaScript.Syntax
-    BrownPLT.JavaScript.Syntax.Annotations
-    BrownPLT.JavaScript.Analysis.Environment
-    BrownPLT.JavaScript.Analysis.LabelSets
+    Language.ECMAScript3 
+    Language.ECMAScript3.Lexer 
+    Language.ECMAScript3.Parser
+    Language.ECMAScript3.PrettyPrint
+    Language.ECMAScript3.Syntax
+    Language.ECMAScript3.Syntax.Annotations
+    Language.ECMAScript3.Analysis.Environment
+    Language.ECMAScript3.Analysis.LabelSets
   Default-Extensions:
     DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010

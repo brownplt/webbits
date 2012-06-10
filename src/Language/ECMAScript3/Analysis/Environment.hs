@@ -1,4 +1,4 @@
-module BrownPLT.JavaScript.Analysis.Environment
+module Language.ECMAScript3.Analysis.Environment
   ( env
   , localVars
   , EnvTree (..)
@@ -12,7 +12,7 @@ import qualified Data.Set as S
 import Data.Set (Set)
 import Text.ParserCombinators.Parsec.Pos (SourcePos)
 
-import BrownPLT.JavaScript.Syntax
+import Language.ECMAScript3.Syntax
 
 -- Intermediate data structure that contains locally declared names and
 -- all references to identifers.
