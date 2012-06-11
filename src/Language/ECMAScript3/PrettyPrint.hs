@@ -12,30 +12,28 @@ import Language.ECMAScript3.Syntax
 
 
 renderStatements :: [Statement a] -> String
-renderStatements ss = render (semiSep ss)
+renderStatements = render . stmtList
 
 
 renderExpression :: Expression a -> String
-renderExpression e = render (expr e)
+renderExpression = render . expr
 
 
--- Displays the statement in { ... }, unless it already is in a block.
+-- Displays the statement in { ... }, unless it is a block itself.
 inBlock:: (Statement a) -> Doc
-inBlock s@(BlockStmt _ ss) = stmt s
+inBlock s@(BlockStmt _ _) = stmt s
 inBlock s                 = lbrace $+$ nest 2 (stmt s) $+$ rbrace
 
 
--- Displays the expression in ( ... ), unless it already is in parens.
+-- Displays the expression in ( ... ), unless it is a parenthesized expression
 inParens:: (Expression a) -> Doc
 inParens e@(ParenExpr _ _) = expr e
 inParens e                 = parens (expr e)
 
-semiSep :: [Statement a] -> Doc
-semiSep ss = vcat $ map (\s -> stmt s <> semi) ss
-
+-- semiSep :: [Statement a] -> Doc
+-- semiSep ss = vcat $ map (\s -> stmt s <> semi) ss
 
 pp (Id _ str) = text str
-
 
 forInit :: ForInit a -> Doc
 forInit t = case t of
@@ -52,15 +50,9 @@ forInInit t = case t of
 
 caseClause :: CaseClause a -> Doc
 caseClause (CaseClause _ e ss) =
-  text "case" $+$ expr e <+> colon $$ (nest 2 (semiSep ss))
+  text "case" $+$ expr e <+> colon $$ (nest 2 (stmtList ss))
 caseClause (CaseDefault _ ss) =
-  text "default:" $$ (nest 2 (semiSep ss))
-
-
-catchClause :: Maybe (CatchClause a) -> Doc
-catchClause Nothing = empty
-catchClause (Just (CatchClause _ id s)) = 
-  text "catch" <+> (parens.pp) id <+> inBlock s
+  text "default:" $$ (nest 2 (stmtList ss))
 
 
 varDecl :: VarDecl a -> Doc
@@ -70,9 +62,9 @@ varDecl (VarDecl _ id (Just e)) = pp id <+> equals <+> expr e
 
 stmt :: Statement a -> Doc
 stmt s = case s of
-  BlockStmt _ ss -> lbrace $+$ (nest 2 (semiSep ss)) $$ rbrace
+  BlockStmt _ ss -> lbrace $+$ (nest 2 (stmtList ss)) $$ rbrace
   EmptyStmt _ -> semi
-  ExprStmt _ e -> expr e
+  ExprStmt _ e -> expr e <> semi
   IfSingleStmt _ test cons -> text "if" <+> inParens test $$ stmt cons
   IfStmt _ test cons alt ->
     text "if" <+> inParens test $$ stmt cons $$ text "else" <+> stmt alt
@@ -82,11 +74,12 @@ stmt s = case s of
   WhileStmt _ test body -> text "while" <+> inParens test $$ (stmt body)
   ReturnStmt _ Nothing -> text "return"
   ReturnStmt _ (Just e) -> text "return" <+> expr e
-  DoWhileStmt _ s e -> text "do" $$ (stmt s <+> text "while" <+> inParens e)
-  BreakStmt _ Nothing ->  text "break"
-  BreakStmt _ (Just label) -> text "break" <+> pp label
-  ContinueStmt _ Nothing -> text "continue"
-  ContinueStmt _ (Just label) -> text"continue" <+> pp label
+  DoWhileStmt _ s e -> 
+    text "do" $$ (stmt s <+> text "while" <+> inParens e <> semi)
+  BreakStmt _ Nothing ->  text "break" <> semi
+  BreakStmt _ (Just label) -> text "break" <+> pp label <> semi
+  ContinueStmt _ Nothing -> text "continue" <> semi
+  ContinueStmt _ (Just label) -> text"continue" <+> pp label <> semi
   LabelledStmt _ label s -> pp label <> colon $$ stmt s
   ForInStmt p init e body -> 
     text "for" <+> 
@@ -96,20 +89,25 @@ stmt s = case s of
     parens (forInit init <> semi <+> mexpr incr <> semi <+> mexpr test) $$ 
     stmt body
   TryStmt _ stmt catch finally ->
-    text "try" $$ inBlock stmt $$ catchClause catch $$
-    ppFinally where 
-       ppFinally = case finally of
-        Nothing -> empty
-        Just stmt -> text "finally" <> inBlock stmt
-  ThrowStmt _ e -> text "throw" <+> expr e
+    text "try" $$ inBlock stmt $$ ppCatch $$ ppFinally 
+    where ppFinally = case finally of
+            Nothing -> empty
+            Just stmt -> text "finally" <> inBlock stmt
+          ppCatch = case catch of
+            Nothing -> empty
+            Just (CatchClause _ id s) -> 
+              text "catch" <+> (parens.pp) id <+> inBlock s
+  ThrowStmt _ e -> text "throw" <+> expr e <> semi
   WithStmt _ expr s ->  text "with" <+> inParens expr $$ stmt s
   VarDeclStmt _ decls ->
-    text "var" <+> (cat $ punctuate comma (map varDecl decls))
+    text "var" <+> (cat $ punctuate comma (map varDecl decls)) <> semi
   FunctionStmt _ name args s ->
     text "function" <+> pp name <> 
     (parens $ cat $ punctuate comma (map pp args)) $$ 
     inBlock s
 
+stmtList :: [Statement a] -> Doc
+stmtList = vcat . (map stmt)
 
 prop :: Prop a -> Doc
 prop p = case p of
@@ -241,4 +239,4 @@ mexpr Nothing = empty
 mexpr (Just e) = expr e
 
 javaScript :: JavaScript a -> Doc
-javaScript (Script _ ss) = semiSep ss
+javaScript (Script _ ss) = stmtList ss
