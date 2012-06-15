@@ -30,9 +30,9 @@ annotateLabelSets :: Data a =>
                   -> (Set Label -> a -> a) -- ^ annotation write function
                   -> JavaScript a  -- ^ the script to annotate
                   -> JavaScript a
-annotateLabelSets r w = (transformBi $ annotateFuncStmtBodies r w)
-                      . (transformBi $ annotateFuncExprBodies r w)
-                      . (descendBi   $ annotateStatement r w)
+annotateLabelSets r w = transformBi (annotateFuncStmtBodies r w)
+                      . transformBi (annotateFuncExprBodies r w)
+                      . descendBi   (annotateStatement r w)
 
 annotateFuncStmtBodies :: Data a => 
                           (a -> Set Label)
@@ -73,14 +73,14 @@ annotateStatement :: Data a =>
 annotateStatement r w s = case s of
   LabelledStmt ann lab stmt -> 
     let labelset = Set.insert (id2Label lab) (r ann) 
-        newstmt  = (annotateStatement r w) $ (w labelset) <$> stmt
+        newstmt  = annotateStatement r w $ w labelset <$> stmt
     in  LabelledStmt ann lab newstmt
-  SwitchStmt _ _ _ -> 
+  SwitchStmt {} -> 
     let labelset = Set.insert EmptyLabel (r $ getAnnotation s)
-    in  descend (annotateStatement r w) ((w labelset) <$> s)
+    in  descend (annotateStatement r w) (w labelset <$> s)
   _ | isIterationStmt s ->
     let labelset = Set.insert EmptyLabel (r $ getAnnotation s)
-    in  descend (annotateStatement r w) ((w labelset) <$> s)
+    in  descend (annotateStatement r w) (w labelset <$> s)
   _                     -> descend (annotateStatement r w) s
 
 id2Label :: Id a -> Label

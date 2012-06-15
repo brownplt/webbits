@@ -1,6 +1,7 @@
-{- This isn't a lexer in the sense that it provides a JavaScript token-stream.
- - This module provides character-parsers for various JavaScript tokens.
- -}
+-- | This isn't a lexer in the sense that it provides a JavaScript
+-- token-stream. This module provides character-parsers for various
+-- JavaScript tokens.
+
 module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp,charLiteral,
                         stringLiteral,natural,integer,float,naturalOrFloat,
                         decimal,hexadecimal,octal,symbol,whiteSpace,parens,
@@ -11,7 +12,7 @@ import Prelude hiding (lex)
 import Text.Parsec
 import qualified Text.Parsec.Token as T
 
-identifierStart = (letter <|> oneOf "$_")
+identifierStart = letter <|> oneOf "$_"
 
 javascriptDef =
   T.LanguageDef "/*"

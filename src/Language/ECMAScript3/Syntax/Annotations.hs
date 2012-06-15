@@ -8,28 +8,31 @@ import Control.Arrow
 import Control.Monad.State hiding (mapM)
 import Prelude hiding (mapM)
 
--- | removes annotations
+-- | Removes annotations from a tree
 removeAnnotations :: Traversable t => t a -> t ()
-removeAnnotations t = reannotate (const ()) t
+removeAnnotations = reannotate (const ())
 
--- | changes in a tree to another label (constant)
+-- | Changes all the labels in the tree to another one, given by a
+-- function.
 reannotate :: Traversable t => (a -> b) -> t a -> t b
-reannotate f tree = (traverse (\a -> pure (f a)) tree) ()
+reannotate f tree = traverse (pure . f) tree ()
 
 -- | add an extra field to the AST labels (the label would look like @
 -- (a, b) @)
 addExtraAnnotationField :: Traversable t => b -> t a -> t (a, b)
-addExtraAnnotationField def t = (traverse (\z -> pure (z, def)) t) ()
+addExtraAnnotationField def t = traverse (\z -> pure (z, def)) t ()
 
 -- | remove an extra field
 removeExtraAnnotationField :: Traversable t => t (a, b) -> t a
-removeExtraAnnotationField t = (traverse (\(a, b) -> pure a) t) ()
+removeExtraAnnotationField t = traverse (pure . fst) t ()
 
 
--- | Assigns unique numeric (Int) ids to each node in the AST. 
+-- | Assigns unique numeric (Int) ids to each node in the AST. Returns
+-- a pair: the tree annotated with UID's and the last ID that was
+-- assigned.
 assignUniqueIds :: Traversable t => Int -- ^ starting id
                                  -> t a -- ^ tree root
-                                 -> (t (a, Int), Int) -- ^ (tree_w_ids, last_label)
+                                 -> (t (a, Int), Int) 
 assignUniqueIds first tree =
   (returnA *** \i -> i-1) $ runState (mapM f tree) first
   where f :: a -> State Int (a, Int)
@@ -38,9 +41,9 @@ assignUniqueIds first tree =
                  return (a, i)
 
 class HasAnnotation a where
+  -- | Returns the annotation of the root of the tree
   getAnnotation :: a b -> b
 
--- | returns the annotation of an expression 
 instance HasAnnotation Expression where
   getAnnotation e = case e of
    (StringLit a s)              -> a

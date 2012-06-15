@@ -1,3 +1,5 @@
+-- | A lexical environment analysis of ECMAScript programs
+
 module Language.ECMAScript3.Analysis.Environment
   ( env
   , localVars
@@ -14,7 +16,7 @@ import Text.ParserCombinators.Parsec.Pos (SourcePos)
 
 import Language.ECMAScript3.Syntax
 
--- Intermediate data structure that contains locally declared names and
+-- | Intermediate data structure that contains locally declared names and
 -- all references to identifers.
 data Partial = Partial {
   partialLocals :: M.Map String SourcePos,
@@ -53,7 +55,7 @@ lvalue lv = case lv of
 expr :: Expression SourcePos -> Partial
 expr e = case e of
   StringLit _ _ -> empty
-  RegexpLit _ _ _ _ -> empty
+  RegexpLit {} -> empty
   NumLit _ _ -> empty
   IntLit _ _ -> empty
   BoolLit _ _ -> empty
@@ -114,8 +116,8 @@ stmt s = case s of
   ForInStmt _ fii e s -> unions [forInInit fii, expr e, stmt s]
   ForStmt _ fi  me1 me2 s -> 
     unions [forInit fi, maybe empty expr me1, maybe empty expr me2, stmt s]
-  TryStmt _ s catch ms ->
-    unions [stmt s, maybe empty catchClause catch, maybe empty stmt ms]
+  TryStmt _ s mcatch ms ->
+    unions [stmt s, maybe empty catchClause mcatch, maybe empty stmt ms]
   ThrowStmt _ e -> expr e
   ReturnStmt _ me -> maybe empty expr me
   WithStmt _ e s -> unions [expr e, stmt s]
@@ -139,7 +141,7 @@ makeEnvTree enclosing (Partial locals references nested) = (tree,globals) where
   nestedResults = map (makeEnvTree (locals `M.union` enclosing)) nested
   tree = EnvTree locals (map fst nestedResults)
   globals' = (references `M.difference` locals) `M.difference` enclosing
-  globals = M.unions (globals':(map snd nestedResults))
+  globals = M.unions (globals':map snd nestedResults)
 
 env :: Map String SourcePos -- ^browser/testing environment
     -> [Statement SourcePos] 

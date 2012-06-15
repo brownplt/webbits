@@ -1,3 +1,5 @@
+-- | Parser for ECMAScript 3.
+
 module Language.ECMAScript3.Parser
   (parse
   , parseScriptFromString
