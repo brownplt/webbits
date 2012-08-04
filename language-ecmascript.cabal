@@ -24,12 +24,12 @@ Description:
 
 Source-repository head
    type: git
-   location: git://github.com/brownplt/webbits.git
+   location: git://github.com/jswebtools/language-ecmascript.git
 
 Source-repository this
    type: git
-   location: git://github.com/brownplt/webbits.git
-   tag: WebBits-2.3
+   location: git://github.com/jswebtools/language-ecmascript.git
+   tag: 0.9
 
 Library
   Hs-Source-Dirs:
