@@ -8,8 +8,8 @@ License-file:   LICENSE
 Author:         Andrey Chudnov, Arjun Guha, Spiridon Aristides Eliopoulos,
                 Joe Gibbs Politz, Claudiu Saftoiu
 Maintainer:     Andrey Chudnov <oss@chudnov.com>
-Homepage:       http://github.com/brownplt/webbits
-Bug-reports:    http://github.com/brownplt/webbits/issues
+Homepage:       http://github.com/jswebtools/language-ecmascript
+Bug-reports:    http://github.com/jswebtools/language-ecmascript/issues
 Stability:      provisional
 Tested-with:    GHC==7.0.4, GHC==7.4.1
 Category:       Language
