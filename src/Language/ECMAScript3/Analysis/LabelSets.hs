@@ -3,11 +3,11 @@
 -- section 12.12. The result of this analysis are useful for building
 -- control-flow graphs.
 
-module BrownPLT.JavaScript.LabelSets (annotateLabelSets 
-                                     ,Label(..)) where
+module Language.ECMAScript3.Analysis.LabelSets (annotateLabelSets 
+                                               ,Label(..)) where
 
-import BrownPLT.JavaScript.Syntax
-import BrownPLT.JavaScript.Syntax.Annotations
+import Language.ECMAScript3.Syntax
+import Language.ECMAScript3.Syntax.Annotations
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Generics.Uniplate.Data
@@ -15,13 +15,14 @@ import Data.Data (Data)
 import Control.Applicative
 import Data.Typeable (Typeable)
 
--- | Labels are either strings (identifiers) or "empty" (see 12.12 of
+-- | Labels are either strings (identifiers) or /empty/ (see 12.12 of
 -- the spec)
 data Label = Label String
            | EmptyLabel
              deriving (Ord, Eq, Show, Data, Typeable)
 
 -- | Annotates statements with their label sets; example use:
+--
 -- >>> let jsa = reannotate (\a -> (a, Set.empty))
 -- >>> in  annotateLabelSets jsa snd (\labs (a, ls) -> (a, labs `Set.union` ls))
 annotateLabelSets :: Data a =>
@@ -29,9 +30,9 @@ annotateLabelSets :: Data a =>
                   -> (Set Label -> a -> a) -- ^ annotation write function
                   -> JavaScript a  -- ^ the script to annotate
                   -> JavaScript a
-annotateLabelSets r w = (transformBi $ annotateFuncStmtBodies r w)
-                      . (transformBi $ annotateFuncExprBodies r w)
-                      . (descendBi   $ annotateStatement r w)
+annotateLabelSets r w = transformBi (annotateFuncStmtBodies r w)
+                      . transformBi (annotateFuncExprBodies r w)
+                      . descendBi   (annotateStatement r w)
 
 annotateFuncStmtBodies :: Data a => 
                           (a -> Set Label)
@@ -72,14 +73,14 @@ annotateStatement :: Data a =>
 annotateStatement r w s = case s of
   LabelledStmt ann lab stmt -> 
     let labelset = Set.insert (id2Label lab) (r ann) 
-        newstmt  = (annotateStatement r w) $ (w labelset) <$> stmt
+        newstmt  = annotateStatement r w $ w labelset <$> stmt
     in  LabelledStmt ann lab newstmt
-  SwitchStmt _ _ _ -> 
+  SwitchStmt {} -> 
     let labelset = Set.insert EmptyLabel (r $ getAnnotation s)
-    in  descend (annotateStatement r w) ((w labelset) <$> s)
+    in  descend (annotateStatement r w) (w labelset <$> s)
   _ | isIterationStmt s ->
     let labelset = Set.insert EmptyLabel (r $ getAnnotation s)
-    in  descend (annotateStatement r w) ((w labelset) <$> s)
+    in  descend (annotateStatement r w) (w labelset <$> s)
   _                     -> descend (annotateStatement r w) s
 
 id2Label :: Id a -> Label

@@ -4,9 +4,9 @@ import Test.HUnit
 import System.Exit
 import System.Directory
 import qualified System.FilePath as FilePath
-import BrownPLT.JavaScript.Parser
-import BrownPLT.JavaScript.PrettyPrint
-import BrownPLT.JavaScript.Syntax
+import Language.ECMAScript3.Parser
+import Language.ECMAScript3.PrettyPrint
+import Language.ECMAScript3.Syntax
 
 testDir = "tests/parse-pretty"
 
