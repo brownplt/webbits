@@ -1,92 +1,77 @@
 -- |Pretty-printing JavaScript.
-module BrownPLT.JavaScript.PrettyPrint
-  ( stmt
-  , expr
-  , javaScript
+module Language.ECMAScript3.PrettyPrint
+  ( 
+--    stmt
+--  , expr
+  javaScript
   , renderStatements
   , renderExpression
   ) where
 
 import Text.PrettyPrint.HughesPJ
-import BrownPLT.JavaScript.Syntax
+import Language.ECMAScript3.Syntax
 
-
+-- | Renders a list of statements as a 'String'
 renderStatements :: [Statement a] -> String
-renderStatements ss = render (semiSep ss)
+renderStatements = render . stmtList
 
-
+-- | Renders a list of statements as a 'String'
 renderExpression :: Expression a -> String
-renderExpression e = render (expr e)
+renderExpression = render . expr
 
-
--- Displays the statement in { ... }, unless it already is in a block.
-inBlock:: (Statement a) -> Doc
-inBlock s@(BlockStmt _ ss) = stmt s
+-- Displays the statement in { ... }, unless it is a block itself.
+inBlock:: Statement a -> Doc
+inBlock s@(BlockStmt _ _) = stmt s
 inBlock s                 = lbrace $+$ nest 2 (stmt s) $+$ rbrace
 
-
--- Displays the expression in ( ... ), unless it already is in parens.
-inParens:: (Expression a) -> Doc
+-- Displays the expression in ( ... ), unless it is a parenthesized expression
+inParens:: Expression a -> Doc
 inParens e@(ParenExpr _ _) = expr e
 inParens e                 = parens (expr e)
 
-semiSep :: [Statement a] -> Doc
-semiSep ss = vcat $ map (\s -> stmt s <> semi) ss
-
-
 pp (Id _ str) = text str
-
 
 forInit :: ForInit a -> Doc
 forInit t = case t of
   NoInit     -> empty
-  VarInit vs -> text "var" <+> (cat $ punctuate comma $ (map varDecl vs))
+  VarInit vs -> text "var" <+> cat (punctuate comma $ map varDecl vs)
   ExprInit e -> expr e
-  
 
 forInInit :: ForInInit a -> Doc  
 forInInit t = case t of
   ForInVar id   -> text "var" <+> pp id
   ForInLVal lv -> lvalue lv
 
-
 caseClause :: CaseClause a -> Doc
 caseClause (CaseClause _ e ss) =
-  text "case" $+$ expr e <+> colon $$ (nest 2 (semiSep ss))
+  text "case" $+$ expr e <+> colon $$ nest 2 (stmtList ss)
 caseClause (CaseDefault _ ss) =
-  text "default:" $$ (nest 2 (semiSep ss))
-
-
-catchClause :: Maybe (CatchClause a) -> Doc
-catchClause Nothing = empty
-catchClause (Just (CatchClause _ id s)) = 
-  text "catch" <+> (parens.pp) id <+> inBlock s
-
+  text "default:" $$ nest 2 (stmtList ss)
 
 varDecl :: VarDecl a -> Doc
 varDecl (VarDecl _ id Nothing) = pp id
 varDecl (VarDecl _ id (Just e)) = pp id <+> equals <+> expr e
 
-
 stmt :: Statement a -> Doc
 stmt s = case s of
-  BlockStmt _ ss -> lbrace $+$ (nest 2 (semiSep ss)) $$ rbrace
+  BlockStmt _ ss -> lbrace $+$ nest 2 (stmtList ss) $$ rbrace
   EmptyStmt _ -> semi
-  ExprStmt _ e -> expr e
+  ExprStmt _ e -> expr e <> semi
   IfSingleStmt _ test cons -> text "if" <+> inParens test $$ stmt cons
   IfStmt _ test cons alt ->
     text "if" <+> inParens test $$ stmt cons $$ text "else" <+> stmt alt
   SwitchStmt _ e cases ->
     text "switch" <+> inParens e $$ 
     braces (nest 2 (vcat (map caseClause cases)))
-  WhileStmt _ test body -> text "while" <+> inParens test $$ (stmt body)
+  WhileStmt _ test body -> text "while" <+> inParens test $$ stmt body
   ReturnStmt _ Nothing -> text "return"
   ReturnStmt _ (Just e) -> text "return" <+> expr e
-  DoWhileStmt _ s e -> text "do" $$ (stmt s <+> text "while" <+> inParens e)
-  BreakStmt _ Nothing ->  text "break"
-  BreakStmt _ (Just label) -> text "break" <+> pp label
-  ContinueStmt _ Nothing -> text "continue"
-  ContinueStmt _ (Just label) -> text"continue" <+> pp label
+  DoWhileStmt _ s e -> 
+    text "do" $$ (stmt s <+> text "while" <+> inParens e <> semi)
+  BreakStmt _ Nothing ->  text "break" <> semi
+  BreakStmt _ (Just label) -> text "break" <+> pp label <> semi
+  ContinueStmt _ Nothing -> text "continue" <> semi
+  ContinueStmt _ (Just label) -> text"continue" <+> pp label <> semi
   LabelledStmt _ label s -> pp label <> colon $$ stmt s
   ForInStmt p init e body -> 
     text "for" <+> 
@@ -95,28 +80,32 @@ stmt s = case s of
     text "for" <+> 
     parens (forInit init <> semi <+> mexpr incr <> semi <+> mexpr test) $$ 
     stmt body
-  TryStmt _ stmt catch finally ->
-    text "try" $$ inBlock stmt $$ catchClause catch $$
-    ppFinally where 
-       ppFinally = case finally of
-        Nothing -> empty
-        Just stmt -> text "finally" <> inBlock stmt
-  ThrowStmt _ e -> text "throw" <+> expr e
+  TryStmt _ stmt mcatch mfinally ->
+    text "try" $$ inBlock stmt $$ ppCatch $$ ppFinally 
+    where ppFinally = case mfinally of
+            Nothing -> empty
+            Just stmt -> text "finally" <> inBlock stmt
+          ppCatch = case mcatch of
+            Nothing -> empty
+            Just (CatchClause _ id s) -> 
+              text "catch" <+> (parens.pp) id <+> inBlock s
+  ThrowStmt _ e -> text "throw" <+> expr e <> semi
   WithStmt _ expr s ->  text "with" <+> inParens expr $$ stmt s
   VarDeclStmt _ decls ->
-    text "var" <+> (cat $ punctuate comma (map varDecl decls))
+    text "var" <+> cat (punctuate comma (map varDecl decls)) <> semi
   FunctionStmt _ name args s ->
     text "function" <+> pp name <> 
-    (parens $ cat $ punctuate comma (map pp args)) $$ 
+    parens (cat $ punctuate comma (map pp args)) $$ 
     inBlock s
 
+stmtList :: [Statement a] -> Doc
+stmtList = vcat . map stmt
 
 prop :: Prop a -> Doc
 prop p = case p of
   PropId _ id -> pp id
   PropString _ str -> doubleQuotes (text (jsEscape str))
   PropNum _ n -> text (show n)
-
 
 infixOp op = text $ case op of
   OpMul -> "*"
@@ -168,12 +157,11 @@ assignOp op = text $ case op of
   OpAssignBXor -> "^="
   OpAssignBOr -> "|="
 
-
 -- Based on:
 --   http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Guide:Literals
 jsEscape:: String -> String
 jsEscape "" = ""
-jsEscape (ch:chs) = (sel ch) ++ jsEscape chs where
+jsEscape (ch:chs) = sel ch ++ jsEscape chs where
     sel '\b' = "\\b"
     sel '\f' = "\\f"
     sel '\n' = "\\n"
@@ -186,12 +174,10 @@ jsEscape (ch:chs) = (sel ch) ++ jsEscape chs where
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
 
-
 lvalue :: LValue a -> Doc
 lvalue (LVar _ x) = text x
 lvalue (LDot _ e x) = expr e <> text "." <> text x
 lvalue (LBracket _ e1 e2) = expr e1 <> brackets (expr e2)
-
  
 expr :: Expression a -> Doc
 expr e = case e of 
@@ -215,7 +201,7 @@ expr e = case e of
   BracketRef _ container key -> expr container <> brackets (expr key)
   NewExpr _ constr args -> 
     text "new" <+> expr constr <> 
-    (parens $ cat $ punctuate comma (map expr args))
+    parens (cat $ punctuate comma (map expr args))
   PrefixExpr _ op e' -> prefixOp op <+> expr e'
   InfixExpr _ op left right -> expr left <+> infixOp op <+> expr right
   CondExpr _ test cons alt -> 
@@ -229,16 +215,17 @@ expr e = case e of
   ParenExpr _ e' ->  parens (expr e')
   ListExpr _ es ->  cat $ punctuate comma (map expr es)
   CallExpr _ f args -> 
-    expr f <> (parens $ cat $ punctuate comma (map expr args))
+    expr f <> parens (cat $ punctuate comma (map expr args))
   FuncExpr _ name args body -> 
     text "function" <+> text (maybe "" unId name) <+>
-    (parens $ cat $ punctuate comma (map pp args)) $$ 
+    parens (cat $ punctuate comma (map pp args)) $$ 
     inBlock body
-
 
 mexpr :: Maybe (Expression a) -> Doc
 mexpr Nothing = empty
 mexpr (Just e) = expr e
 
+-- | Renders a JavaScript program as a document, the show instance of
+-- 'Doc' will pretty-print it automatically
 javaScript :: JavaScript a -> Doc
-javaScript (Script _ ss) = semiSep ss
+javaScript (Script _ ss) = stmtList ss
