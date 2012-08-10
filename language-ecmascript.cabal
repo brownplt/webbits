@@ -20,7 +20,7 @@ Description:
   Includes a parser, pretty-printer, and basic building blocks for more
   sophisticated tools.
 
-  This package used to be called WebBits.
+  This package supercedes package WebBits.
 
 Source-repository head
    type: git
@@ -42,7 +42,8 @@ Library
     containers >= 0.1,
     syb >= 0.1,
     uniplate >= 1.6 && <1.7,
-    data-default >= 0.4 && <0.5
+    data-default >= 0.4 && <0.5,
+    charset >= 0.3.2.1
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
@@ -54,6 +55,11 @@ Library
     Language.ECMAScript3.Syntax.Annotations
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
+    Language.ECMAScript5
+    Language.ECMAScript5.Parser
+    Language.ECMAScript5.PrettyPrint
+    Language.ECMAScript5.Syntax
+    Language.ECMAScript5.Syntax.Annotations
   Default-Extensions:
     DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
@@ -72,7 +78,8 @@ Test-Suite unittest
     directory,
     filepath,
     HUnit,
-    data-default >=0.4 && <0.5
+    data-default >=0.4 && <0.5,
+    charset >= 0.3.2.1
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
