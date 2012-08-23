@@ -51,6 +51,8 @@ ppStatement :: Statement a -> Doc
 ppStatement s = case s of
   BlockStmt _ ss -> lbrace $+$ nest 2 (stmtList ss) $$ rbrace
   EmptyStmt _ -> semi
+  ExprStmt _ e@(CallExpr _ (FuncExpr {}) _ ) -> 
+    parens (ppExpression True e) <> semi
   ExprStmt _ e -> ppExpression True e <> semi
   IfSingleStmt _ test cons -> text "if" <+> 
                               parens (ppExpression True test) $$ 
