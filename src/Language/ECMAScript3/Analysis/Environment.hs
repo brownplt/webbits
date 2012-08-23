@@ -72,7 +72,6 @@ expr e = case e of
   CondExpr _ e1 e2 e3 -> unions [expr e1, expr e2, expr e3]
   AssignExpr _ _ lv e -> unions [lvalue lv, expr e]
   UnaryAssignExpr _ _ lv -> lvalue lv
-  ParenExpr _ e -> expr e
   ListExpr _ es -> unions (map expr es)
   CallExpr _ e es -> unions [expr e, unions $ map expr es]
   FuncExpr _ _ args s -> nest $ unions [unions $ map decl args, stmt s]

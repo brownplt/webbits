@@ -1,4 +1,4 @@
--- | Parser for ECMAScript 3.
+ -- | Parser for ECMAScript 3.
 
 module Language.ECMAScript3.Parser
   (parse
@@ -528,7 +528,7 @@ bracketRef e = brackets (withPos cstr parseExpression) <?> "[property-ref]"
 -------------------------------------------------------------------------------
 
 parseParenExpr:: ExpressionParser
-parseParenExpr = withPos ParenExpr (parens parseListExpr)
+parseParenExpr = parens parseListExpr
 
 -- everything above expect functions
 parseExprForNew = parseThisRef <|> parseNullLit <|> parseBoolLit <|> parseStringLit 

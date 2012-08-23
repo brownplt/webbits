@@ -64,7 +64,6 @@ instance HasAnnotation Expression where
    (InfixExpr a op e1 e2)       -> a
    (CondExpr a g et ef)         -> a
    (AssignExpr a op lv e)       -> a
-   (ParenExpr a e)              -> a
    (ListExpr a es)              -> a
    (CallExpr a fn params)       -> a
    (FuncExpr a mid args s)      -> a

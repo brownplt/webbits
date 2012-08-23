@@ -147,7 +147,6 @@ data Expression a
     -- ^ @e1 ? e2 : e3@, spec 11.12
   | AssignExpr a AssignOp (LValue a) (Expression a)
     -- ^ @e1 \@=e2@, spec 11.13
-  | ParenExpr a (Expression a) -- ^ @(e)@, spec 11.1.6
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
   --funcexprs are optionally named
