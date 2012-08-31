@@ -21,7 +21,10 @@ renderExpression = render . (ppExpression True)
 -- Displays the statement in { ... }, unless it is a block itself.
 inBlock:: Statement a -> Doc
 inBlock s@(BlockStmt _ _) = ppStatement s
-inBlock s                 = lbrace $+$ nest 2 (ppStatement s) $+$ rbrace
+inBlock s                 = asBlock [s]
+
+asBlock :: [Statement a] -> Doc
+asBlock ss = lbrace $+$ nest 2 (stmtList ss) $$ rbrace
 
 ppId (Id _ str) = text str
 
@@ -49,7 +52,7 @@ ppVarDecl hasIn vd = case vd of
 
 ppStatement :: Statement a -> Doc
 ppStatement s = case s of
-  BlockStmt _ ss -> lbrace $+$ nest 2 (stmtList ss) $$ rbrace
+  BlockStmt _ ss -> asBlock ss
   EmptyStmt _ -> semi
   ExprStmt _ e@(CallExpr _ (FuncExpr {}) _ ) -> 
     parens (ppExpression True e) <> semi
@@ -96,10 +99,10 @@ ppStatement s = case s of
   WithStmt _ e s -> text "with" <+> parens (ppExpression True e) $$ ppStatement s
   VarDeclStmt _ decls ->
     text "var" <+> cat (punctuate comma (map (ppVarDecl True) decls)) <> semi
-  FunctionStmt _ name args s ->
+  FunctionStmt _ name args body ->
     text "function" <+> ppId name <> 
     parens (cat $ punctuate comma (map ppId args)) $$ 
-    inBlock s
+    asBlock body
 
 stmtList :: [Statement a] -> Doc
 stmtList = vcat . map ppStatement
@@ -194,6 +197,9 @@ ppPrimaryExpression e = case e of
   NumLit  _ n -> text (show n)
   IntLit _ n ->  text (show n)
   StringLit _ str -> doubleQuotes (text (jsEscape str))
+  RegexpLit _ reg g ci -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
+                          (if g then text "g" else empty) <> 
+                          (if ci then text "i" else empty)
   ArrayLit _ es -> 
     brackets $ cat $ punctuate comma (map (ppAssignmentExpression True) es)
   ObjectLit _ xs ->  
@@ -207,7 +213,7 @@ ppMemberExpression e = case e of
   FuncExpr _ name params body -> 
     text "function" <+> maybe name ppId <+>
     parens (cat $ punctuate comma (map ppId params)) $$ 
-    inBlock body
+    asBlock body
   DotRef _ obj id -> ppMemberExpression obj <> text "." <> ppId id
   BracketRef _ obj key -> 
     ppMemberExpression obj <> brackets (ppExpression True key)  

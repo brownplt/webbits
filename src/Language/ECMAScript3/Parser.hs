@@ -1,5 +1,5 @@
  -- | Parser for ECMAScript 3.
-
+{-# LANGUAGE FlexibleContexts #-}
 module Language.ECMAScript3.Parser
   (parse
   , parseScriptFromString
@@ -137,7 +137,7 @@ parseDoWhileStmt:: StatementParser
 parseDoWhileStmt = do
   pos <- getPosition
   reserved "do"
-  body <- parseBlockStmt
+  body <- parseStatement
   reserved "while" <?> "while at the end of a do block"
   test <- parseParenExpr <?> "parenthesized test-expression in do loop"
   optional semi
@@ -294,7 +294,8 @@ parseFunctionStmt = do
   name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
   args <- parens (identifier `sepBy` comma)
   -- label sets don't cross function boundaries
-  body <- withFreshLabelStack parseBlockStmt <?> "function body in { ... }"
+  BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
+                      "function body in { ... }"
   return (FunctionStmt pos name args body)
 
 parseStatement:: StatementParser
@@ -359,7 +360,7 @@ parseFuncExpr = do
   name <- optionMaybe identifier
   args <- parens (identifier `sepBy` comma)
   -- labels don't cross function boundaries
-  body <- withFreshLabelStack parseBlockStmt
+  BlockStmt _ body <- withFreshLabelStack parseBlockStmt
   return $ FuncExpr pos name args body
 
 --{{{ parsing strings
@@ -438,6 +439,7 @@ parseRegexpLit = do
                 liftM2 (:) anyChar parseRe
   pos <- getPosition
   char '/'
+  notFollowedBy $ char '/'
   pat <- parseRe --many1 parseChar
   flags <- parseFlags
   spaces -- crucial for Parsec.Token parsers
@@ -720,7 +722,10 @@ assignExpr = do
 parseExpression:: ExpressionParser
 parseExpression = assignExpr
 
-parseListExpr = liftM2 ListExpr getPosition (assignExpr `sepBy1` comma)
+parseListExpr = assignExpr `sepBy1` comma >>= \exprs ->
+  case exprs of
+    [expr] -> return expr
+    es     -> liftM2 ListExpr getPosition (return es)
 
 parseScript:: CharParser (JavaScript SourcePos)
 parseScript = do

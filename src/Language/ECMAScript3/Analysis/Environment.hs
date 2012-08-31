@@ -74,7 +74,8 @@ expr e = case e of
   UnaryAssignExpr _ _ lv -> lvalue lv
   ListExpr _ es -> unions (map expr es)
   CallExpr _ e es -> unions [expr e, unions $ map expr es]
-  FuncExpr _ _ args s -> nest $ unions [unions $ map decl args, stmt s]
+  FuncExpr _ _ args ss -> nest $ unions [unions $ map decl args
+                                        ,unions $ map stmt ss]
 
 caseClause :: CaseClause SourcePos -> Partial
 caseClause cc = case cc of
@@ -121,8 +122,9 @@ stmt s = case s of
   ReturnStmt _ me -> maybe empty expr me
   WithStmt _ e s -> unions [expr e, stmt s]
   VarDeclStmt _ decls -> unions $ map varDecl decls
-  FunctionStmt _ fnId args s ->
-    unions [decl fnId, nest $ unions [unions $ map decl args, stmt s]]
+  FunctionStmt _ fnId args ss ->
+    unions [decl fnId, nest $ unions [unions $ map decl args,
+                                      unions $ map stmt ss]]
 
 -- |The statically-determinate lexical structure of a JavaScript program.
 data EnvTree = EnvTree (M.Map String SourcePos) [EnvTree]
