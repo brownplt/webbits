@@ -1,4 +1,9 @@
--- |ECMAScript 3 syntax. /Spec/ refers to the ECMA-262 specification, 3rd edition.
+-- |ECMAScript 3 syntax. /Spec/ refers to the ECMA-262 specification,
+-- 3rd edition.
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveFoldable #-}
 module Language.ECMAScript3.Syntax (JavaScript(..)
                                    ,unJavaScript
                                    ,Statement(..)
@@ -147,11 +152,10 @@ data Expression a
     -- ^ @e1 ? e2 : e3@, spec 11.12
   | AssignExpr a AssignOp (LValue a) (Expression a)
     -- ^ @e1 \@=e2@, spec 11.13
-  | ParenExpr a (Expression a) -- ^ @(e)@, spec 11.1.6
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
   --funcexprs are optionally named
-  | FuncExpr a (Maybe (Id a)) [Id a] (Statement a) 
+  | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
@@ -220,7 +224,7 @@ data Statement a
     -- ^ @with (o) stmt@, spec 12.10
   | VarDeclStmt a [VarDecl a]
     -- ^ @var x, y=42;@, spec 12.2
-  | FunctionStmt a (Id a) {-name-} [Id a] {-args-} (Statement a) {-body-}
+  | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
 

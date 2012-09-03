@@ -10,6 +10,8 @@ import Language.ECMAScript3.Syntax
 
 testDir = "tests/parse-pretty"
 
+
+-- | tests the parser with pre-defined test-cases
 parsePrettyTest filename = TestLabel filename $ TestCase $ do
   js <- parseJavaScriptFromFile filename
   let str = renderStatements js

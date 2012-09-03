@@ -41,7 +41,7 @@ annotateFuncStmtBodies :: Data a =>
                        -> Statement a
 annotateFuncStmtBodies r w s = case s of
   FunctionStmt a name params body -> 
-    let newbody = descend (annotateStatement r w) body
+    let newbody = map (descend (annotateStatement r w)) body
     in  FunctionStmt a name params newbody
   _ -> s
                        
@@ -52,7 +52,7 @@ annotateFuncExprBodies :: Data a =>
                        -> Expression a
 annotateFuncExprBodies r w e = case e of
   FuncExpr a mname params body -> 
-    let newbody = descend (annotateStatement r w) body
+    let newbody = map (descend (annotateStatement r w)) body
     in  FuncExpr a mname params newbody
   _ -> e
 

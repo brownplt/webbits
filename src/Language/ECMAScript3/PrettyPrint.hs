@@ -1,8 +1,6 @@
 -- |Pretty-printing JavaScript.
 module Language.ECMAScript3.PrettyPrint
   ( 
---    stmt
---  , expr
   javaScript
   , renderStatements
   , renderExpression
@@ -10,6 +8,7 @@ module Language.ECMAScript3.PrettyPrint
 
 import Text.PrettyPrint.HughesPJ
 import Language.ECMAScript3.Syntax
+import Prelude hiding (maybe)
 
 -- | Renders a list of statements as a 'String'
 renderStatements :: [Statement a] -> String
@@ -17,69 +16,76 @@ renderStatements = render . stmtList
 
 -- | Renders a list of statements as a 'String'
 renderExpression :: Expression a -> String
-renderExpression = render . expr
+renderExpression = render . (ppExpression True)
 
 -- Displays the statement in { ... }, unless it is a block itself.
 inBlock:: Statement a -> Doc
-inBlock s@(BlockStmt _ _) = stmt s
-inBlock s                 = lbrace $+$ nest 2 (stmt s) $+$ rbrace
+inBlock s@(BlockStmt _ _) = ppStatement s
+inBlock s                 = asBlock [s]
 
--- Displays the expression in ( ... ), unless it is a parenthesized expression
-inParens:: Expression a -> Doc
-inParens e@(ParenExpr _ _) = expr e
-inParens e                 = parens (expr e)
+asBlock :: [Statement a] -> Doc
+asBlock ss = lbrace $+$ nest 2 (stmtList ss) $$ rbrace
 
-pp (Id _ str) = text str
+ppId (Id _ str) = text str
 
 forInit :: ForInit a -> Doc
 forInit t = case t of
   NoInit     -> empty
-  VarInit vs -> text "var" <+> cat (punctuate comma $ map varDecl vs)
-  ExprInit e -> expr e
+  VarInit vs -> text "var" <+> cat (punctuate comma $ map (ppVarDecl False) vs)
+  ExprInit e -> ppExpression False e
 
 forInInit :: ForInInit a -> Doc  
 forInInit t = case t of
-  ForInVar id   -> text "var" <+> pp id
-  ForInLVal lv -> lvalue lv
+  ForInVar id   -> text "var" <+> ppId id
+  ForInLVal lv -> ppLValue lv
 
 caseClause :: CaseClause a -> Doc
 caseClause (CaseClause _ e ss) =
-  text "case" $+$ expr e <+> colon $$ nest 2 (stmtList ss)
+  text "case" $+$ ppExpression True e <+> colon $$ nest 2 (stmtList ss)
 caseClause (CaseDefault _ ss) =
   text "default:" $$ nest 2 (stmtList ss)
 
-varDecl :: VarDecl a -> Doc
-varDecl (VarDecl _ id Nothing) = pp id
-varDecl (VarDecl _ id (Just e)) = pp id <+> equals <+> expr e
+ppVarDecl :: Bool -> VarDecl a -> Doc
+ppVarDecl hasIn vd = case vd of
+  VarDecl _ id Nothing  -> ppId id
+  VarDecl _ id (Just e) -> ppId id <+> equals <+> ppAssignmentExpression hasIn e
 
-stmt :: Statement a -> Doc
-stmt s = case s of
-  BlockStmt _ ss -> lbrace $+$ nest 2 (stmtList ss) $$ rbrace
+ppStatement :: Statement a -> Doc
+ppStatement s = case s of
+  BlockStmt _ ss -> asBlock ss
   EmptyStmt _ -> semi
-  ExprStmt _ e -> expr e <> semi
-  IfSingleStmt _ test cons -> text "if" <+> inParens test $$ stmt cons
-  IfStmt _ test cons alt ->
-    text "if" <+> inParens test $$ stmt cons $$ text "else" <+> stmt alt
+  ExprStmt _ e@(CallExpr _ (FuncExpr {}) _ ) -> 
+    parens (ppExpression True e) <> semi
+  ExprStmt _ e -> ppExpression True e <> semi
+  IfSingleStmt _ test cons -> text "if" <+> 
+                              parens (ppExpression True test) $$ 
+                              ppStatement cons
+  IfStmt _ test cons alt -> text "if" <+> parens (ppExpression True test) $$ 
+                            ppStatement cons $$ text "else" <+> ppStatement alt
   SwitchStmt _ e cases ->
-    text "switch" <+> inParens e $$ 
+    text "switch" <+> parens (ppExpression True e) $$ 
     braces (nest 2 (vcat (map caseClause cases)))
-  WhileStmt _ test body -> text "while" <+> inParens test $$ stmt body
+  WhileStmt _ test body -> text "while" <+> parens (ppExpression True test) $$
+                           ppStatement body
   ReturnStmt _ Nothing -> text "return"
-  ReturnStmt _ (Just e) -> text "return" <+> expr e
+  ReturnStmt _ (Just e) -> text "return" <+> ppExpression True e
   DoWhileStmt _ s e -> 
-    text "do" $$ (stmt s <+> text "while" <+> inParens e <> semi)
+    text "do" $$ 
+    (ppStatement s <+> text "while" <+> parens (ppExpression True e) <> semi)
   BreakStmt _ Nothing ->  text "break" <> semi
-  BreakStmt _ (Just label) -> text "break" <+> pp label <> semi
+  BreakStmt _ (Just label) -> text "break" <+> ppId label <> semi
   ContinueStmt _ Nothing -> text "continue" <> semi
-  ContinueStmt _ (Just label) -> text"continue" <+> pp label <> semi
-  LabelledStmt _ label s -> pp label <> colon $$ stmt s
+  ContinueStmt _ (Just label) -> text"continue" <+> ppId label <> semi
+  LabelledStmt _ label s -> ppId label <> colon $$ ppStatement s
   ForInStmt p init e body -> 
     text "for" <+> 
-    parens (forInInit init <+> text "in" <+> expr e) $+$ stmt body
+    parens (forInInit init <+> text "in" <+> ppExpression True e) $+$ 
+    ppStatement body
   ForStmt _ init incr test body ->
     text "for" <+> 
-    parens (forInit init <> semi <+> mexpr incr <> semi <+> mexpr test) $$ 
-    stmt body
+    parens (forInit init <> semi <+> maybe incr (ppExpression True) <> 
+            semi <+> maybe test (ppExpression True)) $$ 
+    ppStatement body
   TryStmt _ stmt mcatch mfinally ->
     text "try" $$ inBlock stmt $$ ppCatch $$ ppFinally 
     where ppFinally = case mfinally of
@@ -88,22 +94,22 @@ stmt s = case s of
           ppCatch = case mcatch of
             Nothing -> empty
             Just (CatchClause _ id s) -> 
-              text "catch" <+> (parens.pp) id <+> inBlock s
-  ThrowStmt _ e -> text "throw" <+> expr e <> semi
-  WithStmt _ expr s ->  text "with" <+> inParens expr $$ stmt s
+              text "catch" <+> (parens.ppId) id <+> inBlock s
+  ThrowStmt _ e -> text "throw" <+> ppExpression True e <> semi
+  WithStmt _ e s -> text "with" <+> parens (ppExpression True e) $$ ppStatement s
   VarDeclStmt _ decls ->
-    text "var" <+> cat (punctuate comma (map varDecl decls)) <> semi
-  FunctionStmt _ name args s ->
-    text "function" <+> pp name <> 
-    parens (cat $ punctuate comma (map pp args)) $$ 
-    inBlock s
+    text "var" <+> cat (punctuate comma (map (ppVarDecl True) decls)) <> semi
+  FunctionStmt _ name args body ->
+    text "function" <+> ppId name <> 
+    parens (cat $ punctuate comma (map ppId args)) $$ 
+    asBlock body
 
 stmtList :: [Statement a] -> Doc
-stmtList = vcat . map stmt
+stmtList = vcat . map ppStatement
 
 prop :: Prop a -> Doc
 prop p = case p of
-  PropId _ id -> pp id
+  PropId _ id -> ppId id
   PropString _ str -> doubleQuotes (text (jsEscape str))
   PropNum _ n -> text (show n)
 
@@ -174,56 +180,178 @@ jsEscape (ch:chs) = sel ch ++ jsEscape chs where
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
 
-lvalue :: LValue a -> Doc
-lvalue (LVar _ x) = text x
-lvalue (LDot _ e x) = expr e <> text "." <> text x
-lvalue (LBracket _ e1 e2) = expr e1 <> brackets (expr e2)
- 
-expr :: Expression a -> Doc
-expr e = case e of 
-  StringLit _ str ->  doubleQuotes (text (jsEscape str))
-  RegexpLit _ re global ci -> 
-    text "/" <> text re <> text "/" <> g <> i where
-      g = if global then text "g" else empty
-      i = if ci then text "i" else empty
-  NumLit _ n ->  text (show n)
+ppLValue :: LValue a -> Doc
+ppLValue (LVar _ x) = text x
+ppLValue (LDot _ e x) = ppMemberExpression e <> text "." <> text x
+ppLValue (LBracket _ e1 e2) = ppMemberExpression e1 <> 
+                              brackets (ppExpression True e2)
+
+-- 11.1
+ppPrimaryExpression :: Expression a -> Doc
+ppPrimaryExpression e = case e of
+  ThisRef _ -> text "this"
+  VarRef _ id -> ppId id
+  NullLit _ -> text "null"
+  BoolLit _ True -> text "true"
+  BoolLit _ False -> text "false"
+  NumLit  _ n -> text (show n)
   IntLit _ n ->  text (show n)
-  BoolLit _ True ->  text "true"
-  BoolLit _ False ->  text "false"
-  NullLit _ ->  text "null"
-  ArrayLit _ es ->  brackets $ cat $ punctuate comma (map expr es)
+  StringLit _ str -> doubleQuotes (text (jsEscape str))
+  RegexpLit _ reg g ci -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
+                          (if g then text "g" else empty) <> 
+                          (if ci then text "i" else empty)
+  ArrayLit _ es -> 
+    brackets $ cat $ punctuate comma (map (ppAssignmentExpression True) es)
   ObjectLit _ xs ->  
     braces (hsep (punctuate comma (map pp' xs))) where
-      pp' (n,v) =  prop n <> colon <+> expr v
-  ThisRef _ ->  text "this"
-  VarRef _ id ->  pp id
-  DotRef _ e' id -> expr e' <> text "." <> pp id
-  BracketRef _ container key -> expr container <> brackets (expr key)
-  NewExpr _ constr args -> 
-    text "new" <+> expr constr <> 
-    parens (cat $ punctuate comma (map expr args))
-  PrefixExpr _ op e' -> prefixOp op <+> expr e'
-  InfixExpr _ op left right -> expr left <+> infixOp op <+> expr right
-  CondExpr _ test cons alt -> 
-    expr test <+> text "?" <+> expr cons <+> colon <+> expr alt
-  AssignExpr _ op l r ->  lvalue l <+> assignOp op <+> expr r
-  UnaryAssignExpr _ op e' -> case op of
-    PrefixInc -> text "++" <> lvalue e'
-    PrefixDec -> text "--" <> lvalue e'
-    PostfixInc -> lvalue e' <> text "++"
-    PostfixDec -> lvalue e' <> text "--"
-  ParenExpr _ e' ->  parens (expr e')
-  ListExpr _ es ->  cat $ punctuate comma (map expr es)
-  CallExpr _ f args -> 
-    expr f <> parens (cat $ punctuate comma (map expr args))
-  FuncExpr _ name args body -> 
-    text "function" <+> text (maybe "" unId name) <+>
-    parens (cat $ punctuate comma (map pp args)) $$ 
-    inBlock body
+      pp' (n,v) =  prop n <> colon <+> ppAssignmentExpression True v
+  _ -> parens $ ppExpression True e
 
-mexpr :: Maybe (Expression a) -> Doc
-mexpr Nothing = empty
-mexpr (Just e) = expr e
+-- 11.2
+ppMemberExpression :: Expression a -> Doc
+ppMemberExpression e = case e of
+  FuncExpr _ name params body -> 
+    text "function" <+> maybe name ppId <+>
+    parens (cat $ punctuate comma (map ppId params)) $$ 
+    asBlock body
+  DotRef _ obj id -> ppMemberExpression obj <> text "." <> ppId id
+  BracketRef _ obj key -> 
+    ppMemberExpression obj <> brackets (ppExpression True key)  
+  NewExpr _ ctor args -> 
+    text "new" <+> ppMemberExpression ctor <> ppArguments args
+  _ -> ppPrimaryExpression e
+
+ppCallExpression :: Expression a -> Doc
+ppCallExpression e = case e of
+  CallExpr _ f args -> ppCallExpression f <> ppArguments args
+  DotRef _ obj id -> ppCallExpression obj <> text "." <> ppId id
+  BracketRef _ obj key ->ppCallExpression obj <> brackets (ppExpression True key)
+  _ -> ppMemberExpression e  
+    
+ppArguments :: [Expression a] -> Doc
+ppArguments es = 
+  parens $ cat $ punctuate comma (map (ppAssignmentExpression True) es)
+
+ppLHSExpression :: Expression a -> Doc
+ppLHSExpression = ppCallExpression
+
+-- 11.3
+ppPostfixExpression :: Expression a -> Doc
+ppPostfixExpression e = case e of
+  UnaryAssignExpr _ PostfixInc e' -> ppLValue e' <> text "++"
+  UnaryAssignExpr _ PostfixDec e' -> ppLValue e' <> text "--"
+  _ -> ppLHSExpression e
+  
+-- 11.4
+ppUnaryExpression :: Expression a -> Doc
+ppUnaryExpression e = case e of
+  PrefixExpr _ op e' -> prefixOp op <+> ppUnaryExpression e'
+  UnaryAssignExpr _ PrefixInc e' -> text "++" <> ppLValue e'
+  UnaryAssignExpr _ PrefixDec e' -> text "--" <> ppLValue e'
+  _ -> ppPostfixExpression e
+
+-- 11.5
+ppMultiplicativeExpression :: Expression a -> Doc
+ppMultiplicativeExpression e = case e of
+  InfixExpr _ op e1 e2 | op `elem` [OpMul, OpDiv, OpMod] -> 
+    ppMultiplicativeExpression e1 <+> infixOp op <+> ppUnaryExpression e2
+  _ -> ppUnaryExpression e
+  
+-- 11.6
+ppAdditiveExpression :: Expression a -> Doc
+ppAdditiveExpression e = case e of
+  InfixExpr _ op e1 e2 | op `elem` [OpAdd, OpSub] -> 
+    ppAdditiveExpression e1 <+> infixOp op <+> ppMultiplicativeExpression e2
+  _ -> ppMultiplicativeExpression e
+
+-- 11.7
+ppShiftExpression :: Expression a -> Doc
+ppShiftExpression e = case e of
+  InfixExpr _ op e1 e2 | op `elem` [OpLShift, OpSpRShift, OpZfRShift] -> 
+    ppShiftExpression e1 <+> infixOp op <+> ppAdditiveExpression e2  
+  _ -> ppAdditiveExpression e
+
+-- 11.8.  
+-- | @ppRelationalExpression True@ is RelationalExpression,
+-- @ppRelationalExpression False@ is RelationalExpressionNoIn
+ppRelationalExpression :: Bool -> Expression a -> Doc
+ppRelationalExpression hasIn e = 
+  let opsNoIn = [OpLT, OpGT, OpLEq, OpGEq, OpInstanceof]
+      ops     = if hasIn then OpIn:opsNoIn else opsNoIn
+  in case e of    
+    InfixExpr _ op e1 e2 | op `elem` ops -> 
+      ppRelationalExpression hasIn e1 <+> infixOp op <+> ppShiftExpression e2
+    _ -> ppShiftExpression e
+    
+-- 11.9
+ppEqualityExpression :: Bool -> Expression a -> Doc
+ppEqualityExpression hasIn e = case e of
+  InfixExpr _ op e1 e2 | op `elem` [OpEq, OpNEq, OpStrictEq, OpStrictNEq] ->
+    ppEqualityExpression hasIn e1 <+> infixOp op <+> 
+    ppRelationalExpression hasIn e2
+  _ -> ppRelationalExpression hasIn e
+  
+-- 11.10
+ppBitwiseANDExpression :: Bool -> Expression a -> Doc
+ppBitwiseANDExpression hasIn e = case e of
+  InfixExpr _ op@OpBAnd e1 e2 -> ppBitwiseANDExpression hasIn e1 <+> 
+                                 infixOp op <+>
+                                 ppEqualityExpression hasIn e2
+  _ -> ppEqualityExpression hasIn e
+  
+ppBitwiseXORExpression :: Bool -> Expression a -> Doc
+ppBitwiseXORExpression hasIn e = case e of
+  InfixExpr _ op@OpBXor e1 e2 -> ppBitwiseXORExpression hasIn e1 <+>
+                                 infixOp op <+>
+                                 ppBitwiseANDExpression hasIn e2
+  _ -> ppBitwiseANDExpression hasIn e
+  
+ppBitwiseORExpression :: Bool -> Expression a -> Doc
+ppBitwiseORExpression hasIn e = case e of
+  InfixExpr _ op@OpBOr e1 e2 -> ppBitwiseORExpression hasIn e1 <+>
+                                infixOp op <+>
+                                ppBitwiseXORExpression hasIn e2
+  _ -> ppBitwiseXORExpression hasIn e
+
+-- 11.11
+ppLogicalANDExpression :: Bool -> Expression a -> Doc
+ppLogicalANDExpression hasIn e = case e of
+  InfixExpr _ op@OpLAnd e1 e2 -> ppLogicalANDExpression hasIn e1 <+>
+                                 infixOp op <+>
+                                 ppBitwiseORExpression hasIn e2
+  _ -> ppBitwiseORExpression hasIn e                                 
+                                 
+ppLogicalORExpression :: Bool -> Expression a -> Doc
+ppLogicalORExpression hasIn e = case e of
+  InfixExpr _ op@OpLOr e1 e2 -> ppLogicalORExpression hasIn e1 <+>
+                                infixOp op <+>
+                                ppLogicalANDExpression hasIn e2
+  _ -> ppLogicalANDExpression hasIn e
+  
+-- 11.12
+ppConditionalExpression :: Bool -> Expression a -> Doc
+ppConditionalExpression hasIn e = case e of
+  CondExpr _ c et ee -> ppLogicalORExpression hasIn c <+> text "?" <+> 
+                        ppAssignmentExpression hasIn et <+> colon <+>
+                        ppAssignmentExpression hasIn ee
+  _ -> ppLogicalORExpression hasIn e
+
+-- 11.13
+ppAssignmentExpression :: Bool -> Expression a -> Doc
+ppAssignmentExpression hasIn e = case e of
+  AssignExpr _ op l r -> ppLValue l <+> assignOp op <+> 
+                         ppAssignmentExpression hasIn r
+  _ -> ppConditionalExpression hasIn e
+  
+-- 11.14
+ppExpression :: Bool -> Expression a -> Doc
+ppExpression hasIn e = case e of
+  ListExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
+  _ -> ppAssignmentExpression hasIn e
+
+maybe :: Maybe a -> (a -> Doc) -> Doc
+maybe Nothing  _ = empty
+maybe (Just a) f = f a
 
 -- | Renders a JavaScript program as a document, the show instance of
 -- 'Doc' will pretty-print it automatically
