@@ -15,6 +15,8 @@ module Language.ECMAScript3.Parser
   , StatementParser
   , ExpressionParser
   , assignExpr
+  -- debugging, remove the next line  
+  , mkDecimal
   ) where
 
 import Language.ECMAScript3.Lexer hiding (identifier)

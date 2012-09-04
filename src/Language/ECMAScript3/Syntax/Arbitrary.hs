@@ -8,7 +8,7 @@ import Language.ECMAScript3.Syntax
 import Test.QuickCheck hiding (Prop)
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Property (forAllShrink)
-import Data.Map hiding (map,null,filter)
+import Data.Map hiding (map,null,filter,foldr)
 import Data.List (nub,delete)
 import Data.Data
 import Data.Char
@@ -69,8 +69,8 @@ instance Arbitrary a => Arbitrary (CaseClause a) where
                          
 instance Arbitrary a => Arbitrary (Prop a) where
   arbitrary = oneof [liftM2 PropId arbitrary arbitrary,
-                     liftM2 PropString arbitrary arbitrary,
-                     liftM2 PropNum arbitrary arbitrary    
+                     liftM2 PropString arbitrary nonEmptyString,
+                     liftM2 PropNum arbitrary nonNegative
                     ]
   shrink (PropId a id) = [PropId na nid | nid <- shrink id, na <- shrink a] 
   shrink (PropString a s) = [PropString na ns | ns <- shrink s, na <- shrink a] 
@@ -108,8 +108,11 @@ rrarbitrary = recursive $ recursive arbitrary
 atLeastOfSize :: Arbitrary a => Int -> Gen a -> Gen a
 atLeastOfSize l gen = sized $ \s -> if s < l then resize l gen else gen
 
-regexpBody :: Gen String
-regexpBody = sized $ \s -> if s < 1 then stringOfLength 1 else stringOfLength s
+nonEmptyString :: Gen String
+nonEmptyString = sized $ \s -> if s < 1 then stringOfLength 1 else stringOfLength s
+
+nonNegative :: (Arbitrary a, Num a) => Gen a
+nonNegative = liftM abs arbitrary
 
 stringOfLength :: Int -> Gen String
 stringOfLength 0 = return ""
@@ -122,10 +125,10 @@ instance Arbitrary a => Arbitrary (Expression a) where
     sGen [(0, liftM  ThisRef arbitrary),
           (0, liftM  NullLit arbitrary),
           (0, liftM2 StringLit arbitrary arbitrary),
-          (0, liftM2 NumLit arbitrary (arbitrary `suchThat` (>=0))),
-          (0, liftM2 IntLit arbitrary (arbitrary `suchThat` (>=0))),
+          (0, liftM2 NumLit arbitrary nonNegative),
+          (0, liftM2 IntLit arbitrary nonNegative),
           (0, liftM2 BoolLit arbitrary arbitrary),
-          (0, liftM4 RegexpLit arbitrary regexpBody arbitrary arbitrary),
+          (0, liftM4 RegexpLit arbitrary nonEmptyString arbitrary arbitrary),
           (1, liftM2 ArrayLit arbitrary rarbitrary),
           (1, liftM2 ObjectLit arbitrary rarbitrary),
           (0, liftM2 VarRef arbitrary arbitrary),
@@ -258,14 +261,6 @@ instance Arbitrary a => Arbitrary (Statement a) where
                                      [FunctionStmt as ns parss bs | as <- shrink a, ns <- shrink n, parss <- shrink pars, bs <- shrink b]
     
 emptyStmtShrink a = [EmptyStmt a2 | a2 <- shrink a]    
-
-
-                    
--- the following are derived automatically
--- instance Arbitrary a => Arbitrary (AssignOp a) where
--- instance Arbitrary a => Arbitrary (InfixOp a) where
--- instance Arbitrary a => Arbitrary (UnaryAssignOp) where
--- instance Arbitrary a => Arbitrary (PrefixOp) where
 
 type LabelSubst   = Map (Id ()) (Id ())
 emptyConstantPool = Data.Map.empty
