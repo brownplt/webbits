@@ -435,23 +435,23 @@ regularExpressionFlags' (g, i, m) =
     (char 'm' >> (if not g then regularExpressionFlags' (g, i, True) else unexpected "duplicate 'g' in regular expression flags")) <|>
     return (g, i, m)
     
--- 7.9 || TODO: write tests based on examples from Spec 7.9.2, once I get the parser finished
--- Automatic Semicolon Insertion algorithm, rule 1;
--- to be used in place of `semi`/`char 'x'` 
--- in parsers for emptyStatement, variableStatement, 
--- expressionStatement, doWhileStatement, continuteStatement, breakStatement,
+-- | 7.9 || TODO: write tests based on examples from Spec 7.9.2, once I
+-- get the parser finished! Automatic Semicolon Insertion algorithm,
+-- rule 1; to be used in place of `semi`/`char 'x'` in parsers for
+-- emptyStatement, variableStatement, expressionStatement,
+-- doWhileStatement, continuteStatement, breakStatement,
 -- returnStatement and throwStatement.
 autoSemi :: Parser ()
 autoSemi = (forget $ char ';') <|> 
            lineTerminator <|>
            (forget $ char '}')
   
--- Automatic Semicolon Insertion algorithm, rule 2;
+-- | Automatic Semicolon Insertion algorithm, rule 2;
 -- to be used at the end of the program
 endOfProgram :: Parser ()
 endOfProgram = forget (char ';') <|> eof
            
--- Automatic Semicolon Insertion algorithm, rule 3; it takes 2
+-- | Automatic Semicolon Insertion algorithm, rule 3; it takes 2
 -- parsers: 'left' that parses whatever is to the left of [no
 -- LineTerminator here] and 'right' that parses whatever is to the
 -- right; if after parsing 'left' and any number of whiteSpaces a

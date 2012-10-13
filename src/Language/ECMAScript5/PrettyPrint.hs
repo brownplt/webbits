@@ -26,7 +26,6 @@ inBlock s                 = lbrace $+$ nest 2 (stmt s) $+$ rbrace
 
 -- Displays the expression in ( ... ), unless it is a parenthesized expression
 inParens:: Expression a -> Doc
-inParens e@(ParenExpr _ _) = expr e
 inParens e                 = parens (expr e)
 
 pp (Id _ str) = text str
@@ -212,7 +211,6 @@ expr e = case e of
     PrefixDec -> text "--" <> lvalue e'
     PostfixInc -> lvalue e' <> text "++"
     PostfixDec -> lvalue e' <> text "--"
-  ParenExpr _ e' ->  parens (expr e')
   ListExpr _ es ->  cat $ punctuate comma (map expr es)
   CallExpr _ f args -> 
     expr f <> parens (cat $ punctuate comma (map expr args))
