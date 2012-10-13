@@ -43,7 +43,11 @@ Library
     syb >= 0.1,
     uniplate >= 1.6 && <1.7,
     data-default >= 0.4 && <0.5,
+<<<<<<< HEAD
     charset >= 0.3.2.1
+=======
+    QuickCheck >= 2.4.1.1
+>>>>>>> dev
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
@@ -53,6 +57,7 @@ Library
     Language.ECMAScript3.PrettyPrint
     Language.ECMAScript3.Syntax
     Language.ECMAScript3.Syntax.Annotations
+    Language.ECMAScript3.Syntax.Arbitrary
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
     Language.ECMAScript5
@@ -79,7 +84,30 @@ Test-Suite unittest
     filepath,
     HUnit,
     data-default >=0.4 && <0.5,
-    charset >= 0.3.2.1
+    charset >= 0.3.2.1,
+    QuickCheck >= 2.4.1.1,
+  Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
+  Default-Language: Haskell2010
+  ghc-options:
+    -fwarn-incomplete-patterns
+
+Test-Suite prettytest
+  Hs-Source-Dirs: src
+  Type: exitcode-stdio-1.0
+  Main-Is: PrettyTest.hs
+  Build-Depends:
+    base >= 4 && < 5,
+    mtl >= 1.1.0.1,
+    parsec < 3.2.0,
+    pretty >= 0.1,
+    containers >= 0.1,
+    syb >= 0.1,
+    directory,
+    filepath,
+    HUnit,
+    data-default >=0.4 && <0.5,
+    QuickCheck >= 2.4.1.1,
+    uniplate >= 1.6 && <1.7
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
