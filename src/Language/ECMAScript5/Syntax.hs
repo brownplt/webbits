@@ -19,6 +19,7 @@ module Language.ECMAScript5.Syntax (JavaScript(..)
                                    ,UnaryAssignOp(..)
                                    ,LValue (..)
                                    ,SourcePos
+                                   ,PropAssign(..)
                                    ) where
 
 import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
@@ -116,9 +117,9 @@ data Prop a = PropId a (Id a) -- ^ property name is an identifier, @foo@
 data PropAssign a = 
   PExpr a (Prop a) (Expression a) -- ^ assigns a value to the
                                   -- property, @foo: 42@
-  | PGet  a (Prop a) (Statement a) -- ^ defines a getter for a
+  | PGet  a (Prop a) [Statement a] -- ^ defines a getter for a
                                    -- property, @get foo () {42;}@
-  | PSet  a (Prop a) (Id a) (Statement a) -- ^ defines a setter for a
+  | PSet  a (Prop a) (Id a) [Statement a] -- ^ defines a setter for a
                                           -- property, @set foo (x)
                                           -- {baz = x;}@
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
@@ -164,7 +165,7 @@ data Expression a
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
   --funcexprs are optionally named
-  | FuncExpr a (Maybe (Id a)) [Id a] (Statement a) 
+  | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
@@ -233,7 +234,7 @@ data Statement a
     -- ^ @with (o) stmt@, spec 12.10
   | VarDeclStmt a [VarDecl a]
     -- ^ @var x, y=42;@, spec 12.2
-  | FunctionStmt a (Id a) {-name-} [Id a] {-args-} (Statement a) {-body-}
+  | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
 

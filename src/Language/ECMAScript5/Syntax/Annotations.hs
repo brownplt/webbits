@@ -48,28 +48,27 @@ class HasAnnotation a where
 
 instance HasAnnotation Expression where
   getAnnotation e = case e of
-    (StringLit a s)              -> a
-    (RegexpLit a s g ci)         -> a
-    (NumLit a d)                 -> a
-    (IntLit a i)                 -> a
-    (BoolLit a b)                -> a
-    (NullLit a)                  -> a
-    (ArrayLit a exps)            -> a
-    (ObjectLit a props)          -> a
-    (ThisRef a)                  -> a
-    (VarRef a id)                -> a
-    (DotRef a exp id)            -> a
-    (BracketRef a container key) -> a
-    (NewExpr a ctor params)      -> a
-    (PrefixExpr a op e)          -> a
-    (UnaryAssignExpr a op lv)    -> a
-    (InfixExpr a op e1 e2)       -> a
-    (CondExpr a g et ef)         -> a
-    (AssignExpr a op lv e)       -> a
-    (ParenExpr a e)              -> a
-    (ListExpr a es)              -> a
-    (CallExpr a fn params)       -> a
-    (FuncExpr a mid args s)      -> a
+   (StringLit a s)              -> a
+   (RegexpLit a s g ci)         -> a
+   (NumLit a d)                 -> a
+   (IntLit a i)                 -> a
+   (BoolLit a b)                -> a
+   (NullLit a)                  -> a
+   (ArrayLit a exps)            -> a
+   (ObjectLit a props)          -> a
+   (ThisRef a)                  -> a
+   (VarRef a id)                -> a
+   (DotRef a exp id)            -> a
+   (BracketRef a container key) -> a
+   (NewExpr a ctor params)      -> a
+   (PrefixExpr a op e)          -> a
+   (UnaryAssignExpr a op lv)    -> a
+   (InfixExpr a op e1 e2)       -> a
+   (CondExpr a g et ef)         -> a
+   (AssignExpr a op lv e)       -> a
+   (ListExpr a es)              -> a
+   (CallExpr a fn params)       -> a
+   (FuncExpr a mid args s)      -> a
   setAnnotation a e = case e of
     (StringLit _ s)              -> (StringLit a s)
     (RegexpLit _ s g ci)         -> (RegexpLit a s g ci)
@@ -89,7 +88,6 @@ instance HasAnnotation Expression where
     (InfixExpr _ op e1 e2)       -> (InfixExpr a op e1 e2)
     (CondExpr _ g et ef)         -> (CondExpr a g et ef)
     (AssignExpr _ op lv e)       -> (AssignExpr a op lv e)
-    (ParenExpr _ e)              -> (ParenExpr a e)
     (ListExpr _ es)              -> (ListExpr a es)
     (CallExpr _ fn params)       -> (CallExpr a fn params)
     (FuncExpr _ mid args s)      -> (FuncExpr a mid args s)
@@ -134,8 +132,7 @@ instance HasAnnotation Statement where
     ReturnStmt _ e       -> ReturnStmt a e
     WithStmt _ o b       -> WithStmt a o b
     VarDeclStmt _ vds    -> VarDeclStmt a vds
-    FunctionStmt _ n as b-> FunctionStmt a n as b
-  
+    FunctionStmt _ n as b-> FunctionStmt a n as b    
     
 instance HasAnnotation LValue where
   getAnnotation lv = case lv of
@@ -145,11 +142,11 @@ instance HasAnnotation LValue where
   setAnnotation a lv = case lv of
     LVar _ n -> LVar a n
     LDot _ o f -> LDot a o f
-    LBracket a o fe -> LBracket a o fe
+    LBracket a o fe -> LBracket a o fe    
   
 instance HasAnnotation VarDecl where
   getAnnotation (VarDecl a _ _) = a
-  setAnnotation a (VarDecl _ vn e) = VarDecl a vn e
+  setAnnotation a (VarDecl _ vn e) = VarDecl a vn e  
 
 instance HasAnnotation Prop  where
   getAnnotation p = case p of
@@ -159,7 +156,7 @@ instance HasAnnotation Prop  where
   setAnnotation a p = case p of
     PropId _ id -> PropId a id
     PropString _ s -> PropString a s
-    PropNum _ n -> PropNum a n
+    PropNum _ n -> PropNum a n    
   
 instance HasAnnotation CaseClause where
   getAnnotation c = case c of
@@ -167,8 +164,8 @@ instance HasAnnotation CaseClause where
     CaseDefault a _ -> a
   setAnnotation a c = case c of
     CaseClause _ e b -> CaseClause a e b
-    CaseDefault _ b  -> CaseDefault a b
+    CaseDefault _ b  -> CaseDefault a b    
     
 instance HasAnnotation CatchClause where
   getAnnotation (CatchClause a _ _) = a
-  setAnnotation a (CatchClause _ id b) = CatchClause a id b
+  setAnnotation a (CatchClause _ id b) = CatchClause a id b  

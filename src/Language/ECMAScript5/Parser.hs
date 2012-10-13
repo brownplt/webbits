@@ -285,7 +285,7 @@ decimalLiteral = lexeme $ withPos $
         then return $ IntLit def $ fromIntegral whole
         else return $ NumLit def $ mkDecimal whole (fromMaybe 0 mfrac
                                              (fromIntegral (fromMaybe 0 mfrac))
-                                             (fromIntegral (fromMaybe 0 mexp))) <|>
+                                             (fromIntegral (fromMaybe 0 mexp)))) <|>
   (do frac <- pdot >> decimalDigits
       exp <- option 0 exponentPart
       return $ NumLit def $ mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp))
@@ -491,6 +491,7 @@ elisionOpt :: Parser Int
 elisionOpt = many (char ',') >>= (return . length)
                
 -- elementsListWithElision :: Parser [ a
+elementsListWithElision = error "not implemented"
              
 -- elementsList :: Parser 
              

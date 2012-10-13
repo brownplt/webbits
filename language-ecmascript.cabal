@@ -43,11 +43,8 @@ Library
     syb >= 0.1,
     uniplate >= 1.6 && <1.7,
     data-default >= 0.4 && <0.5,
-<<<<<<< HEAD
-    charset >= 0.3.2.1
-=======
+    charset >= 0.3.2.1,
     QuickCheck >= 2.4.1.1
->>>>>>> dev
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
@@ -85,7 +82,7 @@ Test-Suite unittest
     HUnit,
     data-default >=0.4 && <0.5,
     charset >= 0.3.2.1,
-    QuickCheck >= 2.4.1.1,
+    QuickCheck >= 2.4.1.1
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
