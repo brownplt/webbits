@@ -1,5 +1,5 @@
 Name:           language-ecmascript
-Version:        0.9
+Version:        0.9.1
 Cabal-Version:	>= 1.10
 Copyright:      (c) 2007-2012 Brown University, (c) 2008-2010 Claudiu Saftoiu,
                 (c) 2012 Stevens Institute of Technology
@@ -10,8 +10,9 @@ Author:         Andrey Chudnov, Arjun Guha, Spiridon Aristides Eliopoulos,
 Maintainer:     Andrey Chudnov <oss@chudnov.com>
 Homepage:       http://github.com/jswebtools/language-ecmascript
 Bug-reports:    http://github.com/jswebtools/language-ecmascript/issues
-Stability:      provisional
-Tested-with:    GHC==7.0.4, GHC==7.4.1
+Stability:      experimental
+Tested-with:    GHC==7.4.1
+Extra-Source-Files: tests/parse-pretty/*.js, CHANGELOG
 Category:       Language
 Build-Type:     Simple
 Synopsis:       JavaScript analysis tools
@@ -29,7 +30,7 @@ Source-repository head
 Source-repository this
    type: git
    location: git://github.com/jswebtools/language-ecmascript.git
-   tag: 0.9
+   tag: 0.9.1
 
 Library
   Hs-Source-Dirs:
@@ -72,7 +73,7 @@ Test-Suite unittest
     directory,
     filepath,
     HUnit,
-    data-default >=0.4 && <0.5
+    data-default >=0.4 && <0.6
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
