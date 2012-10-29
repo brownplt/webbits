@@ -43,19 +43,7 @@ instance Arbitrary (PrefixOp) where
 
 
 instance Arbitrary a => Arbitrary (Id a) where
-  arbitrary = liftM2 Id arbitrary (sized sizedIdent)
-  
-    where sizedIdent n = do s <- identStart
-                            rest <- identRest (n-1)
-                            return (s:rest)
-          identStart = arbitrary `suchThat` isIdentStart
-          identRest n | n < 1 = return ""
-          identRest n = do p <- identPart
-                           rest <- identRest (n-1)
-                           return (p:rest)
-          identPart = do arbitrary `suchThat` isIdentPart
-          isIdentStart c = isLetter c || c == '$' || c == '_'
-          isIdentPart c = isIdentStart c || isMark c || isNumber c
+  arbitrary = liftM2 Id arbitrary identifier
   shrink (Id a s) = [Id na ns | ns <- shrink s, na <- shrink a]
 
 instance Arbitrary a => Arbitrary (CaseClause a) where
@@ -77,7 +65,7 @@ instance Arbitrary a => Arbitrary (Prop a) where
   shrink (PropNum a i) = [PropNum na ni | ni <- shrink i, na <- shrink a] 
   
 instance Arbitrary a => Arbitrary (LValue a) where  
-  arbitrary = oneof [liftM2 LVar arbitrary arbitrary,
+  arbitrary = oneof [liftM2 LVar arbitrary identifier,
                      liftM3 LDot arbitrary arbitrary arbitrary,
                      liftM3 LBracket arbitrary arbitrary arbitrary]
   shrink (LVar a s) = [LVar na ns | ns <- shrink s, na <- shrink a]
@@ -86,7 +74,21 @@ instance Arbitrary a => Arbitrary (LValue a) where
   
 cshrink :: Arbitrary a => [a] -> [a]
 cshrink = concat . shrink
-          
+
+identifier :: Gen String
+identifier = sized sizedIdent
+    where sizedIdent n = do s <- identStart
+                            rest <- identRest (n-1)
+                            return (s:rest)
+          identStart = arbitrary `suchThat` isIdentStart
+          identRest n | n < 1 = return ""
+          identRest n = do p <- identPart
+                           rest <- identRest (n-1)
+                           return (p:rest)
+          identPart = do arbitrary `suchThat` isIdentPart
+          isIdentStart c = isLetter c || c == '$' || c == '_'
+          isIdentPart c = isIdentStart c || isMark c || isNumber c
+
 -- minimum size generator
 type MSGen a = (Int, Gen a)
 
@@ -111,6 +113,8 @@ atLeastOfSize l gen = sized $ \s -> if s < l then resize l gen else gen
 nonEmptyString :: Gen String
 nonEmptyString = sized $ \s -> if s < 1 then stringOfLength 1 else stringOfLength s
 
+regexpBody = nonEmptyString
+
 nonNegative :: (Arbitrary a, Num a) => Gen a
 nonNegative = liftM abs arbitrary
 
@@ -128,7 +132,7 @@ instance Arbitrary a => Arbitrary (Expression a) where
           (0, liftM2 NumLit arbitrary nonNegative),
           (0, liftM2 IntLit arbitrary nonNegative),
           (0, liftM2 BoolLit arbitrary arbitrary),
-          (0, liftM4 RegexpLit arbitrary nonEmptyString arbitrary arbitrary),
+          (0, liftM4 RegexpLit arbitrary regexpBody arbitrary arbitrary),
           (1, liftM2 ArrayLit arbitrary rarbitrary),
           (1, liftM2 ObjectLit arbitrary rarbitrary),
           (0, liftM2 VarRef arbitrary arbitrary),
