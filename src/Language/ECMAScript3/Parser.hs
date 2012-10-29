@@ -471,7 +471,7 @@ hexLit = do
   [(hex,"")] <- return $ Numeric.readHex digits
   return (True, hex)
 
--- Creates a decimal value from a whole, fractional and exponent part.
+-- | Creates a decimal value from a whole, fractional and exponent part.
 mkDecimal:: Double -> Double -> Int -> Double
 mkDecimal w f e =  if f >= 1.0
                    then mkDecimal w (f / 10.0) e
