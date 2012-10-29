@@ -415,8 +415,6 @@ signedInteger :: Stream s Identity Char => Parser s Integer
 signedInteger = (char '+' >> decimalInteger) <|> 
                 (char '-' >> negate <$> decimalInteger) <|>
                 decimalInteger
-  where flipSign :: Monad m => PositionedExpression -> m PositionedExpression
-        flipSign (IntLit a i) = return $ IntLit a (-i)
 
 decimalDigit :: Stream s Identity Char => Parser s Integer
 decimalDigit  = do c <- decimalDigitChar
@@ -522,14 +520,15 @@ regularExpressionLiteral =
                            
 -- TODO: The spec requires the parser to make sure the body is a valid
 -- regular expression; were are not doing it at present.
+regularExpressionBody :: Stream s Identity Char => Parser s String
 regularExpressionBody = do c <- regularExpressionFirstChar 
                            cs <- concatM regularExpressionChars  
-                           return (c:cs)
+                           return (c++cs)
                          
-regularExpressionChars :: Stream s Identity Char => Parser s String
+regularExpressionChars :: Stream s Identity Char => Parser s [String]
 regularExpressionChars = many regularExpressionChar
 
-regularExpressionFirstChar :: Stream s Identity Char => Parser s Char
+regularExpressionFirstChar :: Stream s Identity Char => Parser s String
 regularExpressionFirstChar = 
   choice [
     stringify $ regularExpressionNonTerminator `butNot` choice [char '*', char '\\', char '/', char '[' ],
@@ -542,20 +541,26 @@ regularExpressionChar =
     stringify $ regularExpressionNonTerminator `butNot` choice [char '\\', char '/', char '[' ],
     regularExpressionBackslashSequence,
     regularExpressionClass ]
-                         
+
+regularExpressionBackslashSequence :: Stream s Identity Char
+                                   => Parser s String
 regularExpressionBackslashSequence = do c <-char '\\'  
                                         e <- regularExpressionNonTerminator
                                         return (c:[e])
-    
-regularExpressionNonTerminator = notP lineTerminator
-                           
+                                        
+regularExpressionNonTerminator :: Stream s Identity Char => Parser s Char
+regularExpressionNonTerminator = anyChar `butNot` lineTerminator
+
+regularExpressionClass :: Stream s Identity Char => Parser s String
 regularExpressionClass = do l <- char '[' 
                             rc <- concatM $ many regularExpressionClassChar
                             r <- char ']'
                             return (l:(rc++[r]))
 
-regularExpressionClassChar = stringify (regularExpressionNonTerminator `butNot` (char ']' <|> char '\\')) <|>
-                             regularExpressionBackslashSequence
+regularExpressionClassChar :: Stream s Identity Char => Parser s String
+regularExpressionClassChar = 
+  stringify (regularExpressionNonTerminator `butNot` (char ']' <|> char '\\'))
+  <|> regularExpressionBackslashSequence
     
 regularExpressionFlags :: Stream s Identity Char 
                        => Parser s (Bool, Bool, Bool) -- g, i, m    
@@ -605,11 +610,11 @@ noLineTerminator left right = do l <- left
 -- 11.1
 -- primary expressions
 primaryExpression :: Stream s Identity Char => Parser s PositionedExpression
-primaryExpression = choice [ lexeme $ withPos (kthis >> return $ ThisRef def),
-                             identifier,
-                             literal,
-                             arrayLiteral,
-                             parenExpression ]
+primaryExpression = choice [lexeme $ withPos (kthis >> return (ThisRef def))
+                           ,identifier
+                           ,literal
+                           ,arrayLiteral
+                           ,parenExpression]
 
 parenExpression :: Stream s Identity Char => Parser s PositionedExpression
 parenExpression = lexeme $ withPos (between (char '(') (char ')') expression)
@@ -633,3 +638,17 @@ elementsListWithElision = error "not implemented"
              
 expression :: Stream s Identity Char => Parser s PositionedExpression
 expression = error "not implemented"
+
+parseScriptFromString = undefined
+parseJavaScriptFromFile = undefined
+parseScript = undefined
+parseExpression = undefined
+parseString = undefined
+type ParsedStatement = PositionedStatement
+type ParsedExpression = PositionedExpression
+parseSimpleExpr' = undefined
+parseBlockStmt = undefined
+parseStatement = undefined
+type StatementParser s = Parser s ParsedStatement
+type ExpressionParser s = Parser s ParsedExpression
+assignExpr = undefined
