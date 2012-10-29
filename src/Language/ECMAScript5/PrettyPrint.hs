@@ -197,9 +197,10 @@ ppPrimaryExpression e = case e of
   NumLit  _ n -> text (show n)
   IntLit _ n ->  text (show n)
   StringLit _ str -> doubleQuotes (text (jsEscape str))
-  RegexpLit _ reg g ci -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
+  RegexpLit _ reg g i m -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
                           (if g then text "g" else empty) <> 
-                          (if ci then text "i" else empty)
+                          (if i then text "i" else empty) <>
+                          (if m then text "m" else empty)
   ArrayLit _ es -> 
     brackets $ cat $ punctuate comma (map (ppAssignmentExpression True) es)
   ObjectLit _ pas -> braces $ hsep $ punctuate comma (map ppPropAssign pas)

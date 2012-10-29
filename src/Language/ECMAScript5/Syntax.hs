@@ -134,9 +134,9 @@ data LValue a
 -- | Expressions, see spec 11
 data Expression a
   = StringLit a String -- ^ @\"foo\"@, spec 11.1.3, 7.8
-  | RegexpLit a String Bool Bool 
-    -- ^ @RegexpLit a regexp global?  case_insensitive?@ -- regular
-    -- expression, see spec 11.1.3, 7.8
+  | RegexpLit a String Bool Bool Bool
+    -- ^ @RegexpLit a regexp global? case_insensitive? multiline?@
+    -- regular expression, see spec 11.1.3, 7.8
   | NumLit a Double -- ^ @41.99999@, spec 11.1.3, 7.8
   | IntLit a Int -- ^ @42@, spec 11.1.3, 7.8
   | BoolLit a Bool -- ^ @true@, spec 11.1.3, 7.8
