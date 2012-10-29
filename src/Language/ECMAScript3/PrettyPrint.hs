@@ -179,6 +179,13 @@ jsEscape (ch:chs) = sel ch ++ jsEscape chs where
     sel '\\' = "\\\\"
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
+    
+regexpEscape :: String -> String
+regexpEscape "" = ""
+regexpEscape "\\" = "\\\\"
+regexpEscape ('\\':c:rest) = '\\':c:(regexpEscape rest)
+regexpEscape ('/':rest) = '\\':'/':regexpEscape rest
+regexpEscape (c:rest)   = c:regexpEscape rest
 
 ppLValue :: LValue a -> Doc
 ppLValue (LVar _ x) = text x
@@ -197,7 +204,7 @@ ppPrimaryExpression e = case e of
   NumLit  _ n -> text (show n)
   IntLit _ n ->  text (show n)
   StringLit _ str -> doubleQuotes (text (jsEscape str))
-  RegexpLit _ reg g ci -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
+  RegexpLit _ reg g ci -> text "/" <> (text (regexpEscape reg)) <> text "/" <>
                           (if g then text "g" else empty) <> 
                           (if ci then text "i" else empty)
   ArrayLit _ es -> 
