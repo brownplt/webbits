@@ -1,5 +1,14 @@
 Version change log.
 
+=0.10=
+
+The ParenExpr constructor was removed from the Expression AST
+(WARNING: might break some builds). The pretty printer was rewritten
+to automatically parenthesize sub-expressions based on operator
+precedence. Added a (beta quality) arbitrary instance for all the
+AST's to generate random JavaScript programs (useful for testing).
+
+
 =0.9.1= 
 Increased the upper bound on data-default in dependencies. See
 https://github.com/jswebtools/language-ecmascript/pull/5

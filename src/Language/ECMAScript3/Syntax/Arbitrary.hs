@@ -66,7 +66,7 @@ instance Arbitrary a => Arbitrary (Prop a) where
   
 instance Arbitrary a => Arbitrary (LValue a) where  
   arbitrary = oneof [liftM2 LVar arbitrary identifier,
-                     liftM3 LDot arbitrary arbitrary arbitrary,
+                     liftM3 LDot arbitrary arbitrary identifier,
                      liftM3 LBracket arbitrary arbitrary arbitrary]
   shrink (LVar a s) = [LVar na ns | ns <- shrink s, na <- shrink a]
   shrink (LDot a e s) = [LDot na ne ns | ne <- shrink e, ns <-shrink s, na <-shrink a]
