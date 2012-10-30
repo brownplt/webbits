@@ -15,8 +15,9 @@ module Language.ECMAScript3.Parser
   , StatementParser
   , ExpressionParser
   , assignExpr
-  -- debugging, remove the next line  
+  -- debugging, remove the next 2 lines
   , mkDecimal
+  , intLen
   ) where
 
 import Language.ECMAScript3.Lexer hiding (identifier)
@@ -435,7 +436,7 @@ parseRegexpLit = do
       parseChar = noneOf "/"
   let parseRe = (char '/' >> return "") <|> 
                 (do char '\\'
-                    ch <- anyChar -- TOOD: too lenient
+                    ch <- anyChar -- TODO: too lenient
                     rest <- parseRe
                     return ('\\':ch:rest)) <|> 
                 liftM2 (:) anyChar parseRe
@@ -472,10 +473,9 @@ hexLit = do
   return (True, hex)
 
 -- | Creates a decimal value from a whole, fractional and exponent part.
-mkDecimal:: Double -> Double -> Int -> Double
-mkDecimal w f e =  if f >= 1.0
-                   then mkDecimal w (f / 10.0) e
-                   else (w + f) * (10.0 ^^ e)
+mkDecimal :: Integer -> Integer -> Integer -> Integer -> Double
+mkDecimal whole frac fracLen exp = 
+  ((fromInteger whole) + ((fromInteger frac) * (10 ^^ (-fracLen)))) * (10 ^^ exp)
 
 exponentPart = do
   oneOf "eE"
@@ -490,12 +490,18 @@ decLit =
       mexp <-  option Nothing (jparser exponentPart)
       if isNothing mfrac && isNothing mexp
         then return (True, fromIntegral whole)
-        else return (False, mkDecimal (fromIntegral whole) 
-                                      (fromIntegral (fromMaybe 0 mfrac))
-                                      (fromIntegral (fromMaybe 0 mexp)))) <|>
+        else let frac = fromIntegral (fromMaybe 0 mfrac)
+             in  return (False, mkDecimal (fromIntegral whole) frac 
+                                          (intLen frac)
+                                          (fromIntegral (fromMaybe 0 mexp))))
+  <|>
   (do frac <- char '.' >> decimal
       exp <- option 0 exponentPart
-      return (False, mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp)))
+      let ifrac = fromIntegral frac
+      return (False, mkDecimal 0 ifrac (intLen frac) (fromIntegral exp)))
+
+intLen i | i `div` 10 < 1 = 1
+intLen i | otherwise = 1 + intLen (i `div` 10)
 
 parseNumLit:: ExpressionParser
 parseNumLit = do
@@ -735,8 +741,8 @@ parseScript = do
   liftM2 Script getPosition (parseStatement `sepBy` whiteSpace)
   
 -- | Parse from a stream; same as 'Text.Parsec.parse'
-parse :: Stream s Identity t =>
-         Parsec s [String] a -- ^ The parser to use
+parse :: Stream s Identity t 
+      => Parsec s [String] a -- ^ The parser to use
       -> SourceName -- ^ Name of the source file
       -> s -- ^ the stream to parse, usually a 'String'
       -> Either ParseError a

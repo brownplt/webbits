@@ -4,5 +4,4 @@ Script () [ReturnStmt () (Just (ArrayLit () [CallExpr () (NumLit () 0.8662619756
 Script () [ReturnStmt () (Just (ArrayLit () [CallExpr () (NumLit () 0.8662619756979761) [NullLit ()],ArrayLit () [],RegexpLit () "\\'%c" False False]))]
 
 Issues:
-* mkDecimal 0.0 8662619756979764 0 = 0.8662619756979761
 * escaping of the ' character -- update the Arbitrary instance for Regexp bodies?
