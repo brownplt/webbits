@@ -90,6 +90,7 @@ whiteSpace = forget $ choice [uTAB, uVT, uFF, uSP, uNBSP, uBOM, uUSP]
 spaces :: Stream s Identity Char => Parser s ()
 spaces = skipMany (whiteSpace <|> comment <?> "")
 
+lexeme :: Stream s Identity Char => Parser s a -> Parser s a
 lexeme p = do{ x <- p; spaces; return x}
 
 --7.3
@@ -247,105 +248,115 @@ punctuator = choice [ passignadd, passignsub, passignmul, passignmod, passignshl
                       pmod, pband, pbor, pbxor, pnot, pbnot,
                       pquestion, pcolon, passign ]
 plbrace :: Stream s Identity Char => Parser s ()
-plbrace = forget $ string "{"
+plbrace = forget $ lexeme $ char '{'
 prbrace :: Stream s Identity Char => Parser s ()
-prbrace = forget $ string "}"
+prbrace = forget $ lexeme $ char '}'
 plparen :: Stream s Identity Char => Parser s ()
-plparen = forget $ string "("
+plparen = forget $ lexeme $ char '('
 prparen :: Stream s Identity Char => Parser s ()
-prparen = forget $ string ")"
+prparen = forget $ lexeme $ char ')'
 plbracket :: Stream s Identity Char => Parser s ()
-plbracket = forget $ string "["
+plbracket = forget $ lexeme $ char '['
 prbracket :: Stream s Identity Char => Parser s ()
-prbracket = forget $ string "]"
+prbracket = forget $ lexeme $ char ']'
 pdot :: Stream s Identity Char => Parser s ()
-pdot = forget $ string "."
+pdot = forget $ lexeme $ char '.'
 psemi :: Stream s Identity Char => Parser s ()
-psemi = forget $ string ";"
+psemi = forget $ lexeme $ char ';'
 pcomma :: Stream s Identity Char => Parser s ()
-pcomma = forget $ string ","
+pcomma = forget $ lexeme $ char ','
 plangle :: Stream s Identity Char => Parser s ()
-plangle = forget $ string "<"
+plangle = forget $ lexeme $ do char '<'
+                               lookAhead $ notP $ choice [char '=', char '<']
 prangle :: Stream s Identity Char => Parser s ()
-prangle = forget $ string ">"
+prangle = forget $ lexeme $ do char '>'
+                               lookAhead $ notP $ choice [char '=', char '>']
 pleqt :: Stream s Identity Char => Parser s ()
-pleqt = forget $ string "<="
+pleqt = forget $ lexeme $ string "<="
 pgeqt :: Stream s Identity Char => Parser s ()
-pgeqt = forget $ string ">="
+pgeqt = forget $ lexeme $ string ">="
 peq :: Stream s Identity Char => Parser s ()
-peq  = forget $ string "=="
+peq  = forget $ lexeme $ string "=="
 pneq :: Stream s Identity Char => Parser s ()
-pneq = forget $ string "!="
+pneq = forget $ lexeme $ string "!="
 pseq :: Stream s Identity Char => Parser s ()
-pseq = forget $ string "==="
+pseq = forget $ lexeme $ string "==="
 psneq :: Stream s Identity Char => Parser s ()
-psneq = forget $ string "!=="
+psneq = forget $ lexeme $ string "!=="
 padd :: Stream s Identity Char => Parser s ()
-padd = forget $ string "+"
+padd = forget $ lexeme $ do char '+'
+                            lookAhead $ notP $ choice [char '=', char '+']
 psub :: Stream s Identity Char => Parser s ()
-psub = forget $ string "-"
+psub = forget $ lexeme $ do char '-'
+                            lookAhead $ notP $ choice [char '=', char '-']
 pmul :: Stream s Identity Char => Parser s ()
-pmul = forget $ string "*"
+pmul = forget $ lexeme $ do char '*'
+                            lookAhead $ char '='
 pmod :: Stream s Identity Char => Parser s ()
-pmod = forget $ string "%"
+pmod = forget $ lexeme $ do char '%'
+                            lookAhead $ char '='
 pplusplus :: Stream s Identity Char => Parser s ()
-pplusplus = forget $ string "++"
+pplusplus = forget $ lexeme $ string "++"
 pminusminus :: Stream s Identity Char => Parser s ()
-pminusminus = forget $ string "--"
+pminusminus = forget $ lexeme $ string "--"
 pshl :: Stream s Identity Char => Parser s ()
-pshl = forget $ string "<<"
+pshl = forget $ lexeme $ string "<<"
 pshr :: Stream s Identity Char => Parser s ()
-pshr = forget $ string ">>"
+pshr = forget $ lexeme $ string ">>"
 pushr :: Stream s Identity Char => Parser s ()
-pushr = forget $ string ">>>"
+pushr = forget $ lexeme $ string ">>>"
 pband :: Stream s Identity Char => Parser s ()
-pband = forget $ string "&"
+pband = forget $ lexeme $ do char '&'
+                             lookAhead $ notP $ char '&'
 pbor :: Stream s Identity Char => Parser s ()
-pbor = forget $ string "|"
+pbor = forget $ lexeme $ do char '|'
+                            lookAhead $ notP $ choice [char '|', char '=']
 pbxor :: Stream s Identity Char => Parser s ()
-pbxor = forget $ string "^"
+pbxor = forget $ lexeme $ do char '^'
+                             lookAhead $ notP $ choice [char '=']
 pnot :: Stream s Identity Char => Parser s ()
-pnot = forget $ string "!"
+pnot = forget $ lexeme $ do char '!'
+                            lookAhead $ notP $ char '='
 pbnot :: Stream s Identity Char => Parser s ()
-pbnot = forget $ string "~"
+pbnot = forget $ lexeme $ char '~'
 pand :: Stream s Identity Char => Parser s ()
-pand = forget $ string "&&"
+pand = forget $ lexeme $ string "&&"
 por :: Stream s Identity Char => Parser s ()
-por = forget $ string "||"
+por = forget $ lexeme $ string "||"
 pquestion :: Stream s Identity Char => Parser s ()
-pquestion = forget $ string "?"
+pquestion = forget $ lexeme $ char '?'
 pcolon :: Stream s Identity Char => Parser s ()
-pcolon = forget $ string ":"
+pcolon = forget $ lexeme $ char ':'
 passign :: Stream s Identity Char => Parser s ()
-passign = forget $ string "="
+passign = forget $ lexeme $ do char '='
+                               lookAhead $ notP $ char '='
 passignadd :: Stream s Identity Char => Parser s ()
-passignadd = forget $ string "+="
+passignadd = forget $ lexeme $ string "+="
 passignsub :: Stream s Identity Char => Parser s ()
-passignsub = forget $ string "-="
+passignsub = forget $ lexeme $ string "-="
 passignmul :: Stream s Identity Char => Parser s ()
-passignmul = forget $ string "*="
+passignmul = forget $ lexeme $ string "*="
 passignmod :: Stream s Identity Char => Parser s ()
-passignmod = forget $ string "%="
+passignmod = forget $ lexeme $ string "%="
 passignshl :: Stream s Identity Char => Parser s ()
-passignshl = forget $ string "<<="
+passignshl = forget $ lexeme $ string "<<="
 passignshr :: Stream s Identity Char => Parser s ()
-passignshr = forget $ string ">>="
+passignshr = forget $ lexeme $ string ">>="
 passignushr :: Stream s Identity Char => Parser s ()
-passignushr = forget $ string ">>>="
+passignushr = forget $ lexeme $ string ">>>="
 passignband :: Stream s Identity Char => Parser s ()
-passignband = forget $ string "&="
+passignband = forget $ lexeme $ string "&="
 passignbor :: Stream s Identity Char => Parser s ()
-passignbor = forget $ string "|="
+passignbor = forget $ lexeme $ string "|="
 passignbxor :: Stream s Identity Char => Parser s ()
-passignbxor = forget $ string "^="
+passignbxor = forget $ lexeme $ string "^="
 divPunctuator :: Stream s Identity Char => Parser s ()
 divPunctuator = choice [ passigndiv, pdiv ]
 passigndiv :: Stream s Identity Char => Parser s ()
-passigndiv = forget $ string "/="
+passigndiv = forget $ lexeme $ string "/="
 pdiv :: Stream s Identity Char => Parser s ()
-pdiv = forget $ string "/"
-
-
+pdiv = forget $ lexeme $ do char '/'
+                            lookAhead $ notP $ char '='
 
 --7.8
 literal :: Stream s Identity Char => Parser s PositionedExpression
@@ -379,14 +390,14 @@ decimalLiteral = lexeme $ withPos $
       mfraclen <- optionMaybe (pdot >> decimalDigitsWithLength)
       mexp  <- optionMaybe exponentPart
       if (mfraclen == Nothing && mexp == Nothing)
-        then return $ IntLit def $ fromIntegral whole
+        then return $ NumLit def $ Left $ fromInteger whole
         else let (frac, flen) = fromMaybe (0, 0) mfraclen 
                  exp          = fromMaybe 0 mexp 
-             in  return $ NumLit def $ mkDecimal whole frac flen exp)
+             in  return $ NumLit def $ Right $ mkDecimal whole frac flen exp)
   <|>
   (do (frac, flen) <- pdot >> decimalDigitsWithLength
       exp <- option 0 exponentPart
-      return $ NumLit def $ mkDecimal 0 frac flen exp)
+      return $ NumLit def $ Right $ mkDecimal 0 frac flen exp)
 
 decimalDigitsWithLength :: Stream s Identity Char
                         => Parser s (Integer, Integer)   
@@ -402,7 +413,7 @@ digits2NumberAndLength is =
 decimalIntegerLiteral :: Stream s Identity Char
                       => Parser s PositionedExpression
 decimalIntegerLiteral = lexeme $ withPos $ decimalInteger >>= 
-                        \i -> return (IntLit def (fromInteger i))
+                        \i -> return $ NumLit def $ Left $ fromInteger i
                                   
 decimalInteger :: Stream s Identity Char => Parser s Integer
 decimalInteger = (char '0' >> return 0)
@@ -443,7 +454,7 @@ hexIntegerLiteral = lexeme $ withPos $ do
   try (char '0' >> (char 'x' <|> char 'X'))
   digits <- many1 hexDigit
   n <- fromHex digits
-  return $ IntLit def n
+  return $ NumLit def $ Left $ fromInteger n
                          
 --7.8.4
 dblquote :: Stream s Identity Char => Parser s Char
@@ -582,9 +593,9 @@ regularExpressionFlags' (g, i, m) =
 -- doWhileStatement, continuteStatement, breakStatement,
 -- returnStatement and throwStatement.
 autoSemi :: Stream s Identity Char => Parser s ()
-autoSemi = (forget $ char ';') <|> 
-           lineTerminator <|>
-           (forget $ char '}')
+autoSemi = psemi
+        <|>lineTerminator
+        <|>prbrace
   
 -- | Automatic Semicolon Insertion algorithm, rule 2;
 -- to be used at the end of the program
@@ -617,27 +628,78 @@ primaryExpression = choice [lexeme $ withPos (kthis >> return (ThisRef def))
                            ,parenExpression]
 
 parenExpression :: Stream s Identity Char => Parser s PositionedExpression
-parenExpression = lexeme $ withPos (between (char '(') (char ')') expression)
+parenExpression = lexeme $ withPos (between plparen prparen expression)
                                     
-                                        
 -- 11.1.4
 arrayLiteral :: Stream s Identity Char => Parser s PositionedExpression
 arrayLiteral = lexeme $ withPos $ 
-               do char '['
+               do plbracket
                   e <- elementsListWithElision
-                  char ']'
-                  return e
-               
-elisionOpt :: Stream s Identity Char => Parser s Int
-elisionOpt = many (char ',') >>= (return . length)
-               
--- elementsListWithElision :: Parser [ a
-elementsListWithElision = error "not implemented"
-             
--- elementsList :: Parser 
-             
+                  prbracket
+                  return $ ArrayLit def e
+
+elementsListWithElision :: Stream s Identity Char
+                        => Parser s [Maybe (PositionedExpression)]
+elementsListWithElision = (optionMaybe assignmentExpression) `sepBy` pcomma
+  
+-- 11.1.5
+objectLiteral :: Stream s Identity Char => Parser s PositionedExpression
+objectLiteral = lexeme $ withPos $
+                do plbrace
+                   props <- propertyAssignment `sepBy` pcomma
+                   optional pcomma
+                   prbrace
+                   return $ ObjectLit def props
+
+propertyAssignment :: Stream s Identity Char
+                   => Parser s (PropAssign SourceSpan)
+propertyAssignment = lexeme $ withPos $
+                     (do lexeme $ string "get"
+                         pname <- propertyName
+                         prparen
+                         plparen
+                         plbrace
+                         body <- functionBody
+                         prbrace
+                         return $ PGet def pname body)
+                  <|>(do lexeme $ string "set"
+                         pname <- propertyName
+                         prparen
+                         param <- identifierName
+                         plparen
+                         plbrace
+                         body <- functionBody
+                         prbrace
+                         return $ PSet def pname param body)
+                  <|>(do pname <- propertyName
+                         pcolon
+                         e <- assignmentExpression
+                         return $ PExpr def pname e)
+
+propertyName :: Stream s Identity Char
+             => Parser s (Prop SourceSpan)
+propertyName = lexeme $ withPos $
+               (identifierName >>= id2Prop)
+            <|>(stringLiteral >>= string2Prop)
+            <|>(numericLiteral >>= num2Prop)
+  where id2Prop (Id a s) = return $ PropId a s
+        string2Prop (StringLit a s) = return $ PropString a s
+        num2Prop (NumLit a i) = return $ PropNum a i
+
+memberExpression :: Stream s Identity Char
+                 => Parser s PositionedExpression
+memberExpression = undefined
+
+assignmentExpression :: Stream s Identity Char
+                     => Parser s PositionedExpression
+assignmentExpression = undefined
+
 expression :: Stream s Identity Char => Parser s PositionedExpression
-expression = error "not implemented"
+expression = undefined
+
+functionBody :: Stream s Identity Char
+             => Parser s [PositionedStatement]
+functionBody = undefined
 
 parseScriptFromString = undefined
 parseJavaScriptFromFile = undefined
