@@ -156,7 +156,7 @@ data Expression a
     -- ^ @new foo(bar)@, spec 11.2.2
   | PrefixExpr a PrefixOp (Expression a) 
     -- ^ @\@e@, spec 11.4 (excluding 11.4.4, 111.4.5)
-  | UnaryAssignExpr a UnaryAssignOp (LValue a) 
+  | UnaryAssignExpr a UnaryAssignOp (Expression a) 
     -- ^ @++x@, @x--@ etc., spec 11.3, 11.4.4, 11.4.5
   | InfixExpr a InfixOp (Expression a) (Expression a) 
     -- ^ @e1\@e2@, spec 11.5, 11.6, 11.7, 11.8, 11.9, 11.10, 11.11

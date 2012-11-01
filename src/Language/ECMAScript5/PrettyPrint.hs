@@ -246,16 +246,16 @@ ppLHSExpression = ppCallExpression
 -- 11.3
 ppPostfixExpression :: Expression a -> Doc
 ppPostfixExpression e = case e of
-  UnaryAssignExpr _ PostfixInc e' -> ppLValue e' <> text "++"
-  UnaryAssignExpr _ PostfixDec e' -> ppLValue e' <> text "--"
+  UnaryAssignExpr _ PostfixInc e' -> ppLHSExpression e' <> text "++"
+  UnaryAssignExpr _ PostfixDec e' -> ppLHSExpression e' <> text "--"
   _ -> ppLHSExpression e
   
 -- 11.4
 ppUnaryExpression :: Expression a -> Doc
 ppUnaryExpression e = case e of
   PrefixExpr _ op e' -> prefixOp op <+> ppUnaryExpression e'
-  UnaryAssignExpr _ PrefixInc e' -> text "++" <> ppLValue e'
-  UnaryAssignExpr _ PrefixDec e' -> text "--" <> ppLValue e'
+  UnaryAssignExpr _ PrefixInc e' -> text "++" <> ppLHSExpression e'
+  UnaryAssignExpr _ PrefixDec e' -> text "--" <> ppLHSExpression e'
   _ -> ppPostfixExpression e
 
 -- 11.5

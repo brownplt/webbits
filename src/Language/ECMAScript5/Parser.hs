@@ -236,14 +236,16 @@ ksuper = string "super"
 
 --7.7
 punctuator :: Stream s Identity Char => Parser s ()
-punctuator = choice [ passignadd, passignsub, passignmul, passignmod, passignshl, passignshr,
+punctuator = choice [ passignadd, passignsub, passignmul, passignmod, 
+                      passignshl, passignshr,
                       passignushr, passignband, passignbor, passignbxor,
                       pshl, pshr, pushr,
                       pleqt, pgeqt,
-                      plbrace, prbrace, plparen, prparen, plbracket, prbracket, pdot, psemi, pcomma,
+                      plbrace, prbrace, plparen, prparen, plbracket, 
+                      prbracket, pdot, psemi, pcomma,
                       plangle, prangle, pseq, peq, psneq, pneq,
                       pplusplus, pminusminus,
-                      padd, psub, pmul,
+                      pplus, pminus, pmul,
                       pand, por,
                       pmod, pband, pbor, pbxor, pnot, pbnot,
                       pquestion, pcolon, passign ]
@@ -283,12 +285,12 @@ pseq :: Stream s Identity Char => Parser s ()
 pseq = forget $ lexeme $ string "==="
 psneq :: Stream s Identity Char => Parser s ()
 psneq = forget $ lexeme $ string "!=="
-padd :: Stream s Identity Char => Parser s ()
-padd = forget $ lexeme $ do char '+'
-                            lookAhead $ notP $ choice [char '=', char '+']
-psub :: Stream s Identity Char => Parser s ()
-psub = forget $ lexeme $ do char '-'
-                            lookAhead $ notP $ choice [char '=', char '-']
+pplus :: Stream s Identity Char => Parser s ()
+pplus = forget $ lexeme $ do char '+'
+                             lookAhead $ notP $ choice [char '=', char '+']
+pminus :: Stream s Identity Char => Parser s ()
+pminus = forget $ lexeme $ do char '-'
+                              lookAhead $ notP $ choice [char '=', char '-']
 pmul :: Stream s Identity Char => Parser s ()
 pmul = forget $ lexeme $ do char '*'
                             lookAhead $ char '='
@@ -686,9 +688,154 @@ propertyName = lexeme $ withPos $
         string2Prop (StringLit a s) = return $ PropString a s
         num2Prop (NumLit a i) = return $ PropNum a i
 
-memberExpression :: Stream s Identity Char
-                 => Parser s PositionedExpression
-memberExpression = undefined
+-- 11.2
+memberExpression :: Stream s Identity Char => Parser s PositionedExpression
+memberExpression = functionExpression
+                <|>(lexeme $ withPos $ do obj <- memberExpression
+                                          plbracket
+                                          field <- expression
+                                          prbracket
+                                          return $ BracketRef def obj field)
+                <|>(lexeme $ withPos $ do obj <- memberExpression
+                                          pdot
+                                          field <- identifierName
+                                          return $ DotRef def obj field)
+                <|>(lexeme $ withPos $ do knew
+                                          ctor <- memberExpression
+                                          args <- arguments
+                                          return $ NewExpr def ctor args)
+                <|>primaryExpression
+                                          
+newExpression :: Stream s Identity Char => Parser s PositionedExpression
+newExpression = (lexeme $ withPos $ do knew
+                                       ctor <- newExpression
+                                       args <- arguments
+                                       return $ NewExpr def ctor args)
+             <|>memberExpression
+
+callExpression :: Stream s Identity Char => Parser s PositionedExpression
+callExpression = (lexeme $ withPos $ do func <- callExpression
+                                        args <- arguments
+                                        return $ CallExpr def func args)
+              <|>(lexeme $ withPos $ do obj <- callExpression
+                                        plbracket
+                                        field <- expression
+                                        prbracket
+                                        return $ BracketRef def obj field)
+              <|>(lexeme $ withPos $ do obj <- callExpression
+                                        pdot
+                                        field <- identifierName
+                                        prbracket
+                                        return $ DotRef def obj field)
+              <|>(lexeme $ withPos $ do func <- memberExpression
+                                        args <- arguments
+                                        return $ CallExpr def func args)
+
+arguments :: Stream s Identity Char => Parser s [PositionedExpression]
+arguments = lexeme $ do plbrace
+                        args <- assignmentExpression `sepBy` pcomma
+                        prbrace
+                        return args
+                        
+leftHandSideExpression :: Stream s Identity Char
+                       => Parser s PositionedExpression
+leftHandSideExpression = newExpression <|> callExpression
+
+-- 11.3
+postfixExpression :: Stream s Identity Char => Parser s PositionedExpression
+postfixExpression = 
+  lexeme $ withPos $ leftHandSideExpression `noLineTerminator` 
+  ((pplusplus >> return PostfixInc) <|>
+   (pminusminus >> return PostfixDec)) >>= \(e, mIsPlus) ->
+  case mIsPlus of
+    Nothing -> return e
+    Just op -> return $ UnaryAssignExpr def op e
+
+-- 11.4
+unaryExpression :: Stream s Identity Char => Parser s PositionedExpression
+unaryExpression = 
+  (lexeme $ withPos $ 
+       (choice [pplusplus >> return PrefixInc
+               ,pminusminus >> return PrefixDec
+               ] >>= \op ->
+         liftM (UnaryAssignExpr def op) unaryExpression)
+   <|> (choice [kdelete >> return PrefixDelete
+               ,kvoid   >> return PrefixVoid
+               ,ktypeof >> return PrefixTypeof
+               ,pplus   >> return PrefixPlus
+               ,pminus  >> return PrefixMinus
+               ,pbnot   >> return PrefixBNot
+               ,pnot    >> return PrefixLNot
+               ] >>= \op -> 
+       liftM (PrefixExpr def op) unaryExpression))
+  <|> postfixExpression
+
+-- 11.5
+multiplicativeExpression :: Stream s Identity Char
+                         => Parser s PositionedExpression
+multiplicativeExpression = (lexeme $ withPos $ do
+                               lhs <- multiplicativeExpression
+                               op  <- choice [pmul >> return OpMul
+                                             ,pdiv >> return OpDiv
+                                             ,pmod >> return OpMod]
+                               rhs <- unaryExpression
+                               return $ InfixExpr def op lhs rhs)
+                        <|>unaryExpression
+
+-- 11.6
+additiveExpression :: Stream s Identity Char => Parser s PositionedExpression
+additiveExpression = (lexeme $ withPos $ do
+                         lhs <- additiveExpression
+                         op  <- choice [pplus >> return OpAdd
+                                       ,pminus >> return OpSub]
+                         rhs <- multiplicativeExpression
+                         return $ InfixExpr def op lhs rhs)
+                  <|> multiplicativeExpression
+
+-- 11.7
+shiftExpression :: Stream s Identity Char => Parser s PositionedExpression
+shiftExpression = (lexeme $ withPos $ do
+                      lhs <- shiftExpression
+                      op  <- choice [pshl >> return OpLShift
+                                    ,pshr >> return OpSpRShift
+                                    ,pushr >> return OpZfRShift]
+                      rhs <- additiveExpression
+                      return $ InfixExpr def op lhs rhs)
+               <|> additiveExpression
+
+-- 11.8
+relationalExpression :: Stream s Identity Char
+                     => Bool
+                     -> Parser s PositionedExpression
+relationalExpression yesIn = 
+  let in_ = if yesIn then [kin >> return OpIn] else [] in
+  (lexeme $ withPos $ do
+      lhs <- relationalExpression yesIn
+      op  <- choice $ in_ ++ [plangle >> return OpLT
+                             ,prangle >> return OpGT
+                             ,pleqt   >> return OpLEq
+                             ,pgeqt   >> return OpGEq
+                             ,kinstanceof >> return OpInstanceof]
+      rhs <- shiftExpression
+      return $ InfixExpr def op lhs rhs)
+  <|> shiftExpression
+
+-- 11.9
+equalityExpression :: Stream s Identity Char
+                   => Bool
+                   -> Parser s PositionedExpression
+equalityExpression yesIn = (lexeme $ withPos $ do
+                               lhs <- equalityExpression yesIn
+                               op  <- choice [peq >> return OpEq
+                                             ,pneq >> return OpNEq
+                                             ,pseq >> return OpStrictEq
+                                             ,psneq >> return OpStrictNEq]
+                               rhs <- relationalExpression yesIn
+                               return $ InfixExpr def op lhs rhs)
+                        <|> relationalExpression yesIn
+
+functionExpression :: Stream s Identity Char => Parser s PositionedExpression
+functionExpression = undefined
 
 assignmentExpression :: Stream s Identity Char
                      => Parser s PositionedExpression
