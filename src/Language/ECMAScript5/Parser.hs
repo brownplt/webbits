@@ -40,9 +40,10 @@ type ParserState = [String]
 
 type Parser s a = ParsecT s ParserState Identity a
 
-type PositionedExpression = Expression (SourcePos, SourcePos)
-type PositionedStatement  = Statement (SourcePos, SourcePos)
-type PositionedId         = Id (SourcePos, SourcePos)
+type Span = (SourcePos, SourcePos)
+type PositionedExpression = Expression Span
+type PositionedStatement  = Statement Span
+type PositionedId         = Id Span
 
 initialParserState :: ParserState
 initialParserState = []
@@ -72,7 +73,7 @@ withFreshLabelStack p = do oldState <- getState
                            return a
 
 -- a convenience wrapper to take care of the position, "with position"
-withPos   :: Parser s n -> Parser s n
+withPos   :: HasAnnotation t => Parser s (t Span) -> Parser s (t Span)
 withPos p = do start <- getPosition
                result <- p
                end <- getPosition
@@ -80,8 +81,10 @@ withPos p = do start <- getPosition
 
 -- Below "x.y.z" are references to ECMAScript 5 spec chapters that discuss the corresponding grammar production
 --7.2
+whiteSpace :: (Stream s Identity Char) => Parser s ()
 whiteSpace = forget $ choice [uTAB, uVT, uFF, uSP, uNBSP, uBOM, uUSP]
 
+spaces :: (Stream s Identity Char) => Parser s ()
 spaces = skipMany (whiteSpace <|> comment <?> "")
 
 lexeme p = do{ x <- p; spaces; return x}
@@ -90,54 +93,68 @@ lexeme p = do{ x <- p; spaces; return x}
 uCRalone = do c <- uCR
               notFollowedBy uLF
               return c
+              
+lineTerminator :: Stream s Identity Char => Parser s ()
 lineTerminator = forget (uLF <|> uCR <|> uLS <|> uPS)
 lineTerminatorSequence = (forget (uLF <|> uCRalone <|> uLS <|> uPS )) <|> (forget uCRLF)
 
 --7.4
-comment :: Parser ()
+comment :: Stream s Identity Char => Parser s ()
 comment = multiLineComment <|> singleLineComment
 
+singleLineCommentChars :: Stream s Identity Char => Parser s ()
 singleLineCommentChars = singleLineCommentChar >> singleLineCommentChars
+
+singleLineCommentChar :: Stream s Identity Char => Parser s ()
 singleLineCommentChar  = notP lineTerminator
+
+multiLineCommentChars :: Stream s Identity Char => Parser s ()
 multiLineCommentChars  = (multiLineNotAsteriskChar >> multiLineCommentChars) <|>
                          (char '*' >> postAsteriskCommentChars)
 
+multiLineComment :: Stream s Identity Char => Parser s ()
 multiLineComment = string "/*" >> optional multiLineCommentChars >> (forget (string "*/"))
 
+singleLineComment :: Stream s Identity Char => Parser s ()
 singleLineComment = string "//" >> optional singleLineCommentChars
 
+multiLineNotAsteriskChar :: Stream s Identity Char => Parser s ()
 multiLineNotAsteriskChar = notP $ char '*'
+
+multiLineNotForwardSlashOrAsteriskChar :: Stream s Identity Char => Parser s Char
 multiLineNotForwardSlashOrAsteriskChar = noneOf "/*"
-postAsteriskCommentChars = (do c  <- multiLineNotForwardSlashOrAsteriskChar
-                               cs <- option "" multiLineCommentChars
-                               return (c:cs)) <|>
-                           (do c  <- char '*'
-                               cs <- option "" postAsteriskCommentChars
-                               return (c:cs))
+
+postAsteriskCommentChars :: Stream s Identity Char => Parser s ()
+postAsteriskCommentChars = (multiLineNotForwardSlashOrAsteriskChar >>
+                            optional multiLineCommentChars)
+                           <|>
+                           (char '*' >> optional postAsteriskCommentChars)
 
 --7.5
 --token = identifierName <|> punctuator <|> numericLiteral <|> stringLiteral
 
 --7.6
-identifier :: Parser PositionedExpression
+identifier :: Stream s Identity Char => Parser s PositionedExpression
 identifier = lexeme $ withPos $ do name <- identifierName `butNot` reservedWord
                                    return $ VarRef def name
 
-identifierName :: Parser PositionedId
+identifierName :: Stream s Identity Char => Parser s PositionedId
 identifierName = withPos $ do c  <- identifierStart 
                               cs <- many identifierPart
                               return $ Id def (c:cs)
 
+identifierStart :: Stream s Identity Char => Parser s Char
 identifierStart = unicodeLetter <|> char '$' <|> char '_' <|> unicodeEscape
 
+unicodeEscape :: Stream s Identity Char => Parser s Char
 unicodeEscape = char '\\' >> unicodeEscapeSequence
 
+identifierPart :: Stream s Identity Char => Parser s Char
 identifierPart = identifierStart <|> unicodeCombiningMark <|> unicodeDigit <|>
                  unicodeConnectorPunctuation <|> uZWNJ <|> uZWJ
 
-
 --7.6.1
-reservedWord :: Parser ()
+reservedWord :: Stream s Identity Char => Parser s ()
 reservedWord = choice [forget keyword, forget futureReservedWord, forget nullLiteral, forget booleanLiteral]
 
 --7.6.1.1
@@ -249,23 +266,21 @@ divPunctuator = choice [ passigndiv, pdiv ]
 passigndiv = string "/="
 pdiv = string "/"
 
-
-
 --7.8
-literal :: Parser (PositionedExpression)
+literal :: Parser s (PositionedExpression)
 literal = choice [nullLiteral, booleanLiteral, numericLiteral, stringLiteral, regularExpressionLiteral]
 
 --7.8.1
-nullLiteral :: Parser (PositionedExpression)
+nullLiteral :: Parser s (PositionedExpression)
 nullLiteral = lexeme $ withPos (string "null" >> return $ NullLit def)
 
 --7.8.2
-booleanLiteral :: Parser (PositionedExpression)
+booleanLiteral :: Parser s (PositionedExpression)
 booleanLiteral = lexeme $ withPos $ ((string "true" >> return (BoolLit def True)) 
                                  <|> (string "false" >> return (BoolLit def False)))
 
 --7.8.3
-numericLiteral :: Parser (PositionedExpression)
+numericLiteral :: Parser s (PositionedExpression)
 numericLiteral = hexIntegerLiteral <|> decimalLiteral
 
 -- Creates a decimal value from a whole, fractional and exponent parts.
@@ -290,10 +305,10 @@ decimalLiteral = lexeme $ withPos $
       exp <- option 0 exponentPart
       return $ NumLit def $ mkDecimal 0.0 (fromIntegral frac) (fromIntegral exp))
 
-decimalDigits :: Parser (Integer, Integer)   
+decimalDigits :: Parser s (Integer, Integer)   
 decimalDigits = many decimalDigit >>= fromDecimal
 
-decimalIntegerLiteral :: Parser Integer
+decimalIntegerLiteral :: Parser s Integer
 decimalIntegerLiteral = 
   (char '0' >> return 0) <|> 
   (do d  <- nonZeroDecimalDigit
@@ -305,11 +320,11 @@ signedInteger = (char '+' >> decimalIntegerLiteral) <|>
                 (char '-' >> negate <$> decimalIntegerLiteral) <|>
                 decimalIntegerLiteral
 
-decimalDigit :: Parser Integer
+decimalDigit :: Parser s Integer
 decimalDigit  = do c <- rangeChar '0' '9'
                    return $ ord c - ord '0'
                    
-nonZeroDecimalDigit :: Parser Integer
+nonZeroDecimalDigit :: Parser s Integer
 nonZeroDecimalDigit  = do c <- rangeChar '1' '9'
                           return $ ord c - ord '0'
 
@@ -339,18 +354,18 @@ dblquotes = between dblquote dblquote
 quotes = between quote quote
 
 
-stringLiteral :: Parser (PositionedExpression)
+stringLiteral :: Parser s (PositionedExpression)
 stringLiteral =  lexeme $ withPos $ 
                  do s <- ((dblquotes $ concatM $ many doubleStringCharacter) <|> 
                           (quotes $ concatM $ many singleStringCharacter))
                     return $ StringLit def s
 
-doubleStringCharacter :: Parser String
+doubleStringCharacter :: Parser s String
 doubleStringCharacter =  (stringify ((anyChar `butNot` choice[forget dblquote, forget backslash, lineTerminator]) <|>
                          (backslash >> escapeSequence))) <|>                        
                          lineContinuation 
 
-singleStringCharacter :: Parser String
+singleStringCharacter :: Parser s String
 singleStringCharacter =  (stringify ((anyChar `butNot` choice[forget quote, forget backslash, forget lineTerminator]) <|>
                          (backslash >> escapeSequence))) <|>
                          lineContinuation
@@ -376,8 +391,7 @@ hexEscapeSequence =  do digits <- (char 'x' >> count 2 hexDigit)
                         hex <- fromHex digits
                         return $ chr hex
 
-
-
+unicodeEscapeSequence :: Stream s Identity Char => Parser s Char
 unicodeEscapeSequence = do digits <- char 'u' >> count 4 hexDigit
                            hex <- fromHex digits
                            return $ chr hex
@@ -397,14 +411,14 @@ regularExpressionBody = do c <- regularExpressionFirstChar
                          
 regularExpressionChars = many regularExpressionChar
 
-regularExpressionFirstChar :: Parser String
+regularExpressionFirstChar :: Parser s String
 regularExpressionFirstChar = 
   choice [
     stringify $ regularExpressionNonTerminator `butNot` choice [char '*', char '\\', char '/', char '[' ],
     regularExpressionBackslashSequence,
     regularExpressionClass ]
 
-regularExpressionChar :: Parser String
+regularExpressionChar :: Parser s String
 regularExpressionChar = 
   choice [
     stringify $ regularExpressionNonTerminator `butNot` choice [char '\\', char '/', char '[' ],
@@ -425,10 +439,10 @@ regularExpressionClass = do l <- char '['
 regularExpressionClassChar = stringify (regularExpressionNonTerminator `butNot` (char ']' <|> char '\\')) <|>
                              regularExpressionBackslashSequence
     
-regularExpressionFlags :: Parser (Bool, Bool, Bool) -- g, i, m    
+regularExpressionFlags :: Parser s (Bool, Bool, Bool) -- g, i, m    
 regularExpressionFlags = regularExpressionFlags' (False, False, False)
   
-regularExpressionFlags' :: (Bool, Bool, Bool) -> Parser (Bool, Bool, Bool)
+regularExpressionFlags' :: (Bool, Bool, Bool) -> Parser s (Bool, Bool, Bool)
 regularExpressionFlags' (g, i, m) = 
     (char 'g' >> (if not g then regularExpressionFlags' (True, i, m) else unexpected "duplicate 'g' in regular expression flags")) <|>
     (char 'i' >> (if not g then regularExpressionFlags' (g, True, m) else unexpected "duplicate 'i' in regular expression flags")) <|>
@@ -441,14 +455,14 @@ regularExpressionFlags' (g, i, m) =
 -- emptyStatement, variableStatement, expressionStatement,
 -- doWhileStatement, continuteStatement, breakStatement,
 -- returnStatement and throwStatement.
-autoSemi :: Parser ()
+autoSemi :: Parser s ()
 autoSemi = (forget $ char ';') <|> 
            lineTerminator <|>
            (forget $ char '}')
   
 -- | Automatic Semicolon Insertion algorithm, rule 2;
 -- to be used at the end of the program
-endOfProgram :: Parser ()
+endOfProgram :: Parser s ()
 endOfProgram = forget (char ';') <|> eof
            
 -- | Automatic Semicolon Insertion algorithm, rule 3; it takes 2
@@ -459,7 +473,7 @@ endOfProgram = forget (char ';') <|> eof
 -- returned, where 'l' is the result of left; otherwise (l, Just r) is
 -- returned, where 'l' and 'r' are results of left and right
 -- respectively.
-noLineTerminator :: Parser a -> Parser b -> Parser (a, Maybe b)
+noLineTerminator :: Parser s a -> Parser s b -> Parser s (a, Maybe b)
 noLineTerminator left right = do l <- left
                                  spaces
                                  ((try lineTerminator >>
@@ -468,26 +482,26 @@ noLineTerminator left right = do l <- left
 
 -- 11.1
 -- primary expressions
-primaryExpression :: Parser (PositionedExpression)
+primaryExpression :: Parser s (PositionedExpression)
 primaryExpression = choice [ lexeme $ withPos (kthis >> return $ ThisRef def),
                              identifier,
                              literal,
                              arrayLiteral,
                              parenExpression ]
 
-parenExpression :: Parser (PositionedExpression)
+parenExpression :: Parser s (PositionedExpression)
 parenExpression = lexeme $ withPos (between (char '(') (char ')') expression)
                                     
                                         
 -- 11.1.4
-arrayLiteral :: Parser (PositionedExpression)
+arrayLiteral :: Parser s (PositionedExpression)
 arrayLiteral = lexeme $ withPos $ 
                do char '['
                   e <- elementsListWithElision
                   char ']'
                   return e
                
-elisionOpt :: Parser Int
+elisionOpt :: Parser s Int
 elisionOpt = many (char ',') >>= (return . length)
                
 -- elementsListWithElision :: Parser [ a
@@ -495,5 +509,5 @@ elementsListWithElision = error "not implemented"
              
 -- elementsList :: Parser 
              
-expression :: Parser (PositionedExpression)
+expression :: Parser s (PositionedExpression)
 expression = error "not implemented"

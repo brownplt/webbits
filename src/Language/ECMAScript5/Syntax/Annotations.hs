@@ -169,3 +169,7 @@ instance HasAnnotation CaseClause where
 instance HasAnnotation CatchClause where
   getAnnotation (CatchClause a _ _) = a
   setAnnotation a (CatchClause _ id b) = CatchClause a id b  
+
+instance HasAnnotation Id where
+  getAnnotation (Id a _) = a
+  setAnnotation a (Id _ s) = Id a s
