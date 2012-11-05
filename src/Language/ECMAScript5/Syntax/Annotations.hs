@@ -49,9 +49,9 @@ class HasAnnotation a where
 instance HasAnnotation Expression where
   getAnnotation e = case e of
    (StringLit a s)              -> a
-   (RegexpLit a s g ci)         -> a
+   (RegexpLit a s g i m)        -> a
    (NumLit a d)                 -> a
-   (IntLit a i)                 -> a
+--   (IntLit a i)                 -> a
    (BoolLit a b)                -> a
    (NullLit a)                  -> a
    (ArrayLit a exps)            -> a
@@ -71,9 +71,9 @@ instance HasAnnotation Expression where
    (FuncExpr a mid args s)      -> a
   setAnnotation a e = case e of
     (StringLit _ s)              -> (StringLit a s)
-    (RegexpLit _ s g ci)         -> (RegexpLit a s g ci)
+    (RegexpLit _ s g i m)        -> (RegexpLit a s g i m)
     (NumLit _ d)                 -> (NumLit a d)
-    (IntLit _ i)                 -> (IntLit a i)
+--    (IntLit _ i)                 -> (IntLit a i)
     (BoolLit _ b)                -> (BoolLit a b)
     (NullLit _)                  -> (NullLit a)
     (ArrayLit _ exps)            -> (ArrayLit a exps)
@@ -173,3 +173,13 @@ instance HasAnnotation CatchClause where
 instance HasAnnotation Id where
   getAnnotation (Id a _) = a
   setAnnotation a (Id _ s) = Id a s
+  
+instance HasAnnotation PropAssign where
+  getAnnotation p = case p of
+    PExpr a _ _   -> a
+    PGet  a _ _   -> a
+    PSet  a _ _ _ -> a
+  setAnnotation a p = case p of
+    PExpr _ pr e    -> PExpr a pr e
+    PGet  _ pr b    -> PGet a pr b
+    PSet  _ pr id b -> PSet a pr id b

@@ -83,8 +83,8 @@ ppStatement s = case s of
     ppStatement body
   ForStmt _ init incr test body ->
     text "for" <+> 
-    parens (forInit init <> semi <+> maybe incr (ppExpression True) <> 
-            semi <+> maybe test (ppExpression True)) $$ 
+    parens (forInit init <> semi <+> maybe (ppExpression True) incr <> 
+            semi <+> maybe (ppExpression True) test) $$ 
     ppStatement body
   TryStmt _ stmt mcatch mfinally ->
     text "try" $$ inBlock stmt $$ ppCatch $$ ppFinally 
@@ -109,7 +109,7 @@ stmtList = vcat . map ppStatement
 
 ppProp :: Prop a -> Doc
 ppProp p = case p of
-  PropId _ id -> ppId id
+  PropId a id -> ppId (Id a id)
   PropString _ str -> doubleQuotes (text (jsEscape str))
   PropNum _ n -> text (show n)
 
@@ -194,16 +194,20 @@ ppPrimaryExpression e = case e of
   NullLit _ -> text "null"
   BoolLit _ True -> text "true"
   BoolLit _ False -> text "false"
-  NumLit  _ n -> text (show n)
-  IntLit _ n ->  text (show n)
+  NumLit  _ (Left i) -> text (show i)
+  NumLit  _ (Right d) -> text (show d)
+--  IntLit _ n ->  text (show n)
   StringLit _ str -> doubleQuotes (text (jsEscape str))
-  RegexpLit _ reg g ci -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
+  RegexpLit _ reg g i m -> text "/" <> (text (jsEscape reg)) <> text "/" <> 
                           (if g then text "g" else empty) <> 
-                          (if ci then text "i" else empty)
+                          (if i then text "i" else empty) <>
+                          (if m then text "m" else empty)
   ArrayLit _ es -> 
-    brackets $ cat $ punctuate comma (map (ppAssignmentExpression True) es)
+    brackets $ cat $ punctuate comma (map ppArrayElement es)
   ObjectLit _ pas -> braces $ hsep $ punctuate comma (map ppPropAssign pas)
   _ -> parens $ ppExpression True e
+
+ppArrayElement = maybe (ppAssignmentExpression True)
 
 ppPropAssign :: PropAssign a -> Doc
 ppPropAssign pa = case pa of
@@ -215,7 +219,7 @@ ppPropAssign pa = case pa of
 ppMemberExpression :: Expression a -> Doc
 ppMemberExpression e = case e of
   FuncExpr _ name params body -> 
-    text "function" <+> maybe name ppId <+>
+    text "function" <+> maybe ppId name <+>
     parens (cat $ punctuate comma (map ppId params)) $$ 
     asBlock body
   DotRef _ obj id -> ppMemberExpression obj <> text "." <> ppId id
@@ -242,16 +246,16 @@ ppLHSExpression = ppCallExpression
 -- 11.3
 ppPostfixExpression :: Expression a -> Doc
 ppPostfixExpression e = case e of
-  UnaryAssignExpr _ PostfixInc e' -> ppLValue e' <> text "++"
-  UnaryAssignExpr _ PostfixDec e' -> ppLValue e' <> text "--"
+  UnaryAssignExpr _ PostfixInc e' -> ppLHSExpression e' <> text "++"
+  UnaryAssignExpr _ PostfixDec e' -> ppLHSExpression e' <> text "--"
   _ -> ppLHSExpression e
   
 -- 11.4
 ppUnaryExpression :: Expression a -> Doc
 ppUnaryExpression e = case e of
   PrefixExpr _ op e' -> prefixOp op <+> ppUnaryExpression e'
-  UnaryAssignExpr _ PrefixInc e' -> text "++" <> ppLValue e'
-  UnaryAssignExpr _ PrefixDec e' -> text "--" <> ppLValue e'
+  UnaryAssignExpr _ PrefixInc e' -> text "++" <> ppLHSExpression e'
+  UnaryAssignExpr _ PrefixDec e' -> text "--" <> ppLHSExpression e'
   _ -> ppPostfixExpression e
 
 -- 11.5
@@ -353,9 +357,9 @@ ppExpression hasIn e = case e of
   ListExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
   _ -> ppAssignmentExpression hasIn e
 
-maybe :: Maybe a -> (a -> Doc) -> Doc
-maybe Nothing  _ = empty
-maybe (Just a) f = f a
+maybe :: (a -> Doc) -> Maybe a -> Doc
+maybe _ Nothing  = empty
+maybe f (Just a) = f a
 
 -- | Renders a JavaScript program as a document, the show instance of
 -- 'Doc' will pretty-print it automatically

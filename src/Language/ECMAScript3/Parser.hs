@@ -477,11 +477,6 @@ mkDecimal :: Integer -> Integer -> Integer -> Integer -> Double
 mkDecimal whole frac fracLen exp = 
   ((fromInteger whole) + ((fromInteger frac) * (10 ^^ (-fracLen)))) * (10 ^^ exp)
 
--- mkDecimal:: Double -> Double -> Int -> Double
--- mkDecimal w f e =  if f >= 1.0
---                    then mkDecimal w (f / 10.0) e
---                    else (w + f) * (10.0 ^^ e)
-
 exponentPart = do
   oneOf "eE"
   (char '+' >> decimal) <|> (char '-' >> negate `fmap` decimal) <|> decimal

@@ -27,6 +27,7 @@ import Data.Generics(Data,Typeable)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
 import Data.Default
+import Data.Int (Int32)
 
 data JavaScript a
   -- |A script in \<script\> ... \</script\> tags.
@@ -107,10 +108,12 @@ data PrefixOp = PrefixLNot -- ^ @!@
               | PrefixDelete -- ^ @delete@
   deriving (Show,Data,Typeable,Eq,Ord)
 
+type Number = Either Int32 Double
+
 -- | Property names in an object initializer: see spec 11.1.5
-data Prop a = PropId a (Id a) -- ^ property name is an identifier, @foo@
+data Prop a = PropId a String -- ^ property name is an identifier, @foo@
             | PropString a String -- ^ property name is a string, @\"foo\"@
-            | PropNum a Integer -- ^ property name is an integer, @42@
+            | PropNum a Number -- ^ property name is a number, @42@
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 -- | Property assignments, see spec 11.1.5
@@ -134,14 +137,14 @@ data LValue a
 -- | Expressions, see spec 11
 data Expression a
   = StringLit a String -- ^ @\"foo\"@, spec 11.1.3, 7.8
-  | RegexpLit a String Bool Bool 
-    -- ^ @RegexpLit a regexp global?  case_insensitive?@ -- regular
-    -- expression, see spec 11.1.3, 7.8
-  | NumLit a Double -- ^ @41.99999@, spec 11.1.3, 7.8
-  | IntLit a Int -- ^ @42@, spec 11.1.3, 7.8
+  | RegexpLit a String Bool Bool Bool
+    -- ^ @RegexpLit a regexp global? case_insensitive? multiline?@
+    -- regular expression, see spec 11.1.3, 7.8
+  | NumLit a Number -- ^ @41.99999@, spec 11.1.3, 7.8
+--  | IntLit a Int -- ^ @42@, spec 11.1.3, 7.8
   | BoolLit a Bool -- ^ @true@, spec 11.1.3, 7.8
   | NullLit a -- ^ @null@, spec 11.1.3, 7.8
-  | ArrayLit a [Expression a] -- ^ @[1,2,3]@, spec 11.1.4
+  | ArrayLit a [Maybe (Expression a)] -- ^ @[1,2,3]@, spec 11.1.4
   | ObjectLit a [PropAssign a] -- ^ @{foo:\"bar\", get baz
                                          -- () {42;}}@, spec 11.1.5
   | ThisRef a -- ^ @this@, spec 11.1.1
@@ -153,7 +156,7 @@ data Expression a
     -- ^ @new foo(bar)@, spec 11.2.2
   | PrefixExpr a PrefixOp (Expression a) 
     -- ^ @\@e@, spec 11.4 (excluding 11.4.4, 111.4.5)
-  | UnaryAssignExpr a UnaryAssignOp (LValue a) 
+  | UnaryAssignExpr a UnaryAssignOp (Expression a) 
     -- ^ @++x@, @x--@ etc., spec 11.3, 11.4.4, 11.4.5
   | InfixExpr a InfixOp (Expression a) (Expression a) 
     -- ^ @e1\@e2@, spec 11.5, 11.6, 11.7, 11.8, 11.9, 11.10, 11.11
