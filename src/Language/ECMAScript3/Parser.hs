@@ -18,6 +18,7 @@ module Language.ECMAScript3.Parser
   -- debugging, remove the next 2 lines
   , mkDecimal
   , intLen
+  , parseObjectLit  
   ) where
 
 import Language.ECMAScript3.Lexer hiding (identifier)
