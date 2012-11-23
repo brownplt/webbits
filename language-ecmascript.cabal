@@ -57,6 +57,9 @@ Library
     Language.ECMAScript3.Syntax.Arbitrary
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
+  Other-Modules:
+    Language.ECMAScript3.Parser.Type
+    Language.ECMAScript3.Parser.State
   Default-Extensions:
     DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
