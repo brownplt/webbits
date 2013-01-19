@@ -2,7 +2,7 @@
 -- Haskell. Doesn't support anti-quotation as of now.
 
 {-# LANGUAGE FlexibleContexts #-}
-module Language.ECMAScript3.Syntax.QuasiQuote (js, jsexpr) where
+module Language.ECMAScript3.Syntax.QuasiQuote (js, jsexpr, jsstmt) where
 
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote
@@ -16,11 +16,17 @@ import Language.ECMAScript3.Parser
 jsexpr :: QuasiQuoter
 jsexpr = QuasiQuoter {quoteExp = quoteJSExpr}
 
+jsstmt :: QuasiQuoter
+jsstmt = QuasiQuoter {quoteExp = quoteJSStmt}
+
 js :: QuasiQuoter
 js = QuasiQuoter {quoteExp = quoteJS}
 
 quoteJSExpr :: String -> TH.ExpQ
 quoteJSExpr = quoteCommon parseExpression
+
+quoteJSStmt :: String -> TH.ExpQ
+quoteJSStmt = quoteCommon parseStatement
 
 quoteJS :: String -> TH.ExpQ
 quoteJS = quoteCommon parseScript
