@@ -21,7 +21,7 @@ Description:
   Includes a parser, pretty-printer, and basic building blocks for more
   sophisticated tools.
 
-  This package used to be called WebBits.
+  This package supercedes package WebBits.
 
 Source-repository head
    type: git
