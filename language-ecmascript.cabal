@@ -60,12 +60,6 @@ Library
     Language.ECMAScript3.Syntax.QuasiQuote
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
-  Other-Modules:
-    Language.ECMAScript5
-    Language.ECMAScript5.Parser
-    Language.ECMAScript5.PrettyPrint
-    Language.ECMAScript5.Syntax
-    Language.ECMAScript5.Syntax.Annotations
     Language.ECMAScript3.Parser.Type
     Language.ECMAScript3.Parser.State
   Default-Extensions:
