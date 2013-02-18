@@ -619,22 +619,17 @@ parsePrefixedExpr = do
 
 exprTable:: Stream s Identity Char => [[Operator s ParserState Identity ParsedExpression]]
 exprTable = 
-  [ [ makeInfixExpr "==" OpEq
-    , makeInfixExpr "!=" OpNEq
-    , makeInfixExpr "===" OpStrictEq
-    , makeInfixExpr "!==" OpStrictNEq
+  [ [ makeInfixExpr "*" OpMul
+    , makeInfixExpr "/" OpDiv
+    , makeInfixExpr "%" OpMod
     ]
-
-  , [ makeInfixExpr "||" OpLOr ]
-
-  , [ makeInfixExpr "&&" OpLAnd ]
-  
-  , [ makeInfixExpr "|" OpBOr ]
-
-  , [ makeInfixExpr "^" OpBXor ]
-
-  , [ makeInfixExpr "&" OpBAnd ]
-
+  , [ makeInfixExpr "+" OpAdd
+    , makeInfixExpr "-" OpSub
+    ]
+  , [ makeInfixExpr "<<" OpLShift
+    , makeInfixExpr ">>" OpSpRShift
+    , makeInfixExpr ">>>" OpZfRShift
+    ]
   , [ makeInfixExpr "<" OpLT
     , makeInfixExpr "<=" OpLEq
     , makeInfixExpr ">" OpGT
@@ -642,20 +637,16 @@ exprTable =
     , makeInfixExpr "instanceof" OpInstanceof
     , makeInfixExpr "in" OpIn
     ]
-
-  , [ makeInfixExpr "<<" OpLShift
-    , makeInfixExpr ">>" OpSpRShift
-    , makeInfixExpr ">>>" OpZfRShift
+  , [ makeInfixExpr "==" OpEq
+    , makeInfixExpr "!=" OpNEq
+    , makeInfixExpr "===" OpStrictEq
+    , makeInfixExpr "!==" OpStrictNEq
     ]
-
-  , [ makeInfixExpr "+" OpAdd
-    , makeInfixExpr "-" OpSub
-    ]
-
-  , [ makeInfixExpr "*" OpMul
-    , makeInfixExpr "/" OpDiv
-    , makeInfixExpr "%" OpMod
-    ]
+  , [ makeInfixExpr "&" OpBAnd ]
+  , [ makeInfixExpr "^" OpBXor ]
+  , [ makeInfixExpr "|" OpBOr ]
+  , [ makeInfixExpr "&&" OpLAnd ]
+  , [ makeInfixExpr "||" OpLOr ]
   ]
 
 parseExpression' :: Stream s Identity Char => ExpressionParser s
