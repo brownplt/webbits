@@ -1,7 +1,13 @@
 Version change log.
 
-=0.10=
+=0.11.1=
+Fixed binary operator precedence in the parser. See 
 
+=0.11=
+Added a simple quasi-quoter for ECMAScript (see
+Language.ECMAScript3.Syntax.QuasiQuote)
+
+=0.10=
 The ParenExpr constructor was removed from the Expression AST
 (WARNING: might break some builds). The pretty printer was rewritten
 to automatically parenthesize sub-expressions based on operator

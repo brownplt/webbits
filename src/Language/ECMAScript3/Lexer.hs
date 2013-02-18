@@ -11,9 +11,14 @@ module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp
 import Prelude hiding (lex)
 import Text.Parsec
 import qualified Text.Parsec.Token as T
+import Language.ECMAScript3.Parser.State
+import Language.ECMAScript3.Parser.Type
+import Control.Monad.Identity
 
+identifierStart :: Stream s Identity Char => Parser s Char
 identifierStart = letter <|> oneOf "$_"
 
+javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s ParserState Identity
 javascriptDef =
   T.LanguageDef "/*"
                 "*/"
@@ -35,31 +40,55 @@ javascriptDef =
                  "[", "]", "{", "}", "(", ")","</","instanceof"]
                  True -- case-sensitive
             
-lex :: T.TokenParser st
+lex :: Stream s Identity Char => T.GenTokenParser s ParserState Identity
 lex = T.makeTokenParser javascriptDef
 
 -- everything but commaSep and semiSep
+identifier :: Stream s Identity Char => Parser s String
 identifier = T.identifier	 lex
+reserved :: Stream s Identity Char => String -> Parser s ()
 reserved = T.reserved	 lex
+operator :: Stream s Identity Char => Parser s String
 operator = T.operator	 lex
+reservedOp :: Stream s Identity Char => String -> Parser s ()
 reservedOp = T.reservedOp lex	
+charLiteral :: Stream s Identity Char => Parser s Char
 charLiteral = T.charLiteral lex	
-stringLiteral = T.stringLiteral lex	
+stringLiteral :: Stream s Identity Char => Parser s String
+stringLiteral = T.stringLiteral lex
+natural :: Stream s Identity Char => Parser s Integer
 natural = T.natural lex	
+integer :: Stream s Identity Char => Parser s Integer
 integer = T.integer lex	
-float = T.float lex	
-naturalOrFloat = T.naturalOrFloat lex	
+float :: Stream s Identity Char => Parser s Double
+float = T.float lex
+naturalOrFloat :: Stream s Identity Char => Parser s (Either Integer Double)
+naturalOrFloat = T.naturalOrFloat lex
+decimal :: Stream s Identity Char => Parser s Integer
 decimal = T.decimal lex	
+hexadecimal :: Stream s Identity Char => Parser s Integer
 hexadecimal = T.hexadecimal lex	
-octal = T.octal lex	
-symbol = T.symbol lex	
+octal :: Stream s Identity Char => Parser s Integer
+octal = T.octal lex
+symbol :: Stream s Identity Char => String -> Parser s String
+symbol = T.symbol lex
+whiteSpace :: Stream s Identity Char => Parser s ()
 whiteSpace = T.whiteSpace lex	
+parens :: Stream s Identity Char => Parser s a -> Parser s a
 parens = T.parens	 lex
+braces :: Stream s Identity Char => Parser s a -> Parser s a
 braces = T.braces	 lex
+squares :: Stream s Identity Char => Parser s a -> Parser s a
 squares = T.squares lex	
+semi :: Stream s Identity Char => Parser s String
 semi = T.semi	 lex
+comma :: Stream s Identity Char => Parser s String
 comma = T.comma	 lex
-colon = T.colon lex	
+colon :: Stream s Identity Char => Parser s String
+colon = T.colon lex
+dot :: Stream s Identity Char => Parser s String
 dot = T.dot lex
+brackets :: Stream s Identity Char => Parser s a -> Parser s a
 brackets = T.brackets lex
+lexeme :: Stream s Identity Char => Parser s a -> Parser s a
 lexeme = T.lexeme lex
