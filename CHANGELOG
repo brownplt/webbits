@@ -1,7 +1,10 @@
 Version change log.
 
+=0.12=
+Added a 'setAnnotation' function to the 'HasAnnotation' class.
+
 =0.11.1=
-Fixed binary operator precedence in the parser. See 
+Fixed binary operator precedence in the parser.
 
 =0.11=
 Added a simple quasi-quoter for ECMAScript (see
@@ -15,6 +18,6 @@ precedence. Added a (beta quality) arbitrary instance for all the
 AST's to generate random JavaScript programs (useful for testing).
 
 
-=0.9.1= 
+=0.9.1=
 Increased the upper bound on data-default in dependencies. See
 https://github.com/jswebtools/language-ecmascript/pull/5
