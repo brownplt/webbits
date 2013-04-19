@@ -43,7 +43,9 @@ assignUniqueIds first tree =
 class HasAnnotation a where
   -- | Returns the annotation of the root of the tree
   getAnnotation :: a b -> b
-
+  -- | Sets the annotation of the root of the tree  
+  setAnnotation :: b -> a b -> a b
+  
 instance HasAnnotation Expression where
   getAnnotation e = case e of
    (StringLit a s)              -> a
@@ -67,6 +69,28 @@ instance HasAnnotation Expression where
    (ListExpr a es)              -> a
    (CallExpr a fn params)       -> a
    (FuncExpr a mid args s)      -> a
+  setAnnotation a e = case e of
+    (StringLit _ s)              -> (StringLit a s)
+    (RegexpLit _ s g ci)         -> (RegexpLit a s g ci)
+    (NumLit _ d)                 -> (NumLit a d)
+    (IntLit _ i)                 -> (IntLit a i)
+    (BoolLit _ b)                -> (BoolLit a b)
+    (NullLit _)                  -> (NullLit a)
+    (ArrayLit _ exps)            -> (ArrayLit a exps)
+    (ObjectLit _ props)          -> (ObjectLit a props)
+    (ThisRef _)                  -> (ThisRef a)
+    (VarRef _ id)                -> (VarRef a id)
+    (DotRef _ exp id)            -> (DotRef a exp id)
+    (BracketRef _ container key) -> (BracketRef a container key)
+    (NewExpr _ ctor params)      -> (NewExpr a ctor params)
+    (PrefixExpr _ op e)          -> (PrefixExpr a op e)
+    (UnaryAssignExpr _ op lv)    -> (UnaryAssignExpr a op lv)
+    (InfixExpr _ op e1 e2)       -> (InfixExpr a op e1 e2)
+    (CondExpr _ g et ef)         -> (CondExpr a g et ef)
+    (AssignExpr _ op lv e)       -> (AssignExpr a op lv e)
+    (ListExpr _ es)              -> (ListExpr a es)
+    (CallExpr _ fn params)       -> (CallExpr a fn params)
+    (FuncExpr _ mid args s)      -> (FuncExpr a mid args s)   
 
 instance HasAnnotation Statement where
   getAnnotation s = case s of
@@ -89,26 +113,63 @@ instance HasAnnotation Statement where
     WithStmt a _ _       -> a
     VarDeclStmt a _      -> a
     FunctionStmt a _ _ _ -> a
+  setAnnotation a s = case s of
+    BlockStmt _ ss       -> BlockStmt a ss
+    EmptyStmt _          -> EmptyStmt a
+    ExprStmt _ e         -> ExprStmt a e
+    IfStmt _ g t e       -> IfStmt a g t e
+    IfSingleStmt _ g t   -> IfSingleStmt a g t
+    SwitchStmt _ g cs    -> SwitchStmt a g cs
+    WhileStmt _ g ss     -> WhileStmt a g ss
+    DoWhileStmt _ ss g   -> DoWhileStmt a ss g
+    BreakStmt _ l        -> BreakStmt a l
+    ContinueStmt _ l     -> ContinueStmt a l
+    LabelledStmt _ l s   -> LabelledStmt a l s
+    ForInStmt _ i o ss   -> ForInStmt a i o ss
+    ForStmt _ i t inc ss -> ForStmt a i t inc ss
+    TryStmt _ tb mcb mfb -> TryStmt a tb mcb mfb
+    ThrowStmt _ e        -> ThrowStmt a e
+    ReturnStmt _ e       -> ReturnStmt a e
+    WithStmt _ o b       -> WithStmt a o b
+    VarDeclStmt _ vds    -> VarDeclStmt a vds
+    FunctionStmt _ n as b-> FunctionStmt a n as b    
     
 instance HasAnnotation LValue where
   getAnnotation lv = case lv of
     LVar a _ -> a
     LDot a _ _ -> a
     LBracket a _ _ -> a
+  setAnnotation a lv = case lv of
+    LVar _ n -> LVar a n
+    LDot _ o f -> LDot a o f
+    LBracket a o fe -> LBracket a o fe    
   
 instance HasAnnotation VarDecl where
   getAnnotation (VarDecl a _ _) = a
+  setAnnotation a (VarDecl _ vn e) = VarDecl a vn e  
 
 instance HasAnnotation Prop  where
   getAnnotation p = case p of
     PropId a _ -> a
     PropString a _ -> a
     PropNum a _ -> a
+  setAnnotation a p = case p of
+    PropId _ id -> PropId a id
+    PropString _ s -> PropString a s
+    PropNum _ n -> PropNum a n    
   
 instance HasAnnotation CaseClause where
   getAnnotation c = case c of
     CaseClause a _ _ -> a
     CaseDefault a _ -> a
+  setAnnotation a c = case c of
+    CaseClause _ e b -> CaseClause a e b
+    CaseDefault _ b  -> CaseDefault a b    
     
 instance HasAnnotation CatchClause where
   getAnnotation (CatchClause a _ _) = a
+  setAnnotation a (CatchClause _ id b) = CatchClause a id b
+
+instance HasAnnotation Id where
+  getAnnotation (Id a _) = a
+  setAnnotation a (Id _ s) = Id a s
