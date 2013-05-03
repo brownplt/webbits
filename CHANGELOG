@@ -1,7 +1,8 @@
 Version change log.
 
 =0.12=
-Added a 'setAnnotation' function to the 'HasAnnotation' class.
+Added a 'setAnnotation' function to the 'HasAnnotation' class. Added
+a 'withAnnotation' helper function to modify the top level annotation.
 
 =0.11.1=
 Fixed binary operator precedence in the parser.
