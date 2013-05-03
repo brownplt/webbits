@@ -40,12 +40,18 @@ assignUniqueIds first tree =
                  put (i+1)
                  return (a, i)
 
+-- | Things that have annotations -- for example, nodes in a syntax
+-- tree
 class HasAnnotation a where
   -- | Returns the annotation of the root of the tree
   getAnnotation :: a b -> b
   -- | Sets the annotation of the root of the tree  
   setAnnotation :: b -> a b -> a b
-  
+
+-- | Modify the annotation of the root node of the syntax tree
+withAnnotation :: (HasAnnotation a) => (b -> b) -> a b -> a b
+withAnnotation f x = setAnnotation (f $ getAnnotation x) x
+
 instance HasAnnotation Expression where
   getAnnotation e = case e of
    (StringLit a s)              -> a
