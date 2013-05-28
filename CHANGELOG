@@ -1,5 +1,14 @@
 Version change log.
 
+=0.14=
+Refactoring of the pretty-printing module: added class Pretty with a more
+comprehensive coverage of AST datatypes and better documentation. Removed
+duplicate code and deprecated all old interfaces (everything except class
+Pretty). Old interfaces would be removed in 1.0 (still a long way out).
+
+=0.13=
+Added class PP for pretty-printing
+
 =0.12=
 Added a 'setAnnotation' function to the 'HasAnnotation' class. Added
 a 'withAnnotation' helper function to modify the top level annotation.
