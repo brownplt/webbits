@@ -11,7 +11,7 @@ Maintainer:     Andrey Chudnov <oss@chudnov.com>
 Homepage:       http://github.com/jswebtools/language-ecmascript
 Bug-reports:    http://github.com/jswebtools/language-ecmascript/issues
 Stability:      experimental
-Tested-with:    GHC==7.4.1
+Tested-with:    GHC==7.4.1, GHC==7.6.3
 Extra-Source-Files: tests/parse-pretty/*.js, CHANGELOG
 Category:       Language
 Build-Type:     Simple
@@ -20,8 +20,6 @@ Description:
   Some tools for working with ECMAScript 3 (popularly known as JavaScript). 
   Includes a parser, pretty-printer, and basic building blocks for more
   sophisticated tools.
-
-  This package supercedes package WebBits.
 
 Source-repository head
    type: git
