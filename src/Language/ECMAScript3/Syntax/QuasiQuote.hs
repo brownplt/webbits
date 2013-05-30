@@ -40,6 +40,6 @@ quoteCommon p s = do loc <- TH.location
                                 (flip setSourceLine) line $
                                 (flip setSourceColumn) col $ pos) >> p
                      case parse p2 "" s of
-                       Left err -> do TH.reportError $ show err
+                       Left err -> do TH.report True $ show err
                                       return $ TH.UnboxedTupE []
                        Right x  -> dataToExpQ (const Nothing) x
