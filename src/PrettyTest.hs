@@ -24,15 +24,15 @@ main =
     NoExpectedFailure {} -> putStrLn "Unexpected failure" >> exitFailure
 
 prettyParseEquivalence :: JavaScript () -> Property
-prettyParseEquivalence js =
-  let pp = show $ prettyPrint js
+prettyParseEquivalence orig =
+  let pp = show $ prettyPrint orig
   in case parseScriptFromString "" pp of
     Left e -> 
       let err = "Can't parse pretty-printed code. The error was: " ++ (show e) ++
                 "\nThe pretty-printed code in question:\n" ++ pp
       in whenFail (putStrLn err) False
     Right parsed ->
-      let eq = (removeAnnotations parsed) == js
+      let eq = (removeAnnotations parsed) == orig
           msg ="The parse of the pretty-printed AST didn't match the original\n"
-               ++"Diff:\n" ++ jsDiff js (reannotate (const ()) parsed)
+               ++"Diff:\n" ++ jsDiff orig (reannotate (const ()) parsed)
       in whenFail (putStrLn msg) eq

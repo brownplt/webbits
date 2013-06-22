@@ -473,7 +473,7 @@ parseObjectLit =
 --{{{ Parsing numbers.  From pg. 17-18 of ECMA-262.
 hexLit :: Stream s Identity Char => Parser s (Bool, Double)
 hexLit = do
-  try (string "0x")
+  try (char '0' >> oneOf "xX")
   digits <- many1 (oneOf "0123456789abcdefABCDEF")
   [(hex,"")] <- return $ Numeric.readHex digits
   return (True, hex)
