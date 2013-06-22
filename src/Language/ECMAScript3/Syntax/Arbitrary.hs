@@ -110,6 +110,12 @@ rrarbitrary = recursive $ recursive arbitrary
 atLeastOfSize :: Arbitrary a => Int -> Gen a -> Gen a
 atLeastOfSize l gen = sized $ \s -> if s < l then resize l gen else gen
 
+listOfN :: Arbitrary a => Int -> Gen a -> Gen [a]
+listOfN l gen = sized $ \n ->
+  let l' = l `max` 0
+  in do k <- choose (l', l' `max` n)
+        vectorOf k gen
+
 nonEmptyString :: Gen String
 nonEmptyString = sized $ \s -> if s < 1 then stringOfLength 1 else stringOfLength s
 
@@ -144,7 +150,7 @@ instance Arbitrary a => Arbitrary (Expression a) where
           (2, liftM4 InfixExpr arbitrary arbitrary rarbitrary rarbitrary),
           (3, liftM4 CondExpr arbitrary rarbitrary rarbitrary rarbitrary),
           (3, liftM4 AssignExpr arbitrary rarbitrary rarbitrary rarbitrary),
-          (3, liftM2 ListExpr arbitrary (recursive (atLeastOfSize 2 arbitrary))),
+          (3, liftM2 ListExpr arbitrary (recursive (listOfN 2 arbitrary))),
           (3, liftM3 CallExpr arbitrary rarbitrary rrarbitrary),
           (1, liftM4 FuncExpr arbitrary arbitrary arbitrary rarbitrary)]
     
@@ -216,7 +222,7 @@ instance Arbitrary a => Arbitrary (Statement a) where
           (1, liftM2 ThrowStmt arbitrary rarbitrary),
           (1, liftM2 ReturnStmt arbitrary rarbitrary),
           (2, liftM3 WithStmt arbitrary rarbitrary rarbitrary),
-          (2, liftM2 VarDeclStmt arbitrary rrarbitrary),
+          (2, liftM2 VarDeclStmt arbitrary (listOf1 rrarbitrary)),
           (1, liftM4 FunctionStmt arbitrary arbitrary arbitrary rarbitrary)]
     where arbtry = 
             do (mCatch, mFinally) <- oneof [liftM2 (,) (return Nothing) (liftM Just rarbitrary),
