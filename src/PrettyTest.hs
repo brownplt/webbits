@@ -6,7 +6,7 @@ import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.Syntax.Arbitrary()
 import Language.ECMAScript3.Syntax.Annotations
 import System.Exit
-import Test.SourceDiff
+import Language.ECMAScript3.SourceDiff
 import Test.QuickCheck
 
 main :: IO ()

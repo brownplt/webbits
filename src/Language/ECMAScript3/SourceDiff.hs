@@ -1,9 +1,9 @@
--- | User-friendly diffing of JavaScript programs for inspecting test
+-- | Simple textual diffing of JavaScript programs for inspecting test
 -- failures
-module Test.SourceDiff where
+module Language.ECMAScript3.SourceDiff where
 
 import Data.Algorithm.Diff
-import Data.Algorithm.DiffOutput
+--import Data.Algorithm.DiffOutput
 import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.PrettyPrint
 import Data.List (intersperse)
@@ -18,6 +18,5 @@ jsDiff js1 js2 =
       formatDiff d = case d of
         First s  -> '-':s
         Second s -> '+':s
-        Both l r |l == r -> ' ':l
-        Both l r |otherwise -> "<<<\n"++ l ++ "\n===\n" ++ r ++ "\n>>>"
+        Both s _ -> ' ':s
   in  concat $ intersperse "\n" $ map formatDiff diff

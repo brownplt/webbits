@@ -8,7 +8,7 @@ import Language.ECMAScript3.Parser
 import Language.ECMAScript3.PrettyPrint
 import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.Syntax.Annotations
-import Test.SourceDiff
+import Language.ECMAScript3.SourceDiff
 import Control.Monad
 
 testDir = "tests/parse-pretty"

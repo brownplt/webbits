@@ -1,5 +1,5 @@
 Name:           language-ecmascript
-Version:        0.14
+Version:        0.15
 Cabal-Version:	>= 1.10
 Copyright:      (c) 2007-2012 Brown University, (c) 2008-2010 Claudiu Saftoiu,
                 (c) 2012-2013 Stevens Institute of Technology
@@ -43,7 +43,8 @@ Library
     uniplate >= 1.6 && <1.7,
     data-default >= 0.4 && <0.6,
     QuickCheck >= 2.5,
-    template-haskell
+    template-haskell,
+    Diff == 0.3.*
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
@@ -57,6 +58,7 @@ Library
     Language.ECMAScript3.Syntax.QuasiQuote
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
+    Language.ECMAScript3.SourceDiff
   Other-Modules:
     Language.ECMAScript3.Parser.Type
     Language.ECMAScript3.Parser.State
@@ -68,7 +70,6 @@ Test-Suite unittest
   Hs-Source-Dirs: src
   Type: exitcode-stdio-1.0
   Main-Is: UnitTest.hs
-  Other-Modules: Test.SourceDiff
   Build-Depends:
     base >= 4 && < 5,
     mtl >= 1.1.0.1,
@@ -91,7 +92,6 @@ Test-Suite prettytest
   Hs-Source-Dirs: src
   Type: exitcode-stdio-1.0
   Main-Is: PrettyTest.hs
-  Other-Modules: Test.SourceDiff
   Build-Depends:
     base >= 4 && < 5,
     mtl >= 1.1.0.1,
