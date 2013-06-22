@@ -228,13 +228,22 @@ jsEscape (ch:chs) = sel ch ++ jsEscape chs where
     sel '\\' = "\\\\"
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
-    
+
+-- | Escapes a regular expression so that it can be parsed correctly afterwards
 regexpEscape :: String -> String
-regexpEscape "" = ""
-regexpEscape "\\" = "\\\\"
-regexpEscape ('\\':c:rest) = '\\':c:(regexpEscape rest)
-regexpEscape ('/':rest) = '\\':'/':regexpEscape rest
-regexpEscape (c:rest)   = c:regexpEscape rest
+regexpEscape = regexpEscapeChar True
+  where regexpEscapeChar :: Bool -- ^ First char?
+                         -> String -> String
+        regexpEscapeChar first s = 
+          case (s, first) of
+            ("", True) -> "(?:)"
+            ("", False)-> ""
+            -- see spec 7.8.5, RegularExpressionFirstChar
+            ("\\", _) -> "\\\\"
+            ('\\':c:rest, _) -> '\\':c:(regexpEscapeChar False rest)
+            ('/':rest, _) -> '\\':'/':regexpEscapeChar False rest
+            ('*':rest, True) -> ('\\':'*':regexpEscapeChar False rest)
+            (c:rest, _)   -> c:regexpEscapeChar False rest
 
 -- 11.1
 ppPrimaryExpression :: Expression a -> Doc
