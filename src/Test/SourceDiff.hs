@@ -16,8 +16,8 @@ jsDiff js1 js2 =
       diff = getDiff (plines js1) (plines js2)
       formatDiff :: Diff String -> String
       formatDiff d = case d of
-        First s  -> '+':s
-        Second s -> '-':s
+        First s  -> '-':s
+        Second s -> '+':s
         Both l r |l == r -> ' ':l
-        Both l r |otherwise -> ">>>\n"++ l ++ "\n===\n" ++ r ++ "\n<<<"
+        Both l r |otherwise -> "<<<\n"++ l ++ "\n===\n" ++ r ++ "\n>>>"
   in  concat $ intersperse "\n" $ map formatDiff diff
