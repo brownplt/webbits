@@ -43,8 +43,7 @@ Library
     uniplate >= 1.6 && <1.7,
     data-default >= 0.4 && <0.6,
     QuickCheck >= 2.5,
-    template-haskell,
-    charset >= 0.3.2.1
+    template-haskell
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
@@ -58,6 +57,7 @@ Library
     Language.ECMAScript3.Syntax.QuasiQuote
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
+  Other-Modules:
     Language.ECMAScript3.Parser.Type
     Language.ECMAScript3.Parser.State
   Default-Extensions:
@@ -79,8 +79,7 @@ Test-Suite unittest
     filepath,
     HUnit,
     data-default >=0.4 && <0.6,
-    QuickCheck >= 2.5,
-    charset >= 0.3.2.1
+    QuickCheck >= 2.5
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
