@@ -12,14 +12,15 @@ Homepage:       http://github.com/jswebtools/language-ecmascript
 Bug-reports:    http://github.com/jswebtools/language-ecmascript/issues
 Stability:      experimental
 Tested-with:    GHC==7.4.1, GHC==7.6.3
-Extra-Source-Files: tests/parse-pretty/*.js, CHANGELOG
+Extra-Source-Files: test/parse-pretty/*.js, test/diff/left/*.js, test/diff/right/*.js, test/diff/expects/*.diff, CHANGELOG
 Category:       Language
 Build-Type:     Simple
-Synopsis:       JavaScript analysis tools
+Synopsis:       JavaScript parser and pretty-printer library
 Description:
-  Some tools for working with ECMAScript 3 (popularly known as JavaScript). 
-  Includes a parser, pretty-printer, and basic building blocks for more
-  sophisticated tools.
+  Tools for working with ECMAScript 3 (popularly known as JavaScript). 
+  Includes a parser, pretty-printer, tools for working with source tree
+  annotations and an arbitrary instance. Analyses have migrated to 
+  language-ecmascript-analysis
 
 Source-repository head
    type: git
@@ -28,7 +29,7 @@ Source-repository head
 Source-repository this
    type: git
    location: git://github.com/jswebtools/language-ecmascript.git
-   tag: 0.14
+   tag: 0.15
 
 Library
   Hs-Source-Dirs:
@@ -39,9 +40,8 @@ Library
     parsec < 3.2.0,
     pretty >= 0.1,
     containers >= 0.1,
-    syb >= 0.1,
     uniplate >= 1.6 && <1.7,
-    data-default >= 0.4 && <0.6,
+    data-default-class >= 0.0.1 && < 0.1,
     QuickCheck >= 2.5,
     template-haskell,
     Diff == 0.3.*
@@ -66,46 +66,26 @@ Library
     DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
 
-Test-Suite unittest
-  Hs-Source-Dirs: src
+Test-Suite test
+  Hs-Source-Dirs: test
   Type: exitcode-stdio-1.0
-  Main-Is: UnitTest.hs
+  Main-Is: TestMain.hs
   Build-Depends:
     base >= 4 && < 5,
     mtl >= 1.1.0.1,
     parsec < 3.2.0,
     pretty >= 0.1,
     containers >= 0.1,
-    syb >= 0.1,
     directory,
     filepath,
     HUnit,
-    data-default >=0.4 && <0.6,
-    QuickCheck >= 2.5,
-    Diff == 0.3.*
-  Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
-  Default-Language: Haskell2010
-  ghc-options:
-    -fwarn-incomplete-patterns
-
-Test-Suite prettytest
-  Hs-Source-Dirs: src
-  Type: exitcode-stdio-1.0
-  Main-Is: PrettyTest.hs
-  Build-Depends:
-    base >= 4 && < 5,
-    mtl >= 1.1.0.1,
-    parsec < 3.2.0,
-    pretty >= 0.1,
-    containers >= 0.1,
-    syb >= 0.1,
-    directory,
-    filepath,
-    HUnit,
-    data-default >=0.4 && <0.6,
-    QuickCheck >= 2.5,
-    uniplate >= 1.6 && <1.7,
-    Diff == 0.3.*
+    QuickCheck >= 2.5 && < 2.6,
+    data-default-class >= 0.0.1 && < 0.1,
+    test-framework >= 0.8 && < 0.9,
+    test-framework-hunit >= 0.3.0 && < 0.4,
+    test-framework-quickcheck2 >= 0.3.0.1 && < 0.4,
+    Diff == 0.3.*,
+    language-ecmascript
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:

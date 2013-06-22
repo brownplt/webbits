@@ -1,6 +1,8 @@
-module Main where
+module Test.Unit where
 
-import Test.HUnit
+import Test.Framework
+import Test.Framework.Providers.HUnit
+import Test.HUnit hiding (Test)
 import System.Exit
 import System.Directory
 import qualified System.FilePath as FilePath
@@ -11,11 +13,23 @@ import Language.ECMAScript3.Syntax.Annotations
 import Language.ECMAScript3.SourceDiff
 import Control.Monad
 
-testDir = "tests/parse-pretty"
 
+tests_unit :: Test
+tests_unit =
+  buildTest $
+  do allFiles <- getDirectoryContents testDir
+     let validFiles = filter (\x -> FilePath.takeExtension x == ".js") allFiles
+     return $ testGroup "Parser Unit tests" $  map genTest validFiles
+
+
+genTest :: FilePath -> Test
+genTest file = testCase file $ parsePrettyTest (testDir `FilePath.combine` file) 
+
+testDir = "test/parse-pretty"
 
 -- | tests the parser with pre-defined test-cases
-parsePrettyTest filename = TestLabel filename $ TestCase $ 
+parsePrettyTest :: FilePath -> Assertion
+parsePrettyTest filename =
   readFile filename >>= \src ->
   case parseScriptFromString "" src of
     Left err -> assertFailure $ "Can't parse a test-case: " ++ filename
@@ -33,13 +47,3 @@ parsePrettyTest filename = TestLabel filename $ TestCase $
                                 ++ "Diff:\n" ++ jsDiff js js'
                       assertFailure msg
 
-main = do
-  allFiles <- getDirectoryContents testDir
-  let files =  map (testDir `FilePath.combine`) $ 
-        filter (\x -> FilePath.takeExtension x == ".js") allFiles
-  let parsePretty = TestLabel "parser - printer composition" 
-        (TestList (map parsePrettyTest files))
-  results <- runTestTT parsePretty
-  if errors results > 0 || failures results > 0 
-    then exitFailure
-    else putStrLn "All tests passed."

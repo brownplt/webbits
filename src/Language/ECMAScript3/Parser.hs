@@ -28,7 +28,7 @@ import Language.ECMAScript3.Parser.State
 import Language.ECMAScript3.Parser.Type
 import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.Syntax.Annotations
-import Data.Default
+import Data.Default.Class
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
 import Control.Monad(liftM,liftM2)

@@ -26,10 +26,11 @@ module Language.ECMAScript3.Syntax (JavaScript(..)
                                    ) where
 
 import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
-import Data.Generics(Data,Typeable)
+import Data.Data (Data)
+import Data.Typeable (Typeable)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
-import Data.Default
+import Data.Default.Class
 
 data JavaScript a
   -- |A script in \<script\> ... \</script\> tags.

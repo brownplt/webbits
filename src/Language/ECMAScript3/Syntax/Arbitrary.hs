@@ -336,7 +336,7 @@ isBreakContinueFixable stmt inLabeled inIter inSwitch =
               else True
   --  _ -> continue stmt inLabeled inIter inSwitch
   where continue stmt inLabeled inIter inSwitch =
-                   and $ map (\s -> isBreakContinueFixable s inLabeled inIter inSwitch) (children stmt)
+          and $ map (\s -> isBreakContinueFixable s inLabeled inIter inSwitch) (children stmt)
                    
 -- | Removes duplicate labels from nested labeled statements in order
 -- to impose restrictions on labeled statements as per ECMAScript 5
