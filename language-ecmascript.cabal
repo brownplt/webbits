@@ -81,7 +81,7 @@ Test-Suite unittest
     HUnit,
     data-default >=0.4 && <0.6,
     QuickCheck >= 2.5,
-    Diff
+    Diff == 0.3.*
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
@@ -105,7 +105,7 @@ Test-Suite prettytest
     data-default >=0.4 && <0.6,
     QuickCheck >= 2.5,
     uniplate >= 1.6 && <1.7,
-    Diff
+    Diff == 0.3.*
   Default-Extensions: DeriveDataTypeable, ScopedTypeVariables, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts
   Default-Language: Haskell2010
   ghc-options:
