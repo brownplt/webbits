@@ -11,16 +11,17 @@ Maintainer:     Andrey Chudnov <oss@chudnov.com>
 Homepage:       http://github.com/jswebtools/language-ecmascript
 Bug-reports:    http://github.com/jswebtools/language-ecmascript/issues
 Stability:      experimental
-Tested-with:    GHC==7.4.1, GHC==7.6.3
+Tested-with:    GHC==7.6.3
 Extra-Source-Files: test/parse-pretty/*.js, test/diff/left/*.js, test/diff/right/*.js, test/diff/expects/*.diff, CHANGELOG
 Category:       Language
 Build-Type:     Simple
 Synopsis:       JavaScript parser and pretty-printer library
 Description:
-  Tools for working with ECMAScript 3 (popularly known as JavaScript). 
-  Includes a parser, pretty-printer, tools for working with source tree
-  annotations and an arbitrary instance. Analyses have migrated to 
-  language-ecmascript-analysis
+  Tools for working with ECMAScript 3 (popularly known as JavaScript).
+  Includes a parser, pretty-printer, a simple quasi-quoter and tools
+  for working with source tree annotations and an arbitrary
+  instance. Analyses have migrated to package
+  'language-ecmascript-analysis'.
 
 Source-repository head
    type: git
@@ -70,6 +71,10 @@ Test-Suite test
   Hs-Source-Dirs: test
   Type: exitcode-stdio-1.0
   Main-Is: TestMain.hs
+  Other-Modules:
+    Test.Diff
+    Test.Unit
+    Test.Pretty
   Build-Depends:
     base >= 4 && < 5,
     mtl >= 1.1.0.1,
