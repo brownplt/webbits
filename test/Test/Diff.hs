@@ -46,8 +46,8 @@ diffTest leftFile rightFile diffFile =
   do left  <- readFile leftFile
      right <- readFile rightFile
      expect<- readFile diffFile
-     let x = do ljs <- parseScriptFromString "left" left
-                rjs <- parseScriptFromString "right" right
+     let x = do ljs <- parseFromString left
+                rjs <- parseFromString right
                 return (removeAnnotations ljs, removeAnnotations rjs)
      case x of
        Left err -> assertFailure $ "Parsing error: " ++ (show err)

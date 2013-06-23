@@ -2,6 +2,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Language.ECMAScript3.Parser
   (parse
+  , Parser  
+  , expression
+  , statement
+  , program
+  , parseFromString
+  , parseFromFile
+  -- old and deprecated   
   , parseScriptFromString
   , parseJavaScriptFromFile
   , parseScript
@@ -15,11 +22,7 @@ module Language.ECMAScript3.Parser
   , StatementParser
   , ExpressionParser
   , assignExpr
-  -- debugging, remove the next 2 lines
-  , mkDecimal
-  , intLen
   , parseObjectLit  
-  , Parser  
   ) where
 
 import Language.ECMAScript3.Lexer hiding (identifier)
@@ -37,6 +40,24 @@ import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
 import Data.Maybe (isJust, isNothing, fromMaybe)
+import Control.Monad.Error.Class
+
+{-# DEPRECATED ParsedStatement, ParsedExpression, StatementParser,
+               ExpressionParser
+    "These type aliases will be hidden in the next version" #-}
+
+{-# DEPRECATED parseSimpleExpr', parseBlockStmt, parseObjectLit
+   "These parsers will be hidden in the next version" #-}
+
+{-# DEPRECATED assignExpr, parseExpression "Use 'expression' instead" #-}
+
+{-# DEPRECATED parseStatement "Use 'statement' instead" #-}
+
+{-# DEPRECATED parseScript "Use 'program' instead" #-}
+
+{-# DEPRECATED parseScriptFromString, parseString "Use 'parseFromString' instead" #-}
+
+{-# DEPRECATED parseJavaScriptFromFile "Use 'parseFromFile' instead" #-}
 
 -- We parameterize the parse tree over source-locations.
 type ParsedStatement = Statement SourcePos
@@ -45,7 +66,6 @@ type ParsedExpression = Expression SourcePos
 -- These parsers can store some arbitrary state
 type StatementParser s = Parser s ParsedStatement
 type ExpressionParser s = Parser s ParsedExpression
-
 
 initialParserState :: ParserState
 initialParserState = []
@@ -303,7 +323,7 @@ parseFunctionStmt = do
                       "function body in { ... }"
   return (FunctionStmt pos name args body)
 
-parseStatement:: Stream s Identity Char => StatementParser s
+parseStatement :: Stream s Identity Char => StatementParser s
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
   <|> parseDoWhileStmt <|> parseContinueStmt <|> parseBreakStmt 
   <|> parseBlockStmt <|> parseEmptyStmt <|> parseForInStmt <|> parseForStmt
@@ -311,6 +331,10 @@ parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt
   <|> parseVarDeclStmt  <|> parseFunctionStmt
   -- labelled, expression and the error message always go last, in this order
   <|> parseLabelledStmt <|> parseExpressionStmt <?> "statement"
+
+-- | The parser that parses a single ECMAScript statement
+statement :: Stream s Identity Char => Parser s (Statement SourcePos)
+statement = parseStatement
 
 --}}}
 
@@ -735,6 +759,10 @@ assignExpr = do
 parseExpression:: Stream s Identity Char => ExpressionParser s
 parseExpression = assignExpr
 
+-- | A parser that parses ECMAScript expressions
+expression :: Stream s Identity Char => Parser s (Expression SourcePos)
+expression = assignExpr
+
 parseListExpr :: Stream s Identity Char => ExpressionParser s
 parseListExpr = assignExpr `sepBy1` comma >>= \exprs ->
   case exprs of
@@ -745,14 +773,39 @@ parseScript:: Stream s Identity Char => Parser s (JavaScript SourcePos)
 parseScript = do
   whiteSpace
   liftM2 Script getPosition (parseStatement `sepBy` whiteSpace)
+
+-- | A parser that parses an ECMAScript program.
+program :: Stream s Identity Char => Parser s (JavaScript SourcePos)
+program = parseScript
   
--- | Parse from a stream; same as 'Text.Parsec.parse'
+-- | Parse from a stream given a parser, same as 'Text.Parsec.parse'
+-- in Parsec. We can use this to parse expressions or statements alone,
+-- not just whole programs.
 parse :: Stream s Identity Char
       => Parser s a -- ^ The parser to use
       -> SourceName -- ^ Name of the source file
       -> s -- ^ the stream to parse, usually a 'String'
       -> Either ParseError a
 parse p = runParser p initialParserState
+
+-- | A convenience function that takes a 'String' and tries to parse
+-- it as an ECMAScript program:
+--
+-- > parseFromString = parse program ""
+parseFromString :: String -- ^ JavaScript source to parse
+                  -> Either ParseError (JavaScript SourcePos)
+parseFromString = parse program ""
+
+-- | A convenience function that takes a filename and tries to parse
+-- the file contents an ECMAScript program, it fails with an error
+-- message if it can't.
+parseFromFile :: (Error e, MonadIO m, MonadError e m) => String -- ^ file name
+                -> m (JavaScript SourcePos)
+parseFromFile fname =
+  liftIO (readFile fname) >>= \source ->
+  case parse program fname source of
+    Left err -> throwError $ strMsg $ show err
+    Right js -> return js
 
 -- | Read a JavaScript program from file an parse it into a list of
 -- statements

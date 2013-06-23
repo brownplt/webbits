@@ -31,7 +31,7 @@ tests_pretty = testProperty "Parse is the inverse of pretty" prettyParseEquivale
 prettyParseEquivalence :: JavaScript () -> Property
 prettyParseEquivalence orig =
   let pp = show $ prettyPrint orig
-  in case parseScriptFromString "" pp of
+  in case parseFromString pp of
     Left e -> 
       let err = "Can't parse pretty-printed code. The error was: " ++ (show e) ++
                 "\nThe pretty-printed code in question:\n" ++ pp

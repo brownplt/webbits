@@ -23,13 +23,13 @@ js :: QuasiQuoter
 js = QuasiQuoter {quoteExp = quoteJS}
 
 quoteJSExpr :: String -> TH.ExpQ
-quoteJSExpr = quoteCommon parseExpression
+quoteJSExpr = quoteCommon expression
 
 quoteJSStmt :: String -> TH.ExpQ
-quoteJSStmt = quoteCommon parseStatement
+quoteJSStmt = quoteCommon statement
 
 quoteJS :: String -> TH.ExpQ
-quoteJS = quoteCommon parseScript
+quoteJS = quoteCommon program
 
 quoteCommon :: Data a => Parser String a -> String -> TH.ExpQ
 quoteCommon p s = do loc <- TH.location

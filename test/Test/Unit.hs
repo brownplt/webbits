@@ -31,10 +31,10 @@ testDir = "test/parse-pretty"
 parsePrettyTest :: FilePath -> Assertion
 parsePrettyTest filename =
   readFile filename >>= \src ->
-  case parseScriptFromString "" src of
+  case parseFromString src of
     Left err -> assertFailure $ "Can't parse a test-case: " ++ filename
     Right js -> let str = show $ prettyPrint js
-                in  case parseScriptFromString "" str of
+                in  case parseFromString str of
                   Left err ->
                     let msg = "Can't parse pretty-printed code. The error was: "
                               ++ (show err)
