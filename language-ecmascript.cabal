@@ -75,7 +75,7 @@ Test-Suite test
     mtl >= 1.1.0.1,
     parsec < 3.2.0,
     pretty >= 0.1,
-    containers >= 0.1,
+    containers >= 0.1 && < 0.6,
     directory,
     filepath,
     HUnit,
