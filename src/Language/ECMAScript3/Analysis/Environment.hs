@@ -1,6 +1,8 @@
 -- | A lexical environment analysis of ECMAScript programs
 
 module Language.ECMAScript3.Analysis.Environment
+       {-# DEPRECATED "Use the module with the same name in package\
+                      \ language-ecmascript-analysis" #-}
   ( env
   , localVars
   , EnvTree (..)
