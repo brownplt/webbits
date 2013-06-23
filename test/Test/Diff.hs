@@ -22,7 +22,7 @@ tests_diff =
      let validLefts  = getValidJS allLefts
      let validRights = getValidJS allRights
      let validDiffs  = getValidDiffs allDiffs
-     return $ testGroup "JavaScript Unit tests" $
+     return $ testGroup "Source Diff tests" $
        map genTest $ filter ((`elem` (map FP.dropExtension validDiffs)) .
                              FP.dropExtension)
                    $ filter (`elem` validRights) validLefts
