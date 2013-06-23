@@ -1,5 +1,15 @@
 Version change log.
 
+=0.15=
+Bug fixes in the pretty-printer, the parser and the QuickCheck arbitrary
+instance for the AST. Refactored tests to use test-framework. Reorganized
+the interface for the parser to make it consistent; see deprecation
+warnings for details. Added Language.ECMAScript3.SourceDiff -- a simple
+source-based differ for ECMAScript programs, which is now used for
+visualizing test failures. Revised package dependencies. Factored the
+analyses out in a separate package: language-ecmascript-analysis;
+Language.ECMAScript3.Analysis.* are now deprecated.
+
 =0.14=
 Refactoring of the pretty-printing module: added class Pretty with a more
 comprehensive coverage of AST datatypes and better documentation. Removed
