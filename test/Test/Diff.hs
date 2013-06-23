@@ -36,7 +36,7 @@ expectsDir = "test/diff/expects"
 genTest :: FilePath -> Test
 genTest testFileName = testCase testFileName $
                        diffTest (leftDir `FP.combine` testFileName)
-                                (leftDir `FP.combine` testFileName)
+                                (rightDir `FP.combine` testFileName)
                                 (expectsDir `FP.combine`
                                  ((FP.dropExtension testFileName)
                                   `FP.addExtension` "diff"))

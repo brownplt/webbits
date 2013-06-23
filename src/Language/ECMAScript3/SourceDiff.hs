@@ -17,8 +17,8 @@ jsDiff js1 js2 =
       diff = getGroupedDiff (plines js1) (plines js2)
       formatDiff :: Diff [String] -> String
       formatDiff d = let (prefix, strs) = case d of
-                           First ss  -> ('+', ss)
-                           Second ss -> ('-', ss)
+                           First ss  -> ('-', ss)
+                           Second ss -> ('+', ss)
                            Both ss _ -> (' ', ss)
                      in concat $ intersperse "\n" $  map (prefix:) strs
   in  concat $ intersperse "\n" $ map formatDiff diff
