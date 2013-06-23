@@ -4,8 +4,8 @@
 -- control-flow graphs.
 
 module Language.ECMAScript3.Analysis.LabelSets
-       {-# DEPRECATED "Use the module with the same name in package\
-                      \ language-ecmascript-analysis" #-}
+       {-# DEPRECATED "Use 'Language.ECMAScript3.Analysis.LabelSet'\
+                      \ from package 'language-ecmascript-analysis'" #-}
        (annotateLabelSets 
        ,Label(..)) where
 
