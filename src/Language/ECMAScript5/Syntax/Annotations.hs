@@ -46,6 +46,10 @@ class HasAnnotation a where
   -- | Sets the annotation of the root of the tree  
   setAnnotation :: b -> a b -> a b
 
+-- | Modify the annotation of the root node of the syntax tree
+withAnnotation :: (HasAnnotation a) => (b -> b) -> a b -> a b
+withAnnotation f x = setAnnotation (f $ getAnnotation x) x
+
 instance HasAnnotation Expression where
   getAnnotation e = case e of
    (StringLit a s)              -> a
