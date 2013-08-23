@@ -96,6 +96,9 @@ spaces = skipMany (whiteSpace <|> comment <?> "")
 lexeme :: Parser a -> Parser a
 lexeme p = do{ x <- p; spaces; return x}
 
+ws :: Parser Bool
+ws = False <$ whiteSpace <|> True <$ lineTerminator        
+
 --7.3
 uCRalone :: Parser Char
 uCRalone = do c <- uCR
@@ -163,11 +166,11 @@ reservedWord = choice [forget keyword, forget futureReservedWord, forget nullLit
 andThenNot :: Show q => Parser a -> Parser q -> Parser a
 andThenNot p q = try (p <* notFollowedBy q)
 
-makeKeyword :: String -> Parser ()
-makeKeyword word = forget $ lexeme (string word) `andThenNot` identifierPart
+makeKeyword :: String -> Parser Bool
+makeKeyword word = ws <* string word `andThenNot` identifierPart
 
 --7.6.1.1
-keyword :: Parser ()
+keyword :: Parser Bool
 keyword = choice [kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete,
                   kdo, kelse, kfinally, kfor, kfunction, kif, kin, kinstanceof, knew,
                   kreturn, kswitch, kthis, kthrow, ktry, ktypeof, kvar, kvoid, kwhile, kwith]
@@ -176,7 +179,7 @@ keyword = choice [kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete
 kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete,
   kdo, kelse, kfinally, kfor, kfunction, kif, kin, kinstanceof, knew,
   kreturn, kswitch, kthis, kthrow, ktry, ktypeof, kvar, kvoid, kwhile, kwith
-  :: Parser ()
+  :: Parser Bool
 kbreak      = makeKeyword "break"
 kcase       = makeKeyword "case"
 kcatch      = makeKeyword "catch"
@@ -205,10 +208,10 @@ kwhile      = makeKeyword "while"
 kwith       = makeKeyword "with"
 
 --7.6.1.2
-futureReservedWord :: Parser ()
+futureReservedWord :: Parser Bool
 futureReservedWord = choice [kclass, kconst, kenum, kexport, kextends, kimport, ksuper]
 
-kclass, kconst, kenum, kexport, kextends, kimport, ksuper :: Parser ()
+kclass, kconst, kenum, kexport, kextends, kimport, ksuper :: Parser Bool
 kclass   = makeKeyword "class"
 kconst   = makeKeyword "const"
 kenum    = makeKeyword "enum"
@@ -914,7 +917,7 @@ emptyStatement =
 expressionStatement :: Parser PositionedStatement
 expressionStatement = 
   withPos $
-  notFollowedBy (notP $ plbrace <|> kfunction) 
+  notFollowedBy (notP $ plbrace <|> forget kfunction)
    >> ExprStmt def
   <$> expression 
   <*  psemi
@@ -972,38 +975,32 @@ forStatement =
       <* kin
       <*> expression
       
--- TODO: deal with [no LineTerminator here]
+restricted :: (HasAnnotation x) => Parser Bool -> Parser (x SourceSpan) -> Parser (x SourceSpan)
+restricted keyword parser =
+  withPos $
+  keyword >>= guard
+  >> parser
+  <* psemi
+
 continueStatement :: Parser PositionedStatement
 continueStatement = 
-  withPos $
-  kcontinue
-  >> ContinueStmt def
-  <$> optionMaybe identifierName 
-  <* psemi
+  restricted kcontinue $ 
+  ContinueStmt def  <$> optionMaybe identifierName 
 
 breakStatement :: Parser PositionedStatement
 breakStatement = 
-  withPos $
-  kbreak
-  >> BreakStmt def
-  <$> optionMaybe identifierName 
-  <* psemi
+  restricted kbreak $
+   BreakStmt def <$> optionMaybe identifierName 
 
 throwStatement :: Parser PositionedStatement
 throwStatement = 
-  withPos $
-  kthrow
-  >> ThrowStmt def
-  <$> expression
-  <* psemi
+  restricted kthrow $
+  ThrowStmt def <$> expression
   
 returnStatement :: Parser PositionedStatement
 returnStatement = 
-  withPos $
-  kreturn
-  >> ReturnStmt def
-  <$> optionMaybe expression
-  <* psemi
+  restricted kreturn $
+  ReturnStmt def <$> optionMaybe expression
 
 withStatement :: Parser PositionedStatement
 withStatement = 
@@ -1011,9 +1008,9 @@ withStatement =
   kwith
    >> WithStmt def
   <$> inParens expression
-  <*> parseStatement
+  <*> parseStatement  
   
-  
+-- TODO: push statements I suppose
 labelledStatement :: Parser PositionedStatement
 labelledStatement =
   withPos $
@@ -1041,20 +1038,42 @@ switchStatement =
       many1 caseClause
     caseClause :: Parser (CaseClause SourceSpan)
     caseClause =
+      withPos $
       kcase 
        >> CaseClause def
-      <$> expression <*  pcolon
+      <$> expression <* pcolon
       <*> option [] statementList
     defaultClause :: Parser (CaseClause SourceSpan)
     defaultClause =
-      kdefault >> pcolon
+      withPos $
+      kdefault <* pcolon
        >> CaseDefault def
       <$> option [] statementList      
 
-tryStatement = undefined
-debuggerStatement = undefined
+tryStatement :: Parser PositionedStatement
+tryStatement = 
+  withPos $
+  ktry >>
+  TryStmt def
+  <$> block
+  <*> optionMaybe catch
+  <*> optionMaybe finally
+  where
+    catch :: Parser (CatchClause SourceSpan)
+    catch = withPos $ 
+            kcatch >> 
+            CatchClause def <$> inParens identifierName <*> block
+    finally :: Parser PositionedStatement
+    finally = withPos $
+              kfinally *>
+              block
 
-
+block :: Parser PositionedStatement
+block = withPos $ BlockStmt def <$> inBraces (option [] statementList)            
+  
+debuggerStatement :: Parser PositionedStatement
+debuggerStatement = 
+  withPos $ DebuggerStmt def <$ kdebugger <* psemi
 
 parseScriptFromString = undefined
 parseJavaScriptFromFile = undefined
