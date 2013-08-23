@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Language.ECMAScript5.Parser (parse
                                    , parseScriptFromString
@@ -34,18 +34,23 @@ import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
 import Data.Maybe (isJust, isNothing, fromMaybe)
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$))
 import Control.Arrow
+
+
+type Parser a = forall s . Stream s Identity Char => ParsecT s ParserState Identity a
 
 --import Numeric as Numeric
 
 -- the statement label stack
 type ParserState = [String]
-type PosParser x = Parser (x SourceSpan)
-
-type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identity a
 
 type SourceSpan = (SourcePos, SourcePos)
+type PositionedExpression = Expression SourceSpan
+type PositionedStatement  = Statement SourceSpan
+type PositionedId         = Id SourceSpan
+type PositionedVarDecl       = VarDecl SourceSpan
+
 
 initialParserState :: ParserState
 initialParserState = []
@@ -75,7 +80,7 @@ withFreshLabelStack p = do oldState <- getState
                            return a
 
 -- a convenience wrapper to take care of the position, "with position"
-withPos   :: (HasAnnotation x) => PosParser x -> PosParser x
+withPos   :: (HasAnnotation x) => Parser (x SourceSpan) -> Parser (x SourceSpan)
 withPos p = do start <- getPosition
                result <- p
                end <- getPosition
@@ -133,11 +138,11 @@ postAsteriskCommentChars = (multiLineNotForwardSlashOrAsteriskChar >>
 --token = identifierName <|> punctuator <|> numericLiteral <|> stringLiteral
 
 --7.6
-identifier :: PosParser Expression
+identifier :: Parser PositionedExpression
 identifier = lexeme $ withPos $ do name <- identifierName `butNot` reservedWord
                                    return $ VarRef def name
 
-identifierName :: PosParser Id
+identifierName :: Parser PositionedId
 identifierName = withPos $ do c  <- identifierStart
                               cs <- many identifierPart
                               return $ Id def (c:cs)
@@ -164,75 +169,75 @@ keyword = choice [kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete
 
 -- ECMAScript keywords
 kbreak :: Parser String
-kbreak = string "break"
+kbreak = lexeme $ string "break"
 kcase :: Parser String
-kcase  = string "case"
+kcase  = lexeme $ string "case"
 kcatch :: Parser String
-kcatch = string "catch"
+kcatch = lexeme $ string "catch"
 kcontinue :: Parser String
-kcontinue = string "continue"
+kcontinue = lexeme $ string "continue"
 kdebugger :: Parser String
-kdebugger = string "debugger"
+kdebugger = lexeme $ string "debugger"
 kdefault :: Parser String
-kdefault = string "default"
+kdefault = lexeme $ string "default"
 kdelete :: Parser String
-kdelete = string "delete"
+kdelete = lexeme $ string "delete"
 kdo :: Parser String
-kdo = string "do"
+kdo = lexeme $ string "do"
 kelse :: Parser String
-kelse = string "else"
+kelse = lexeme $ string "else"
 kfinally :: Parser String
-kfinally = string "finally"
+kfinally = lexeme $ string "finally"
 kfor :: Parser String
-kfor = string "for"
+kfor = lexeme $ string "for"
 kfunction :: Parser String
-kfunction = string "function"
+kfunction = lexeme $ string "function"
 kif :: Parser String
-kif = string "if"
+kif = lexeme $ string "if"
 kin :: Parser String
-kin = string "in"
+kin = lexeme $ string "in"
 kinstanceof :: Parser String
-kinstanceof = string "instanceof"
+kinstanceof = lexeme $ string "instanceof"
 knew :: Parser String
-knew = string "new"
+knew = lexeme $ string "new"
 kreturn :: Parser String
-kreturn = string "return"
+kreturn = lexeme $ string "return"
 kswitch :: Parser String
-kswitch = string "switch"
+kswitch = lexeme $ string "switch"
 kthis :: Parser String
-kthis = string "this"
+kthis = lexeme $ string "this"
 kthrow :: Parser String
-kthrow = string "throw"
+kthrow = lexeme $ string "throw"
 ktry :: Parser String
-ktry = string "try"
+ktry = lexeme $ string "try"
 ktypeof :: Parser String
-ktypeof = string "typeof"
+ktypeof = lexeme $ string "typeof"
 kvar :: Parser String
-kvar = string "var"
+kvar = lexeme $ string "var"
 kvoid :: Parser String
-kvoid = string "void"
+kvoid = lexeme $ string "void"
 kwhile :: Parser String
-kwhile = string "while"
+kwhile = lexeme $ string "while"
 kwith :: Parser String
-kwith = string "with"
+kwith = lexeme $ string "with"
 
 --7.6.1.2
 futureReservedWord :: Parser String
 futureReservedWord = choice [kclass, kconst, kenum, kexport, kextends, kimport, ksuper]
 kclass :: Parser String
-kclass = string "class"
+kclass = lexeme $ string "class"
 kconst :: Parser String
-kconst = string "const"
+kconst = lexeme $ string "const"
 kenum :: Parser String
-kenum = string "enum"
+kenum = lexeme $ string "enum"
 kexport :: Parser String
-kexport = string "export"
+kexport = lexeme $ string "export"
 kextends :: Parser String
-kextends = string "extends"
+kextends = lexeme $ string "extends"
 kimport :: Parser String
-kimport = string "import"
+kimport = lexeme $ string "import"
 ksuper :: Parser String
-ksuper = string "super"
+ksuper = lexeme $ string "super"
 
 --7.7
 punctuator :: Parser ()
@@ -362,20 +367,20 @@ pdiv = forget $ lexeme $ do char '/'
                             lookAhead $ notP $ char '='
 
 --7.8
-literal :: PosParser Expression
+literal :: Parser PositionedExpression
 literal = choice [nullLiteral, booleanLiteral, numericLiteral, stringLiteral, regularExpressionLiteral]
 
 --7.8.1
-nullLiteral :: PosParser Expression
+nullLiteral :: Parser PositionedExpression
 nullLiteral = lexeme $ withPos (string "null" >> return (NullLit def))
 
 --7.8.2
-booleanLiteral :: PosParser Expression
+booleanLiteral :: Parser PositionedExpression
 booleanLiteral = lexeme $ withPos $ ((string "true" >> return (BoolLit def True)) 
                                  <|> (string "false" >> return (BoolLit def False)))
 
 --7.8.3
-numericLiteral :: PosParser Expression
+numericLiteral :: Parser PositionedExpression
 numericLiteral = hexIntegerLiteral <|> decimalLiteral
 
 -- Creates a decimal value from a whole, fractional and exponent parts.
@@ -387,7 +392,7 @@ mkDecimal whole frac fracLen exp =
 mkInteger :: Integer -> Integer -> Int
 mkInteger whole exp = fromInteger $ whole * (10 ^ exp)
 
-decimalLiteral :: PosParser Expression
+decimalLiteral :: Parser PositionedExpression
 decimalLiteral = lexeme $ withPos $
   (do whole <- decimalInteger
       mfraclen <- optionMaybe (pdot >> decimalDigitsWithLength)
@@ -412,7 +417,7 @@ digits2NumberAndLength is =
                         (1, 0, 0) is
   in (n, l)
           
-decimalIntegerLiteral :: PosParser Expression
+decimalIntegerLiteral :: Parser PositionedExpression
 decimalIntegerLiteral = lexeme $ withPos $ decimalInteger >>= 
                         \i -> return $ NumLit def $ Left $ fromInteger i
                                   
@@ -450,7 +455,7 @@ fromHex digits = do [(hex,"")] <- return $ Numeric.readHex digits
                     
 fromDecimal digits = do [(hex,"")] <- return $ Numeric.readDec digits
                         return hex
-hexIntegerLiteral :: PosParser Expression
+hexIntegerLiteral :: Parser PositionedExpression
 hexIntegerLiteral = lexeme $ withPos $ do
   try (char '0' >> (char 'x' <|> char 'X'))
   digits <- many1 hexDigit
@@ -469,7 +474,7 @@ inDblQuotes x = between dblquote dblquote x
 inQuotes :: Parser a -> Parser a
 inQuotes x = between quote quote x
 
-stringLiteral :: PosParser Expression
+stringLiteral :: Parser (PositionedExpression)
 stringLiteral =  lexeme $ withPos $ 
                  do s <- ((inDblQuotes $ concatM $ many doubleStringCharacter)
                           <|> 
@@ -522,7 +527,7 @@ unicodeEscapeSequence = do digits <- char 'u' >> count 4 hexDigit
                            return $ chr hex
 
 --7.8.5 and 15.10.4.1
-regularExpressionLiteral :: PosParser Expression
+regularExpressionLiteral :: Parser PositionedExpression
 regularExpressionLiteral = 
     lexeme $ withPos $ do 
       body <- between pdiv pdiv regularExpressionBody
@@ -553,8 +558,7 @@ regularExpressionChar =
     regularExpressionBackslashSequence,
     regularExpressionClass ]
 
-regularExpressionBackslashSequence :: 
-                                   Parser String
+regularExpressionBackslashSequence :: Parser String
 regularExpressionBackslashSequence = do c <-char '\\'  
                                         e <- regularExpressionNonTerminator
                                         return (c:[e])
@@ -573,8 +577,7 @@ regularExpressionClassChar =
   stringify (regularExpressionNonTerminator `butNot` oneOf [']', '\\'])
   <|> regularExpressionBackslashSequence
     
-regularExpressionFlags ::  
-                       Parser (Bool, Bool, Bool) -- g, i, m    
+regularExpressionFlags :: Parser (Bool, Bool, Bool) -- g, i, m    
 regularExpressionFlags = regularExpressionFlags' (False, False, False)
   
 regularExpressionFlags' :: (Bool, Bool, Bool) 
@@ -610,8 +613,7 @@ endOfProgram = forget (char ';') <|> eof
 -- returned, where 'l' is the result of left; otherwise (l, Just r) is
 -- returned, where 'l' and 'r' are results of left and right
 -- respectively.
-noLineTerminator :: 
-                 Parser a -> Parser b -> Parser (a, Maybe b)
+noLineTerminator :: Parser a -> Parser b -> Parser (a, Maybe b)
 noLineTerminator left right = do l <- left
                                  spaces
                                  ((try lineTerminator >>
@@ -620,29 +622,29 @@ noLineTerminator left right = do l <- left
 
 -- 11.1
 -- primary expressions
-primaryExpression :: PosParser Expression
+primaryExpression :: Parser PositionedExpression
 primaryExpression = choice [lexeme $ withPos (kthis >> return (ThisRef def))
                            ,identifier
                            ,literal
                            ,arrayLiteral
                            ,parenExpression]
 
-parenExpression :: PosParser Expression
+parenExpression :: Parser PositionedExpression
 parenExpression = lexeme $ withPos (between plparen prparen expression)
                                     
 -- 11.1.4
-arrayLiteral :: PosParser Expression
+arrayLiteral :: Parser PositionedExpression
 arrayLiteral = lexeme $ withPos $ 
                do plbracket
                   e <- elementsListWithElision
                   prbracket
                   return $ ArrayLit def e
 
-elementsListWithElision :: Parser [Maybe (Expression SourceSpan)]
+elementsListWithElision :: Parser [Maybe (PositionedExpression)]
 elementsListWithElision = (optionMaybe assignmentExpression) `sepBy` pcomma
   
 -- 11.1.5
-objectLiteral :: PosParser Expression
+objectLiteral :: Parser PositionedExpression
 objectLiteral = lexeme $ withPos $
                 do plbrace
                    props <- propertyAssignment `sepBy` pcomma
@@ -674,7 +676,7 @@ propertyAssignment = lexeme $ withPos $
                          e <- assignmentExpression
                          return $ PExpr def pname e)
 
-propertyName :: PosParser Prop
+propertyName :: Parser (Prop SourceSpan)
 propertyName = lexeme $ withPos $
                (identifierName >>= id2Prop)
             <|>(stringLiteral >>= string2Prop)
@@ -684,7 +686,7 @@ propertyName = lexeme $ withPos $
         num2Prop (NumLit a i) = return $ PropNum a i
 
 -- 11.2
-memberExpression :: PosParser Expression
+memberExpression :: Parser PositionedExpression
 memberExpression = functionExpression
                 <|>(lexeme $ withPos $ do obj <- memberExpression
                                           plbracket
@@ -701,14 +703,14 @@ memberExpression = functionExpression
                                           return $ NewExpr def ctor args)
                 <|>primaryExpression
                                           
-newExpression :: PosParser Expression
+newExpression :: Parser PositionedExpression
 newExpression = (lexeme $ withPos $ do knew
                                        ctor <- newExpression
                                        args <- arguments
                                        return $ NewExpr def ctor args)
              <|>memberExpression
 
-callExpression :: PosParser Expression
+callExpression :: Parser PositionedExpression
 callExpression = (lexeme $ withPos $ do func <- callExpression
                                         args <- arguments
                                         return $ CallExpr def func args)
@@ -726,17 +728,17 @@ callExpression = (lexeme $ withPos $ do func <- callExpression
                                         args <- arguments
                                         return $ CallExpr def func args)
 
-arguments :: Parser [Expression SourceSpan]
+arguments :: Parser [PositionedExpression]
 arguments = lexeme $ do plbrace
                         args <- assignmentExpression `sepBy` pcomma
                         prbrace
                         return args
                         
-leftHandSideExpression :: PosParser Expression
+leftHandSideExpression :: Parser PositionedExpression
 leftHandSideExpression = newExpression <|> callExpression
 
 -- 11.3
-postfixExpression :: PosParser Expression
+postfixExpression :: Parser PositionedExpression
 postfixExpression = 
   lexeme $ withPos $ leftHandSideExpression `noLineTerminator` 
   ((pplusplus >> return PostfixInc) <|>
@@ -746,7 +748,7 @@ postfixExpression =
     Just op -> return $ UnaryAssignExpr def op e
 
 -- 11.4
-unaryExpression :: PosParser Expression
+unaryExpression :: Parser PositionedExpression
 unaryExpression = 
   (lexeme $ withPos $ 
        (choice [pplusplus >> return PrefixInc
@@ -765,7 +767,7 @@ unaryExpression =
   <|> postfixExpression
 
 -- 11.5
-multiplicativeExpression :: PosParser Expression
+multiplicativeExpression :: Parser PositionedExpression
 multiplicativeExpression = (lexeme $ withPos $ do
                                lhs <- multiplicativeExpression
                                op  <- choice [pmul >> return OpMul
@@ -776,7 +778,7 @@ multiplicativeExpression = (lexeme $ withPos $ do
                         <|>unaryExpression
 
 -- 11.6
-additiveExpression :: PosParser Expression
+additiveExpression :: Parser PositionedExpression
 additiveExpression = (lexeme $ withPos $ do
                          lhs <- additiveExpression
                          op  <- choice [pplus >> return OpAdd
@@ -786,7 +788,7 @@ additiveExpression = (lexeme $ withPos $ do
                   <|> multiplicativeExpression
 
 -- 11.7
-shiftExpression :: PosParser Expression
+shiftExpression :: Parser PositionedExpression
 shiftExpression = (lexeme $ withPos $ do
                       lhs <- shiftExpression
                       op  <- choice [pshl >> return OpLShift
@@ -797,11 +799,12 @@ shiftExpression = (lexeme $ withPos $ do
                <|> additiveExpression
 
 -- 11.8
-relationalExpression :: Bool -> PosParser Expression
+relationalExpression :: Bool
+                     -> Parser PositionedExpression
 relationalExpression yesIn = 
   (lexeme $ withPos $ do
-      let in_ = if yesIn then [kin >> return OpIn] else [] 
       lhs <- relationalExpression yesIn
+      let in_ = if yesIn then [kin >> return OpIn] else []
       op  <- choice $ in_ ++ [plangle >> return OpLT
                              ,prangle >> return OpGT
                              ,pleqt   >> return OpLEq
@@ -809,10 +812,11 @@ relationalExpression yesIn =
                              ,kinstanceof >> return OpInstanceof]
       rhs <- shiftExpression
       return $ InfixExpr def op lhs rhs)
-  <|> shiftExpression
+--  <|> shiftExpression
 
 -- 11.9
-equalityExpression :: Bool -> PosParser Expression
+equalityExpression :: Bool
+                   -> Parser PositionedExpression
 equalityExpression yesIn = (lexeme $ withPos $ do
                                lhs <- equalityExpression yesIn
                                op  <- choice [peq >> return OpEq
@@ -823,28 +827,112 @@ equalityExpression yesIn = (lexeme $ withPos $ do
                                return $ InfixExpr def op lhs rhs)
                         <|> relationalExpression yesIn
 
-functionExpression :: PosParser Expression
+functionExpression :: Parser PositionedExpression
 functionExpression = undefined
 
-assignmentExpression :: PosParser Expression
+assignmentExpression :: Parser PositionedExpression
 assignmentExpression = undefined
 
-expression :: PosParser Expression
+expression :: Parser PositionedExpression
 expression = undefined
 
-functionBody :: Parser [Statement SourceSpan]
-functionBody = undefined
+functionBody :: Parser [PositionedStatement]
+functionBody = option [] sourceElements
+
+sourceElements :: Parser [PositionedStatement]
+sourceElements = many1 sourceElement
+
+sourceElement :: Parser PositionedStatement
+sourceElement = parseStatement <|> functionDeclaration
+
+functionDeclaration :: Parser PositionedStatement
+functionDeclaration = withPos $
+  kfunction
+   >> FunctionStmt def
+  <$> identifierName
+  <*> (plparen *> formalParameterList <* prparen) 
+  <*> (plbrace *> functionBody <* prbrace)
+
+
+formalParameterList :: Parser [PositionedId]
+formalParameterList = 
+  withPos identifierName `sepBy` pcomma
+
+parseStatement :: Parser PositionedStatement
+parseStatement =
+  choice
+  [ parseBlock 
+  , variableStatement 
+  , emptyStatement 
+  , expressionStatement 
+  , ifStatement 
+  , iterationStatement 
+  , continueStatement 
+  , breakStatement 
+  , returnStatement 
+  , withStatement 
+  , labelledStatement 
+  , switchStatement 
+  , throwStatement 
+  , tryStatement 
+  , debuggerStatement ]
+
+statementList :: Parser [PositionedStatement]
+statementList = many1 (withPos parseStatement)
+
+parseBlock :: Parser PositionedStatement
+parseBlock = 
+  withPos $
+     plbrace 
+      >> BlockStmt def
+     <$> option [] statementList 
+     <*  prbrace
+
+variableStatement :: Parser PositionedStatement
+variableStatement = 
+  withPos $
+  kvar 
+   >> VarDeclStmt def
+  <$> variableDeclarationList
+  <*  psemi
+
+variableDeclarationList :: Parser [PositionedVarDecl]
+variableDeclarationList = 
+  variableDeclaration `sepBy` pcomma
+
+variableDeclaration :: Parser PositionedVarDecl
+variableDeclaration = 
+  VarDecl def <$> identifierName <*> optionMaybe initializer
+
+initializer :: Parser PositionedExpression
+initializer = peq *> assignmentExpression
+
+
+emptyStatement = undefined
+expressionStatement = undefined
+ifStatement = undefined
+iterationStatement = undefined
+continueStatement = undefined
+breakStatement = undefined
+returnStatement = undefined
+withStatement = undefined
+labelledStatement = undefined
+switchStatement = undefined
+throwStatement = undefined
+tryStatement = undefined
+debuggerStatement = undefined
+
+
 
 parseScriptFromString = undefined
 parseJavaScriptFromFile = undefined
 parseScript = undefined
 parseExpression = undefined
 parseString = undefined
-type ParsedStatement = Statement
-type ParsedExpression = Expression
+type ParsedStatement = PositionedStatement
+type ParsedExpression = PositionedExpression
 parseSimpleExpr' = undefined
 parseBlockStmt = undefined
-parseStatement = undefined
-type StatementParser = PosParser ParsedStatement
-type ExpressionParser = PosParser ParsedExpression
+type StatementParser = Parser ParsedStatement
+type ExpressionParser = Parser ParsedExpression
 assignExpr = undefined
