@@ -989,10 +989,18 @@ breakStatement =
   <$> optionMaybe identifierName 
   <* psemi
 
+throwStatement :: Parser PositionedStatement
+throwStatement = 
+  withPos $
+  kthrow
+  >> ThrowStmt def
+  <$> expression
+  <* psemi
+  
 returnStatement :: Parser PositionedStatement
 returnStatement = 
   withPos $
-  kbreak
+  kreturn
   >> ReturnStmt def
   <$> optionMaybe expression
   <* psemi
@@ -1006,9 +1014,48 @@ withStatement =
   <*  prparen
   <*> parseStatement
   
-labelledStatement = undefined
-switchStatement = undefined
-throwStatement = undefined
+  
+labelledStatement :: Parser PositionedStatement
+labelledStatement =
+  withPos $
+  LabelledStmt def
+  <$> identifierName 
+  <*  pcolon
+  <*> parseStatement
+      
+switchStatement :: Parser PositionedStatement
+switchStatement = 
+  kswitch <* plparen 
+   >> SwitchStmt def
+  <$> expression
+  <*  prparen
+  <*> caseBlock
+  where 
+    makeCaseClauses cs  Nothing cs2 = cs ++ cs
+    makeCaseClauses cs (Just ds) cs2 = cs ++ ds : cs
+    caseBlock :: Parser [CaseClause SourceSpan]
+    caseBlock = 
+      plbrace
+      *> (makeCaseClauses
+          <$> option [] caseClauses 
+          <*> optionMaybe defaultClause 
+          <*> option [] caseClauses)
+      <* prbrace 
+    caseClauses :: Parser [CaseClause SourceSpan]
+    caseClauses = many1 caseClause
+    caseClause :: Parser (CaseClause SourceSpan)
+    caseClause =
+      kcase 
+       >> CaseClause def
+      <$> expression 
+      <*  pcolon
+      <*> option [] statementList
+    defaultClause :: Parser (CaseClause SourceSpan)
+    defaultClause =
+      kdefault >> pcolon
+       >> CaseDefault def
+      <$> option [] statementList      
+
 tryStatement = undefined
 debuggerStatement = undefined
 
