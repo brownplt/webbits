@@ -36,8 +36,8 @@ forInit t = case t of
 
 forInInit :: ForInInit a -> Doc  
 forInInit t = case t of
-  ForInVar id   -> text "var" <+> ppId id
-  ForInLVal lv -> ppLValue lv
+  ForInVar vd   -> text "var" <+> ppVarDecl False vd
+  ForInLVal exp -> ppExpression False exp
 
 caseClause :: CaseClause a -> Doc
 caseClause (CaseClause _ e ss) =

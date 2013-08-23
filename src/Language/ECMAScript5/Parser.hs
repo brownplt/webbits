@@ -37,7 +37,6 @@ import Data.Maybe (isJust, isNothing, fromMaybe)
 import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$))
 import Control.Arrow
 
-
 type Parser a = forall s . Stream s Identity Char => ParsecT s ParserState Identity a
 
 --import Numeric as Numeric
@@ -161,83 +160,62 @@ identifierPart = identifierStart <|> unicodeCombiningMark <|> unicodeDigit <|>
 reservedWord :: Parser ()
 reservedWord = choice [forget keyword, forget futureReservedWord, forget nullLiteral, forget booleanLiteral]
 
+andThenNot :: Show q => Parser a -> Parser q -> Parser a
+andThenNot p q = try (p <* notFollowedBy q)
+
+makeKeyword :: String -> Parser ()
+makeKeyword word = forget $ lexeme (string word) `andThenNot` identifierPart
+
 --7.6.1.1
-keyword :: Parser String
+keyword :: Parser ()
 keyword = choice [kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete,
                   kdo, kelse, kfinally, kfor, kfunction, kif, kin, kinstanceof, knew,
                   kreturn, kswitch, kthis, kthrow, ktry, ktypeof, kvar, kvoid, kwhile, kwith]
 
 -- ECMAScript keywords
-kbreak :: Parser String
-kbreak = lexeme $ string "break"
-kcase :: Parser String
-kcase  = lexeme $ string "case"
-kcatch :: Parser String
-kcatch = lexeme $ string "catch"
-kcontinue :: Parser String
-kcontinue = lexeme $ string "continue"
-kdebugger :: Parser String
-kdebugger = lexeme $ string "debugger"
-kdefault :: Parser String
-kdefault = lexeme $ string "default"
-kdelete :: Parser String
-kdelete = lexeme $ string "delete"
-kdo :: Parser String
-kdo = lexeme $ string "do"
-kelse :: Parser String
-kelse = lexeme $ string "else"
-kfinally :: Parser String
-kfinally = lexeme $ string "finally"
-kfor :: Parser String
-kfor = lexeme $ string "for"
-kfunction :: Parser String
-kfunction = lexeme $ string "function"
-kif :: Parser String
-kif = lexeme $ string "if"
-kin :: Parser String
-kin = lexeme $ string "in"
-kinstanceof :: Parser String
-kinstanceof = lexeme $ string "instanceof"
-knew :: Parser String
-knew = lexeme $ string "new"
-kreturn :: Parser String
-kreturn = lexeme $ string "return"
-kswitch :: Parser String
-kswitch = lexeme $ string "switch"
-kthis :: Parser String
-kthis = lexeme $ string "this"
-kthrow :: Parser String
-kthrow = lexeme $ string "throw"
-ktry :: Parser String
-ktry = lexeme $ string "try"
-ktypeof :: Parser String
-ktypeof = lexeme $ string "typeof"
-kvar :: Parser String
-kvar = lexeme $ string "var"
-kvoid :: Parser String
-kvoid = lexeme $ string "void"
-kwhile :: Parser String
-kwhile = lexeme $ string "while"
-kwith :: Parser String
-kwith = lexeme $ string "with"
+kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete,
+  kdo, kelse, kfinally, kfor, kfunction, kif, kin, kinstanceof, knew,
+  kreturn, kswitch, kthis, kthrow, ktry, ktypeof, kvar, kvoid, kwhile, kwith
+  :: Parser ()
+kbreak      = makeKeyword "break"
+kcase       = makeKeyword "case"
+kcatch      = makeKeyword "catch"
+kcontinue   = makeKeyword "continue"
+kdebugger   = makeKeyword "debugger"
+kdefault    = makeKeyword "default"
+kdelete     = makeKeyword "delete"
+kdo         = makeKeyword "do"
+kelse       = makeKeyword "else"
+kfinally    = makeKeyword "finally"
+kfor        = makeKeyword "for"
+kfunction   = makeKeyword "function"
+kif         = makeKeyword "if"
+kin         = makeKeyword "in"
+kinstanceof = makeKeyword "instanceof"
+knew        = makeKeyword "new"
+kreturn     = makeKeyword "return"
+kswitch     = makeKeyword "switch"
+kthis       = makeKeyword "this"
+kthrow      = makeKeyword "throw"
+ktry        = makeKeyword "try"
+ktypeof     = makeKeyword "typeof"
+kvar        = makeKeyword "var"
+kvoid       = makeKeyword "void"
+kwhile      = makeKeyword "while"
+kwith       = makeKeyword "with"
 
 --7.6.1.2
-futureReservedWord :: Parser String
+futureReservedWord :: Parser ()
 futureReservedWord = choice [kclass, kconst, kenum, kexport, kextends, kimport, ksuper]
-kclass :: Parser String
-kclass = lexeme $ string "class"
-kconst :: Parser String
-kconst = lexeme $ string "const"
-kenum :: Parser String
-kenum = lexeme $ string "enum"
-kexport :: Parser String
-kexport = lexeme $ string "export"
-kextends :: Parser String
-kextends = lexeme $ string "extends"
-kimport :: Parser String
-kimport = lexeme $ string "import"
-ksuper :: Parser String
-ksuper = lexeme $ string "super"
+
+kclass, kconst, kenum, kexport, kextends, kimport, ksuper :: Parser ()
+kclass   = makeKeyword "class"
+kconst   = makeKeyword "const"
+kenum    = makeKeyword "enum"
+kexport  = makeKeyword "export"
+kextends = makeKeyword "extends"
+kimport  = makeKeyword "import"
+ksuper   = makeKeyword "super"
 
 --7.7
 punctuator :: Parser ()
@@ -833,8 +811,14 @@ functionExpression = undefined
 assignmentExpression :: Parser PositionedExpression
 assignmentExpression = undefined
 
+assignmentExpressionNoIn :: Parser PositionedExpression
+assignmentExpressionNoIn = undefined
+
 expression :: Parser PositionedExpression
 expression = undefined
+
+expressionNoIn :: Parser PositionedExpression
+expressionNoIn = undefined
 
 functionBody :: Parser [PositionedStatement]
 functionBody = option [] sourceElements
@@ -902,20 +886,126 @@ variableDeclarationList =
 
 variableDeclaration :: Parser PositionedVarDecl
 variableDeclaration = 
-  VarDecl def <$> identifierName <*> optionMaybe initializer
+  withPos $ VarDecl def <$> identifierName <*> optionMaybe initializer
 
 initializer :: Parser PositionedExpression
-initializer = peq *> assignmentExpression
+initializer = 
+  peq *> assignmentExpression
 
+variableDeclarationListNoIn :: Parser [PositionedVarDecl]
+variableDeclarationListNoIn =
+  variableDeclarationNoIn `sepBy` pcomma
+  
+variableDeclarationNoIn :: Parser PositionedVarDecl
+variableDeclarationNoIn =
+  withPos $ VarDecl def <$> identifierName  <*> optionMaybe initalizerNoIn
+  
+initalizerNoIn :: Parser PositionedExpression
+initalizerNoIn =
+  peq *> assignmentExpressionNoIn
 
-emptyStatement = undefined
-expressionStatement = undefined
-ifStatement = undefined
-iterationStatement = undefined
-continueStatement = undefined
-breakStatement = undefined
-returnStatement = undefined
-withStatement = undefined
+emptyStatement :: Parser PositionedStatement
+emptyStatement = 
+  withPos $ EmptyStmt def <$ psemi
+
+expressionStatement :: Parser PositionedStatement
+expressionStatement = 
+  withPos $
+  notFollowedBy (notP $ plbrace <|> kfunction) 
+   >> ExprStmt def
+  <$> expression 
+  <*  psemi
+
+ifStatement :: Parser PositionedStatement
+ifStatement = 
+  withPos $
+  kif >> plparen 
+   >> IfStmt def
+  <$> expression <* prparen
+  <*> parseStatement
+  <*> option (EmptyStmt def) (kelse *> parseStatement)
+  
+iterationStatement :: Parser PositionedStatement
+iterationStatement = doStatement <|> whileStatement
+
+doStatement :: Parser PositionedStatement
+doStatement = 
+  withPos $
+  kdo
+   >> DoWhileStmt def
+  <$> parseStatement 
+  <*  kwhile
+  <*  plparen 
+  <*> expression 
+  <*  prparen <* psemi
+  
+whileStatement :: Parser PositionedStatement
+whileStatement =   
+  withPos $
+  kwhile <* plparen
+   >> WhileStmt def
+  <$> expression
+  <*  prparen
+  <*> parseStatement
+   
+forStatement :: Parser PositionedStatement
+forStatement =
+  withPos $
+  kfor <* plparen 
+   >> (try forStmt <|> forInStmt) 
+   <* prparen
+  <*> parseStatement
+  where 
+    forStmt :: Parser (PositionedStatement -> PositionedStatement)
+    forStmt = 
+      ForStmt def
+      <$> choice [ VarInit <$> (kvar *> variableDeclarationListNoIn)
+                 , ExprInit <$> expressionNoIn 
+                 , return NoInit ]
+      <* psemi <*> optionMaybe expression
+      <* psemi <*> optionMaybe expression 
+    forInStmt :: Parser (PositionedStatement -> PositionedStatement)
+    forInStmt = 
+      ForInStmt def 
+      <$> (ForInVar <$> (kvar *> variableDeclarationNoIn) <|>
+           ForInLVal <$> leftHandSideExpression )
+      <* kin
+      <*> expression
+      
+-- TODO: deal with [no LineTerminator here]
+continueStatement :: Parser PositionedStatement
+continueStatement = 
+  withPos $
+  kcontinue
+  >> ContinueStmt def
+  <$> optionMaybe identifierName 
+  <* psemi
+
+breakStatement :: Parser PositionedStatement
+breakStatement = 
+  withPos $
+  kbreak
+  >> BreakStmt def
+  <$> optionMaybe identifierName 
+  <* psemi
+
+returnStatement :: Parser PositionedStatement
+returnStatement = 
+  withPos $
+  kbreak
+  >> ReturnStmt def
+  <$> optionMaybe expression
+  <* psemi
+
+withStatement :: Parser PositionedStatement
+withStatement = 
+  withPos $
+  kwith <* plparen
+   >> WithStmt def
+  <$> expression
+  <*  prparen
+  <*> parseStatement
+  
 labelledStatement = undefined
 switchStatement = undefined
 throwStatement = undefined

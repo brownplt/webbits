@@ -197,8 +197,8 @@ data ForInit a = NoInit -- ^ empty
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 -- | for..in initializer, spec 12.6
-data ForInInit a = ForInVar (Id a) -- ^ @var x@
-                 | ForInLVal (LValue a) -- ^ @foo.baz@, @foo[bar]@, @z@
+data ForInInit a = ForInVar (VarDecl a) -- ^ @var x@
+                 | ForInLVal (Expression a) -- ^ @foo.baz@, @foo[bar]@, @z@
  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
   
 -- | Statements, spec 12.
