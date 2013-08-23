@@ -163,7 +163,7 @@ reservedWord = choice [forget keyword, forget futureReservedWord, forget nullLit
 --7.6.1.1
 keyword :: Stream s Identity Char => Parser s String
 keyword = choice [kbreak, kcase, kcatch, kcontinue, kdebugger, kdefault, kdelete,
-                  kdo, kelse, kfinally, kfor, kfunction, kif, kinstanceof, knew,
+                  kdo, kelse, kfinally, kfor, kfunction, kif, kin, kinstanceof, knew,
                   kreturn, kswitch, kthis, kthrow, ktry, ktypeof, kvar, kvoid, kwhile, kwith]
 
 -- ECMAScript keywords
