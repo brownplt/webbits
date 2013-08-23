@@ -33,7 +33,7 @@ import Control.Monad.Trans (MonadIO,liftIO)
 import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
-import Data.Maybe (isJust, isNothing, fromMaybe)
+import Data.Maybe (isJust, isNothing, fromMaybe, maybeToList)
 import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$))
 import Control.Arrow
 
@@ -451,6 +451,12 @@ inDblQuotes :: Parser a -> Parser a
 inDblQuotes x = between dblquote dblquote x
 inQuotes :: Parser a -> Parser a
 inQuotes x = between quote quote x
+inParens :: Parser a -> Parser a
+inParens x = between plparen prparen x
+inBrackets :: Parser a -> Parser a
+inBrackets x = between plbracket prbracket x
+inBraces :: Parser a -> Parser a
+inBraces x = between plbrace prbrace x
 
 stringLiteral :: Parser (PositionedExpression)
 stringLiteral =  lexeme $ withPos $ 
@@ -866,11 +872,8 @@ statementList = many1 (withPos parseStatement)
 
 parseBlock :: Parser PositionedStatement
 parseBlock = 
-  withPos $
-     plbrace 
-      >> BlockStmt def
-     <$> option [] statementList 
-     <*  prbrace
+  withPos $ inBraces $
+  BlockStmt def <$> option [] statementList 
 
 variableStatement :: Parser PositionedStatement
 variableStatement = 
@@ -919,9 +922,9 @@ expressionStatement =
 ifStatement :: Parser PositionedStatement
 ifStatement = 
   withPos $
-  kif >> plparen 
+  kif
    >> IfStmt def
-  <$> expression <* prparen
+  <$> inParens expression
   <*> parseStatement
   <*> option (EmptyStmt def) (kelse *> parseStatement)
   
@@ -935,25 +938,22 @@ doStatement =
    >> DoWhileStmt def
   <$> parseStatement 
   <*  kwhile
-  <*  plparen 
-  <*> expression 
-  <*  prparen <* psemi
+  <*> inParens expression 
+  <*  psemi
   
 whileStatement :: Parser PositionedStatement
 whileStatement =   
   withPos $
-  kwhile <* plparen
+  kwhile
    >> WhileStmt def
-  <$> expression
-  <*  prparen
+  <$> inParens expression
   <*> parseStatement
    
 forStatement :: Parser PositionedStatement
 forStatement =
   withPos $
-  kfor <* plparen 
-   >> (try forStmt <|> forInStmt) 
-   <* prparen
+  kfor
+   >> inParens (try forStmt <|> forInStmt) 
   <*> parseStatement
   where 
     forStmt :: Parser (PositionedStatement -> PositionedStatement)
@@ -1008,10 +1008,9 @@ returnStatement =
 withStatement :: Parser PositionedStatement
 withStatement = 
   withPos $
-  kwith <* plparen
+  kwith
    >> WithStmt def
-  <$> expression
-  <*  prparen
+  <$> inParens expression
   <*> parseStatement
   
   
@@ -1025,30 +1024,26 @@ labelledStatement =
       
 switchStatement :: Parser PositionedStatement
 switchStatement = 
-  kswitch <* plparen 
+  kswitch
    >> SwitchStmt def
-  <$> expression
-  <*  prparen
+  <$> inParens expression
   <*> caseBlock
   where 
-    makeCaseClauses cs  Nothing cs2 = cs ++ cs
-    makeCaseClauses cs (Just ds) cs2 = cs ++ ds : cs
-    caseBlock :: Parser [CaseClause SourceSpan]
+    makeCaseClauses cs d cs2 = cs ++ maybeToList d ++ cs
     caseBlock = 
-      plbrace
-      *> (makeCaseClauses
-          <$> option [] caseClauses 
-          <*> optionMaybe defaultClause 
-          <*> option [] caseClauses)
-      <* prbrace 
+      inBraces $ 
+      makeCaseClauses
+      <$> option [] caseClauses 
+      <*> optionMaybe defaultClause 
+      <*> option [] caseClauses
     caseClauses :: Parser [CaseClause SourceSpan]
-    caseClauses = many1 caseClause
+    caseClauses = 
+      many1 caseClause
     caseClause :: Parser (CaseClause SourceSpan)
     caseClause =
       kcase 
        >> CaseClause def
-      <$> expression 
-      <*  pcolon
+      <$> expression <*  pcolon
       <*> option [] statementList
     defaultClause :: Parser (CaseClause SourceSpan)
     defaultClause =
