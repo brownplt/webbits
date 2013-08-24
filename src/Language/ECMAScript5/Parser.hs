@@ -133,7 +133,7 @@ spaces :: Parser ()
 spaces = skipMany (whiteSpace <|> comment <?> "")
 
 lexeme :: Parser a -> Parser a
-lexeme p = p <* spaces 
+lexeme p = p <* ws 
 
 ws :: Parser Bool
 ws = fmap (any id) $ many (False <$ whiteSpace <|> True <$ lineTerminator)
@@ -208,7 +208,7 @@ andThenNot :: Show q => Parser a -> Parser q -> Parser a
 andThenNot p q = try (p <* notFollowedBy q)
 
 makeKeyword :: String -> Parser Bool
-makeKeyword word = string word `andThenNot` identifierPart *> ws
+makeKeyword word = try $ string word `andThenNot` identifierPart *> ws
 
 --7.6.1.1
 keyword :: Parser Bool
@@ -395,8 +395,8 @@ nullLiteral = lexeme $ withPos (string "null" >> return (NullLit def))
 
 --7.8.2
 booleanLiteral :: PosParser Expression
-booleanLiteral = lexeme $ withPos $ ((string "true" >> return (BoolLit def True)) 
-                                 <|> (string "false" >> return (BoolLit def False)))
+booleanLiteral = lexeme $ withPos $ BoolLit def 
+                 <$> (True <$ makeKeyword "true" <|> False <$ makeKeyword "false")
 
 --7.8.3
 numericLiteral :: PosParser Expression
@@ -734,7 +734,7 @@ arguments :: Parser [Positioned Expression]
 arguments = lexeme $ inParens $ assignmentExpression `sepBy` pcomma
                         
 leftHandSideExpression :: PosParser Expression
-leftHandSideExpression = newExpression <|> callExpression
+leftHandSideExpression = try callExpression <|> newExpression
 
 functionExpression :: PosParser Expression
 functionExpression = withPos $
