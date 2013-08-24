@@ -339,8 +339,7 @@ pquestion = forget $ lexeme $ char '?'
 pcolon :: Parser ()
 pcolon = forget $ lexeme $ char ':'
 passign :: Parser ()
-passign = forget $ lexeme $ do char '='
-                               lookAhead $ notP $ char '='
+passign = lexeme $ char '=' *> notFollowedBy (char '=')
 passignadd :: Parser ()
 passignadd = forget $ lexeme $ string "+="
 passignsub :: Parser ()
@@ -906,7 +905,7 @@ variableDeclaration =
 
 initializer :: PosParser Expression
 initializer = 
-  peq *> assignmentExpression
+  passign *> assignmentExpression
 
 variableDeclarationListNoIn :: Parser [Positioned VarDecl]
 variableDeclarationListNoIn =
@@ -918,7 +917,7 @@ variableDeclarationNoIn =
   
 initalizerNoIn :: PosParser Expression
 initalizerNoIn =
-  peq *> assignmentExpressionNoIn
+  passign *> assignmentExpressionNoIn
 
 emptyStatement :: PosParser Statement
 emptyStatement = 
@@ -1104,3 +1103,11 @@ tp p x = runParser q [] "" x
   where q = do res <- p
                rem <- many (noneOf "")
                return (rem, res)
+               
+test = unlines [
+  "var x = 20;"
+  , "y = 5"]
+           
+
+p :: PosParser Statement
+p = parseStatement
