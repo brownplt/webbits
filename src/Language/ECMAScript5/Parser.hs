@@ -170,10 +170,9 @@ identifier = lexeme $ withPos $ do name <- identifierName `butNot` reservedWord
                                    return $ VarRef def name
 
 identifierName :: PosParser Id
-identifierName = lexeme $
-                 withPos $ do c  <- identifierStart
-                              cs <- many identifierPart
-                              return $ Id def (c:cs)
+identifierName = lexeme $ withPos $ fmap (Id def) $ (:)
+                 <$> identifierStart
+                 <*> many identifierPart
 
 identifierStart :: Parser Char
 identifierStart = unicodeLetter <|> char '$' <|> char '_' <|> unicodeEscape
@@ -828,7 +827,7 @@ exprTable =
 
 logicalOrExpressionGen :: PosInParser Expression
 logicalOrExpressionGen = 
-  buildExpressionParser exprTable (liftIn primaryExpression) <?> "simple expression"
+  buildExpressionParser exprTable (liftIn leftHandSideExpression) <?> "simple expression"
 
 
 -- avoid putting comma expression on everything
