@@ -16,6 +16,8 @@ module Language.ECMAScript5.Parser (parse
                                    , assignExpr
                                    ) where
 
+import Text.Show.Pretty
+
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
 import Language.ECMAScript5.Parser.Util hiding (butNot)
@@ -27,6 +29,7 @@ import Text.Parsec.Char (char, string, satisfy, oneOf, noneOf, hexDigit, anyChar
 import Text.Parsec.Char as ParsecChar hiding (spaces)
 import Text.Parsec.Combinator
 import Text.Parsec.Prim
+import Text.Parsec.Pos
 import Text.Parsec.Expr
 
 import Control.Monad(liftM,liftM2)
@@ -46,9 +49,22 @@ type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identi
 -- the statement label stack
 type ParserState = [String]
 
-type SourceSpan = (SourcePos, SourcePos)
+data SourceSpan = SourceSpan (SourcePos, SourcePos)
 type Positioned x = x SourceSpan
 type PosParser x = Parser (Positioned x)
+
+instance Default SourceSpan where
+  def = SourceSpan def
+
+instance Show SourceSpan where
+  show (SourceSpan (p1,p2)) = let 
+    l1 = show $ sourceLine p1
+    c1 = show $ sourceColumn p1 
+    l2 = show $ sourceLine p2
+    c2 = show $ sourceColumn p2
+    s1 = l1 ++ "-" ++ c1
+    s2 = l2 ++ "-" ++ c2
+    in "(" ++ show (s1 ++ "/" ++ s2) ++ ")"
 
 -- for parsers that have with/without in-clause variations
 type InParser a =  forall s. Stream s Identity Char 
@@ -106,7 +122,7 @@ withPos   :: (HasAnnotation x, Stream s Identity Char) => ParsecT s u Identity (
 withPos p = do start <- getPosition
                result <- p
                end <- getPosition
-               return $ setAnnotation (start, end) result
+               return $ setAnnotation (SourceSpan (start, end)) result
 
 -- Below "x.y.z" are references to ECMAScript 5 spec chapters that discuss the corresponding grammar production
 --7.2
@@ -689,27 +705,30 @@ propertyName = lexeme $ withPos $
         string2Prop (StringLit a s) = return $ PropString a s
         num2Prop (NumLit a i) = return $ PropNum a i
 
-parseFromLeft p = fmap ($undefined) $ chainl1 p (return $ flip (.))
-
 -- 11.2
 memberExpression :: PosParser Expression
-memberExpression = lexeme $ withPos $  parseFromLeft $ choice 
-                   [ const <$> functionExpression
-                   , flip (BracketRef  def) <$> inBrackets expression
-                   , flip (DotRef      def) <$  pdot <*> identifierName
-                   , flip (NewExpr     def) <$  knew <*> arguments
-           , const <$> primaryExpression ]
+memberExpression = 
+  lexeme $ withPos $ 
+  flip ($)
+     <$> (  NewExpr def <$ knew <*> memberExpression <*> arguments
+        <|> primaryExpression <|> functionExpression)
+     <*> (fmap (foldl (.) id) $ many $ choice
+          [ flip (BracketRef  def) <$> inBrackets expression
+          , flip (DotRef      def) <$  pdot <*> identifierName])
                                           
 newExpression :: PosParser Expression
-newExpression = (lexeme $ withPos $ NewExpr def <$ knew <*> newExpression <*> arguments)
+newExpression = (lexeme $ withPos $ NewExpr def <$ knew <*> newExpression <*> return [])
              <|> memberExpression
 
 callExpression :: PosParser Expression
-callExpression = lexeme $ withPos $ parseFromLeft $ choice 
-                 [ const <$> memberExpression
-                 , flip (CallExpr def)   <$> arguments               
-                 , flip (BracketRef def) <$> inBrackets expression 
-                 , flip (DotRef def)     <$  pdot <*> identifierName ] 
+callExpression = 
+  lexeme $ withPos $ 
+  flip ($)
+    <$> (CallExpr def <$> memberExpression <*> arguments) 
+    <*> (fmap (foldl (.) id) $ many $ choice $ map try
+          [ flip (CallExpr def)   <$> arguments               
+          , flip (BracketRef def) <$> inBrackets expression 
+          , flip (DotRef def)     <$  pdot <*> identifierName ] )
 
 arguments :: Parser [Positioned Expression]
 arguments = lexeme $ inParens $ assignmentExpression `sepBy` pcomma
@@ -1098,4 +1117,5 @@ parseBlockStmt = undefined
 type StatementParser = PosParser Statement
 type ExpressionParser = PosParser Expression
 assignExpr = undefined
+
 
