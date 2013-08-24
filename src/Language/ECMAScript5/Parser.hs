@@ -1100,15 +1100,3 @@ type StatementParser = PosParser Statement
 type ExpressionParser = PosParser Expression
 assignExpr = undefined
 
-tp p x = runParser q [] "" x
-  where q = do res <- p
-               rem <- many (noneOf "")
-               return (rem, res)
-               
-test = unlines [
-  "var x = 20;"
-  , "y = 5"]
-           
-
-p :: PosParser Statement
-p = parseStatement
