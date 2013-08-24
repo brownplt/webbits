@@ -170,7 +170,8 @@ identifier = lexeme $ withPos $ do name <- identifierName `butNot` reservedWord
                                    return $ VarRef def name
 
 identifierName :: PosParser Id
-identifierName = withPos $ do c  <- identifierStart
+identifierName = lexeme $
+                 withPos $ do c  <- identifierStart
                               cs <- many identifierPart
                               return $ Id def (c:cs)
 
