@@ -27,17 +27,19 @@ import Text.Parsec.Char (char, string, satisfy, oneOf, noneOf, hexDigit, anyChar
 import Text.Parsec.Char as ParsecChar hiding (spaces)
 import Text.Parsec.Combinator
 import Text.Parsec.Prim
+import Text.Parsec.Expr
 
 import Control.Monad(liftM,liftM2)
 import Control.Monad.Trans (MonadIO,liftIO)
+
 import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
 import Data.Maybe (isJust, isNothing, fromMaybe, maybeToList)
-import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$))
+import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$), pure)
 import Control.Arrow
 
-type Parser a = forall s . Stream s Identity Char => ParsecT s ParserState Identity a
+type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identity a
 
 --import Numeric as Numeric
 
@@ -47,6 +49,30 @@ type ParserState = [String]
 type SourceSpan = (SourcePos, SourcePos)
 type Positioned x = x SourceSpan
 type PosParser x = Parser (Positioned x)
+
+-- for parsers that have with/without in-clause variations
+type InParser a =  forall s. Stream s Identity Char 
+                 => ParsecT s (Bool, ParserState) Identity a
+type PosInParser x = InParser (Positioned x)
+liftIn :: Parser a -> InParser a
+liftIn p = changeState (\s -> (True, s)) snd p
+
+withIn, withNoIn :: InParser a -> Parser a
+withIn   p = changeState snd (\s -> (True, s)) p
+withNoIn p = changeState snd (\s -> (False, s)) p
+
+changeState
+  :: forall m s u v a . (Functor m, Monad m)
+  => (u -> v)
+  -> (v -> u)
+  -> ParsecT s u m a
+  -> ParsecT s v m a
+changeState forward backward = mkPT . transform . runParsecT
+  where
+    mapState f st = st { stateUser = f (stateUser st) }
+    mapReply f (Ok a st err) = Ok a (mapState f st) err
+    mapReply _ (Error e) = Error e
+    transform p st = (fmap . fmap . fmap) (mapReply forward) (p (mapState backward st))
 
 initialParserState :: ParserState
 initialParserState = []
@@ -76,7 +102,7 @@ withFreshLabelStack p = do oldState <- getState
                            return a
 
 -- a convenience wrapper to take care of the position, "with position"
-withPos   :: (HasAnnotation x) => PosParser x -> PosParser x
+withPos   :: (HasAnnotation x, Stream s Identity Char) => ParsecT s u Identity (Positioned x) -> ParsecT s u Identity (Positioned x)
 withPos p = do start <- getPosition
                result <- p
                end <- getPosition
@@ -598,41 +624,38 @@ endOfProgram = forget (char ';') <|> eof
 noLineTerminator :: Parser a -> Parser b -> Parser (a, Maybe b)
 noLineTerminator left right = do l <- left
                                  spaces
-                                 ((try lineTerminator >>
-                                  return (l, Nothing)) <|>
-                                  (right >>= (\r-> return (l, Just r))))
+                                 (l, Nothing) <$ try lineTerminator <|>
+                                   (\r-> (l, Just r)) <$> right
 
 -- 11.1
 -- primary expressions
 primaryExpression :: PosParser Expression
-primaryExpression = choice [lexeme $ withPos (kthis >> return (ThisRef def))
-                           ,identifier
-                           ,literal
-                           ,arrayLiteral
-                           ,parenExpression]
+primaryExpression = choice [ lexeme $ withPos $ ThisRef def <$ kthis
+                           , identifier
+                           , literal
+                           , arrayLiteral
+                           , objectLiteral
+                           , parenExpression]
 
 parenExpression :: PosParser Expression
-parenExpression = lexeme $ withPos (between plparen prparen expression)
+parenExpression = lexeme $ withPos $ inParens expression
                                     
 -- 11.1.4
 arrayLiteral :: PosParser Expression
 arrayLiteral = lexeme $ withPos $ 
-               do plbracket
-                  e <- elementsListWithElision
-                  prbracket
-                  return $ ArrayLit def e
+               ArrayLit def
+               <$> inBrackets elementsListWithElision
 
 elementsListWithElision :: Parser [Maybe (Positioned Expression)]
-elementsListWithElision = (optionMaybe assignmentExpression) `sepBy` pcomma
+elementsListWithElision = optionMaybe assignmentExpression `sepBy` pcomma
   
 -- 11.1.5
 objectLiteral :: PosParser Expression
 objectLiteral = lexeme $ withPos $
-                do plbrace
-                   props <- propertyAssignment `sepBy` pcomma
-                   optional pcomma
-                   prbrace
-                   return $ ObjectLit def props
+                ObjectLit def 
+                <$> inBraces (
+                  propertyAssignment `sepBy` pcomma <* optional pcomma)
+
 
 propertyAssignment :: Parser (Positioned PropAssign)
 propertyAssignment = lexeme $ withPos $
@@ -640,18 +663,12 @@ propertyAssignment = lexeme $ withPos $
                          pname <- propertyName
                          prparen
                          plparen
-                         plbrace
-                         body <- functionBody
-                         prbrace
+                         body <- inBraces functionBody
                          return $ PGet def pname body)
                   <|>(do lexeme $ string "set"
                          pname <- propertyName
-                         prparen
-                         param <- identifierName
-                         plparen
-                         plbrace
-                         body <- functionBody
-                         prbrace
+                         param <- inParens identifierName
+                         body <- inBraces functionBody
                          return $ PSet def pname param body)
                   <|>(do pname <- propertyName
                          pcolon
@@ -808,19 +825,116 @@ equalityExpression yesIn = (lexeme $ withPos $ do
                         <|> relationalExpression yesIn
 
 functionExpression :: PosParser Expression
-functionExpression = undefined
+functionExpression = withPos $
+  FuncExpr def
+  <$  kfunction
+  <*> optionMaybe identifierName
+  <*> inParens formalParameterList
+  <*> inBraces functionBody
 
-assignmentExpression :: PosParser Expression
-assignmentExpression = undefined
+assignmentExpressionGen :: PosInParser Expression
+assignmentExpressionGen =
+  conditionalExpressionGen <|>
+  AssignExpr def <$> liftIn leftHandSideExpression <*> assignOp <*> assignmentExpressionGen
+  where assignOp = choice $ 
+          [ OpAssign         <$ string "="
+          , OpAssignAdd      <$ string "+="
+          , OpAssignSub      <$ string "-="
+          , OpAssignMul      <$ string "*="
+          , OpAssignDiv      <$ string "/="
+          , OpAssignMod      <$ string "%="
+          , OpAssignLShift   <$ string "<<="
+          , OpAssignSpRShift <$ string ">>="
+          , OpAssignZfRShift <$ string ">>>="
+          , OpAssignBAnd     <$ string "&="
+          , OpAssignBXor     <$ string "^="
+          , OpAssignBOr      <$ string "|=" ]
 
-assignmentExpressionNoIn :: PosParser Expression
-assignmentExpressionNoIn = undefined
+assignmentExpression, assignmentExpressionNoIn :: PosParser Expression
+assignmentExpression     = withIn   assignmentExpressionGen
+assignmentExpressionNoIn = withNoIn assignmentExpressionGen
 
-expression :: PosParser Expression
-expression = undefined
+conditionalExpressionGen :: PosInParser Expression
+conditionalExpressionGen =
+  do l <- logicalOrExpressionGen
+     let cond = CondExpr def l 
+                <$  liftIn pquestion 
+                <*> assignmentExpressionGen 
+                <*  liftIn pcolon 
+                <*> assignmentExpressionGen
+     withPos cond <|> return l
 
-expressionNoIn :: PosParser Expression
-expressionNoIn = undefined
+type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
+
+makeInfixExpr :: Stream s Identity Char => String -> InfixOp -> InOp s
+makeInfixExpr str constr = Infix parser AssocLeft where
+  parser = 
+      liftIn (lexeme $ string str) *> return (InfixExpr def constr)
+
+makeUnaryAssnExpr str prefixConstr postfixConstr =
+  [ Prefix  $ parser prefixConstr
+  , Postfix $ parser postfixConstr ]
+  where
+    parser x = liftIn (lexeme $ string str) *> return (UnaryAssignExpr def x)
+
+makePrefixExpr str constr =
+  Prefix $ liftIn (lexeme $ string str) *> return (UnaryAssignExpr def constr)
+makePostfixExpr str constr =
+  Postfix $ liftIn (lexeme $ string str) *> return (UnaryAssignExpr def constr)
+makeUnaryExpr str constr =
+  Prefix $ liftIn (lexeme $ string str) *> return (PrefixExpr def constr)
+
+exprTable:: Stream s Identity Char => [[InOp s]]
+exprTable = 
+  [ [ makePrefixExpr  "++" PrefixInc
+    , makePostfixExpr "++" PostfixInc
+    , makePrefixExpr  "--" PrefixDec
+    , makePostfixExpr "--" PostfixDec
+    , makeUnaryExpr "!" PrefixLNot
+    , makeUnaryExpr "~" PrefixBNot
+    , makeUnaryExpr "+" PrefixPlus
+    , makeUnaryExpr "-" PrefixMinus
+    , makeUnaryExpr "typeof" PrefixTypeof
+    , makeUnaryExpr "void" PrefixVoid
+    , makeUnaryExpr "delete" PrefixDelete
+    ]
+  , [ makeInfixExpr "*" OpMul
+    , makeInfixExpr "/" OpDiv
+    , makeInfixExpr "%" OpMod
+    ]
+  , [ makeInfixExpr "+" OpAdd
+    , makeInfixExpr "-" OpSub
+    ]
+  , [ makeInfixExpr "<<" OpLShift
+    , makeInfixExpr ">>" OpSpRShift
+    , makeInfixExpr ">>>" OpZfRShift
+    ]
+  , [ makeInfixExpr "<" OpLT
+    , makeInfixExpr "<=" OpLEq
+    , makeInfixExpr ">" OpGT
+    , makeInfixExpr ">=" OpGEq
+    , makeInfixExpr "instanceof" OpInstanceof
+    , makeInfixExpr "in" OpIn
+    ]
+  , [ makeInfixExpr "==" OpEq
+    , makeInfixExpr "!=" OpNEq
+    , makeInfixExpr "===" OpStrictEq
+    , makeInfixExpr "!==" OpStrictNEq
+    ]
+  , [ makeInfixExpr "&" OpBAnd ]
+  , [ makeInfixExpr "^" OpBXor ]
+  , [ makeInfixExpr "|" OpBOr ]
+  , [ makeInfixExpr "&&" OpLAnd ]
+  , [ makeInfixExpr "||" OpLOr ]
+  ]
+
+logicalOrExpressionGen :: PosInParser Expression
+logicalOrExpressionGen = 
+  buildExpressionParser exprTable (liftIn primaryExpression) <?> "simple expression"
+
+expression, expressionNoIn :: PosParser Expression
+expression     = withPos $ CommaExpression def <$> assignmentExpression     `sepBy` pcomma
+expressionNoIn = withPos $ CommaExpression def <$> assignmentExpressionNoIn `sepBy` pcomma
 
 functionBody :: Parser [Positioned Statement]
 functionBody = option [] sourceElements
@@ -833,9 +947,9 @@ sourceElement = parseStatement <|> functionDeclaration
 
 functionDeclaration :: PosParser Statement
 functionDeclaration = withPos $
-  kfunction
-   >> FunctionStmt def
-  <$> identifierName
+  FunctionStmt def
+  <$  kfunction
+  <*> identifierName
   <*> inParens formalParameterList
   <*> inBraces functionBody
 

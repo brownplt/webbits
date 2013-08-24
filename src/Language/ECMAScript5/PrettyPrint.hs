@@ -347,7 +347,7 @@ ppConditionalExpression hasIn e = case e of
 -- 11.13
 ppAssignmentExpression :: Bool -> Expression a -> Doc
 ppAssignmentExpression hasIn e = case e of
-  AssignExpr _ op l r -> ppLValue l <+> assignOp op <+> 
+  AssignExpr _ l op r -> ppExpression False l <+> assignOp op <+> 
                          ppAssignmentExpression hasIn r
   _ -> ppConditionalExpression hasIn e
   
