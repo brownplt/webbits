@@ -72,9 +72,9 @@ ppStatement s = case s of
   ExprStmt _ e@(CallExpr _ (FuncExpr {}) _ ) -> 
     parens (ppExpression True e) <> semi
   ExprStmt _ e -> ppExpression True e <> semi
-  IfSingleStmt _ test cons -> text "if" <+> 
-                              parens (ppExpression True test) $$ 
-                              ppStatement cons
+  IfStmt _ test cons (EmptyStmt _) -> text "if" <+> 
+                                      parens (ppExpression True test) $$ 
+                                      ppStatement cons
   IfStmt _ test cons alt -> text "if" <+> parens (ppExpression True test) $$ 
                             ppStatement cons $$ text "else" <+> ppStatement alt
   SwitchStmt _ e cases ->

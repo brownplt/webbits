@@ -200,8 +200,6 @@ data Statement a
   | ExprStmt a (Expression a) -- ^ @expr;@, spec 12.4
   | IfStmt a (Expression a) (Statement a) (Statement a) 
     -- ^ @if (e) stmt@, spec 12.5
-  | IfSingleStmt a (Expression a) (Statement a)
-    -- ^ @if (e) stmt1 else stmt2@, spec 12.5
   | SwitchStmt a (Expression a) [CaseClause a]
     -- ^ @switch (e) clauses@, spec 12.11
   | WhileStmt a (Expression a) (Statement a)

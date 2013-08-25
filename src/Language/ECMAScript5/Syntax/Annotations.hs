@@ -107,7 +107,6 @@ instance HasAnnotation Statement where
     EmptyStmt a          -> a
     ExprStmt a _         -> a
     IfStmt a _ _ _       -> a
-    IfSingleStmt a _ _   -> a
     SwitchStmt a _ _     -> a
     WhileStmt a _ _      -> a
     DoWhileStmt a _ _    -> a
@@ -127,7 +126,6 @@ instance HasAnnotation Statement where
     EmptyStmt _          -> EmptyStmt a
     ExprStmt _ e         -> ExprStmt a e
     IfStmt _ g t e       -> IfStmt a g t e
-    IfSingleStmt _ g t   -> IfSingleStmt a g t
     SwitchStmt _ g cs    -> SwitchStmt a g cs
     WhileStmt _ g ss     -> WhileStmt a g ss
     DoWhileStmt _ ss g   -> DoWhileStmt a ss g
