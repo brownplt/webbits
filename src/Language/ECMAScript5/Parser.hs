@@ -46,12 +46,11 @@ type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identi
 type ParserState = [String]
 
 data SourceSpan = SourceSpan (SourcePos, SourcePos)
+type Positioned x = x SourceSpan
+type PosParser x = Parser (Positioned x)
 
 instance Default SourcePos where
   def = initialPos ""
-
-type Positioned x = x SourceSpan
-type PosParser x = Parser (Positioned x)
 
 instance Default SourceSpan where
   def = SourceSpan def
@@ -801,7 +800,8 @@ makeUnaryExpr str constr =
   Prefix  $ PrefixExpr def constr <$ liftIn (try $ lexeme $ string str) 
 
 exprTable:: Stream s Identity Char => [[InOp s]]
-exprTable = 
+exprTable =
+  -- AC: Dang it! Where am I supposed to put 'noLineTerminator'?!
   [ [ makePrefixExpr  "++" PrefixInc
     , makePostfixExpr "++" PostfixInc
     , makePrefixExpr  "--" PrefixDec
@@ -912,7 +912,7 @@ variableStatement =
   VarDeclStmt def
   <$  kvar
   <*> variableDeclarationList
-  <*  psemi
+  <*  autoSemi
 
 variableDeclarationList :: Parser [Positioned VarDecl]
 variableDeclarationList = 
@@ -940,7 +940,7 @@ initalizerNoIn =
 
 emptyStatement :: PosParser Statement
 emptyStatement = 
-  withPos $ EmptyStmt def <$ psemi
+  withPos $ EmptyStmt def <$ autoSemi
 
 expressionStatement :: PosParser Statement
 expressionStatement = 
@@ -948,7 +948,7 @@ expressionStatement =
   notFollowedBy (notP $ plbrace <|> forget kfunction)
    >> ExprStmt def
   <$> expression 
-  <*  psemi
+  <*  autoSemi
 
 ifStatement :: PosParser Statement
 ifStatement = 
@@ -970,7 +970,7 @@ doStatement =
   <*> parseStatement 
   <*  kwhile
   <*> inParens expression 
-  <*  psemi
+  <*  autoSemi
   
 whileStatement :: PosParser Statement
 whileStatement =   
@@ -1008,12 +1008,12 @@ restricted keyword parser =
   withPos $
   keyword >>= guard.not
   >> parser
-  <* psemi
+  <* autoSemi
 
 continueStatement :: PosParser Statement
 continueStatement = 
   restricted kcontinue $ 
-  ContinueStmt def  <$> optionMaybe identifierName 
+  ContinueStmt def <$> optionMaybe identifierName 
 
 breakStatement :: PosParser Statement
 breakStatement = 
@@ -1103,15 +1103,15 @@ block = withPos $ BlockStmt def <$> inBraces (option [] statementList)
   
 debuggerStatement :: PosParser Statement
 debuggerStatement = 
-  withPos $ DebuggerStmt def <$ kdebugger <* psemi
+  withPos $ DebuggerStmt def <$ kdebugger <* autoSemi
 
 -- | A parser that parses ECMAScript statements
 statement :: PosParser Statement
-statement = undefined
+statement = parseStatement
 
 -- | A parser that parses an ECMAScript program.
 program :: PosParser Program
-program = whiteSpace *> withPos (Program def <$> many statement)
+program = whiteSpace *> withPos (Program def <$> many statement) <* endOfProgram
 
 -- | Parse from a stream given a parser, same as 'Text.Parsec.parse'
 -- in Parsec. We can use this to parse expressions or statements
