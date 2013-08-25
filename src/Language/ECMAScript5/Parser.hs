@@ -16,8 +16,6 @@ module Language.ECMAScript5.Parser (parse
                                    , assignExpr
                                    ) where
 
-import Text.Show.Pretty
-
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
 import Language.ECMAScript5.Parser.Util hiding (butNot)
