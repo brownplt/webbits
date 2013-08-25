@@ -1,7 +1,7 @@
 -- |ECMAScript 5 syntax. /Spec/ refers to the ECMA-262 specification,
 -- 5th edition.
-module Language.ECMAScript5.Syntax (JavaScript(..)
-                                   ,unJavaScript
+module Language.ECMAScript5.Syntax (Program(..)
+                                   ,unProgram
                                    ,Statement(..)
                                    ,isIterationStmt
                                    ,CaseClause(..)
@@ -17,7 +17,6 @@ module Language.ECMAScript5.Syntax (JavaScript(..)
                                    ,PrefixOp(..)
                                    ,Prop(..)
                                    ,UnaryAssignOp(..)
-                                   ,LValue (..)
                                    ,SourcePos
                                    ,PropAssign(..)
                                    ) where
@@ -30,17 +29,16 @@ import Data.Traversable (Traversable)
 import Data.Default.Class
 import Data.Int (Int32)
 
-data JavaScript a
-  -- |A script in \<script\> ... \</script\> tags.
-  = Script a [Statement a] 
+-- | The complete program
+data Program a = Program a [Statement a] 
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
-instance Default a => Default (JavaScript a) where
-  def = Script def []
+instance Default a => Default (Program a) where
+  def = Program def []
 
--- | extracts statements from a JavaScript type
-unJavaScript :: JavaScript a -> [Statement a]
-unJavaScript (Script _ stmts) = stmts
+-- | Projects statements out of a program
+unProgram :: Program a -> [Statement a]
+unProgram (Program _ stmts) = stmts
 
 instance Default SourcePos where
   def = initialPos ""
@@ -129,11 +127,11 @@ data PropAssign a =
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 -- | Left-hand side expressions: see spec 11.2
-data LValue a
-  = LVar a String -- ^ variable reference, @foo@
-  | LDot a (Expression a) String -- ^ @foo.bar@
-  | LBracket a (Expression a) (Expression a) -- ^ @foo[bar]@
-  deriving (Show, Eq, Ord, Data, Typeable, Functor,Foldable,Traversable) 
+-- data LValue a
+--   = LVar a String -- ^ variable reference, @foo@
+--   | LDot a (Expression a) String -- ^ @foo.bar@
+--   | LBracket a (Expression a) (Expression a) -- ^ @foo[bar]@
+--   deriving (Show, Eq, Ord, Data, Typeable, Functor,Foldable,Traversable) 
 
 -- | Expressions, see spec 11
 data Expression a
@@ -199,7 +197,7 @@ data ForInit a = NoInit -- ^ empty
 
 -- | for..in initializer, spec 12.6
 data ForInInit a = ForInVar (VarDecl a) -- ^ @var x@
-                 | ForInLVal (Expression a) -- ^ @foo.baz@, @foo[bar]@, @z@
+                 | ForInExpr (Expression a) -- ^ @foo.baz@, @foo[bar]@, @z@
  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
   
 -- | Statements, spec 12.
