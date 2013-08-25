@@ -1,19 +1,14 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Language.ECMAScript5.Parser (parse
-                                   , parseScriptFromString
-                                   , parseJavaScriptFromFile
-                                   , parseScript
-                                   , parseExpression
-                                   , parseString
-                                   , ParsedStatement
-                                   , ParsedExpression
-                                   , parseSimpleExpr'
-                                   , parseBlockStmt
-                                   , parseStatement
-                                   , StatementParser
-                                   , ExpressionParser
-                                   , assignExpr
+                                   , PosParser
+                                   , Parser
+                                   , ParseError
+                                   , expression
+                                   , statement
+                                   , program
+                                   , parseFromString
+                                   , parseFromFile
                                    ) where
 
 import Language.ECMAScript5.Syntax
@@ -26,12 +21,13 @@ import Text.Parsec hiding (parse, spaces)
 import Text.Parsec.Char (char, string, satisfy, oneOf, noneOf, hexDigit, anyChar)
 import Text.Parsec.Char as ParsecChar hiding (spaces)
 import Text.Parsec.Combinator
-import Text.Parsec.Prim
+import Text.Parsec.Prim hiding (parse)
 import Text.Parsec.Pos
 import Text.Parsec.Expr
 
 import Control.Monad(liftM,liftM2)
 import Control.Monad.Trans (MonadIO,liftIO)
+import Control.Monad.Error.Class
 
 import Numeric(readDec,readOct,readHex)
 import Data.Char
@@ -618,7 +614,7 @@ regularExpressionFlags' (g, i, m) =
     
 -- | 7.9 || TODO: write tests based on examples from Spec 7.9.2, once I
 -- get the parser finished! Automatic Semicolon Insertion algorithm,
--- rule 1; to be used in place of `semi`/`char 'x'` in parsers for
+-- rule 1; to be used in place of `semi` in parsers for
 -- emptyStatement, variableStatement, expressionStatement,
 -- doWhileStatement, continuteStatement, breakStatement,
 -- returnStatement and throwStatement.
@@ -852,6 +848,7 @@ logicalOrExpressionGen =
 makeExpression [x] = x
 makeExpression xs = CommaExpression def xs
 
+-- | A parser that parses ECMAScript expressions
 expression, expressionNoIn :: PosParser Expression
 expression     = withPos $ makeExpression <$> assignmentExpression     `sepBy` pcomma
 expressionNoIn = withPos $ makeExpression <$> assignmentExpressionNoIn `sepBy` pcomma
@@ -997,7 +994,7 @@ forStatement =
     forInStmt = 
       ForInStmt def 
       <$> (ForInVar <$> (kvar *> variableDeclarationNoIn) <|>
-           ForInLVal <$> leftHandSideExpression )
+           ForInExpr <$> leftHandSideExpression )
       <* kin
       <*> expression
       
@@ -1103,17 +1100,39 @@ debuggerStatement :: PosParser Statement
 debuggerStatement = 
   withPos $ DebuggerStmt def <$ kdebugger <* psemi
 
-parseScriptFromString = undefined
-parseJavaScriptFromFile = undefined
-parseScript = undefined
-parseExpression = undefined
-parseString = undefined
-type ParsedStatement = Positioned Statement
-type ParsedExpression = Positioned Expression
-parseSimpleExpr' = undefined
-parseBlockStmt = undefined
-type StatementParser = PosParser Statement
-type ExpressionParser = PosParser Expression
-assignExpr = undefined
+-- | A parser that parses ECMAScript statements
+statement :: PosParser Statement
+statement = undefined
 
+-- | A parser that parses an ECMAScript program.
+program :: PosParser Program
+program = whiteSpace *> withPos (Program def <$> many statement)
 
+-- | Parse from a stream given a parser, same as 'Text.Parsec.parse'
+-- in Parsec. We can use this to parse expressions or statements
+-- alone, not just programs.
+parse :: Stream s Identity Char
+      => PosParser x -- ^ The parser to use
+      -> SourceName -- ^ Name of the source file
+      -> s -- ^ The stream to parse, usually a 'String' or a 'ByteString'
+      -> Either ParseError (x SourceSpan)
+parse p = runParser p initialParserState
+
+-- | A convenience function that takes a filename and tries to parse
+-- the file contents an ECMAScript program, it fails with an error
+-- message if it can't.
+parseFromFile :: (Error e, MonadIO m, MonadError e m) => String -- ^ file name
+              -> m (Program SourceSpan)
+parseFromFile fname =
+  liftIO (readFile fname) >>= \source ->
+  case parse program fname source of
+    Left err -> throwError $ strMsg $ show err
+    Right js -> return js
+
+-- | A convenience function that takes a 'String' and tries to parse
+-- it as an ECMAScript program:
+--
+-- > parseFromString = parse program ""
+parseFromString :: String -- ^ JavaScript source to parse
+                -> Either ParseError (Program SourceSpan)
+parseFromString s = parse program "" s
