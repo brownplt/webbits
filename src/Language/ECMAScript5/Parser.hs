@@ -4,6 +4,8 @@ module Language.ECMAScript5.Parser (parse
                                    , PosParser
                                    , Parser
                                    , ParseError
+                                   , SourcePos
+                                   , SourceSpan
                                    , expression
                                    , statement
                                    , program
@@ -44,6 +46,10 @@ type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identi
 type ParserState = [String]
 
 data SourceSpan = SourceSpan (SourcePos, SourcePos)
+
+instance Default SourcePos where
+  def = initialPos ""
+
 type Positioned x = x SourceSpan
 type PosParser x = Parser (Positioned x)
 
@@ -842,11 +848,10 @@ logicalOrExpressionGen :: PosInParser Expression
 logicalOrExpressionGen = 
   buildExpressionParser exprTable (liftIn leftHandSideExpression) <?> "simple expression"
 
-
 -- avoid putting comma expression on everything
 -- probably should be binary op in the table
 makeExpression [x] = x
-makeExpression xs = CommaExpression def xs
+makeExpression xs = CommaExpr def xs
 
 -- | A parser that parses ECMAScript expressions
 expression, expressionNoIn :: PosParser Expression

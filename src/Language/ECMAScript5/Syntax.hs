@@ -17,7 +17,6 @@ module Language.ECMAScript5.Syntax (Program(..)
                                    ,PrefixOp(..)
                                    ,Prop(..)
                                    ,UnaryAssignOp(..)
-                                   ,SourcePos
                                    ,PropAssign(..)
                                    ) where
 
@@ -39,9 +38,6 @@ instance Default a => Default (Program a) where
 -- | Projects statements out of a program
 unProgram :: Program a -> [Statement a]
 unProgram (Program _ stmts) = stmts
-
-instance Default SourcePos where
-  def = initialPos ""
 
 data Id a = Id a String 
           deriving (Show,Eq,Ord,Data,Typeable,Functor,Foldable,Traversable)
@@ -140,7 +136,6 @@ data Expression a
     -- ^ @RegexpLit a regexp global? case_insensitive? multiline?@
     -- regular expression, see spec 11.1.3, 7.8
   | NumLit a Number -- ^ @41.99999@, spec 11.1.3, 7.8
---  | IntLit a Int -- ^ @42@, spec 11.1.3, 7.8
   | BoolLit a Bool -- ^ @true@, spec 11.1.3, 7.8
   | NullLit a -- ^ @null@, spec 11.1.3, 7.8
   | ArrayLit a [Maybe (Expression a)] -- ^ @[1,2,3]@, spec 11.1.4
@@ -163,10 +158,8 @@ data Expression a
     -- ^ @e1 ? e2 : e3@, spec 11.12
   | AssignExpr a (Expression a) AssignOp (Expression a)
     -- ^ @e1 \@=e2@, spec 11.13
-  --  | ParenExpr a (Expression a) -- ^ @(e)@, spec 11.1.6
-  | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
-  | CommaExpression a [Expression a]
+  | CommaExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13

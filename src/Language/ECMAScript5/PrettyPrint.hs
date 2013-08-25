@@ -1,14 +1,29 @@
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
+
 -- |Pretty-printing JavaScript.
-module Language.ECMAScript5.PrettyPrint
-  ( 
-  javaScript
-  , renderStatements
-  , renderExpression
-  ) where
+module Language.ECMAScript5.PrettyPrint (Pretty (..)) where
 
 import Text.PrettyPrint.HughesPJ
 import Language.ECMAScript5.Syntax
 import Prelude hiding (maybe)
+
+-- | A class of pretty-printable ECMAScript AST nodes.
+class Pretty a where
+  -- | Pretty-print an ECMAScript AST node. Use 'render' or 'show' to
+  -- convert 'Doc' to 'String'.
+  prettyPrint :: a -> Doc
+
+instance Pretty (Program a) where
+  prettyPrint (Program _ ss) = prettyPrint ss
+
+instance Pretty [Statement a] where 
+  prettyPrint = vcat . map prettyPrint
+
+instance Pretty (Expression a) where 
+  prettyPrint = ppExpression True
+
+instance Pretty (Statement a) where
+  prettyPrint = ppStatement
 
 -- | Renders a list of statements as a 'String'
 renderStatements :: [Statement a] -> String
@@ -37,7 +52,7 @@ forInit t = case t of
 forInInit :: ForInInit a -> Doc  
 forInInit t = case t of
   ForInVar vd   -> text "var" <+> ppVarDecl False vd
-  ForInLVal exp -> ppExpression False exp
+  ForInExpr exp -> ppExpression False exp
 
 caseClause :: CaseClause a -> Doc
 caseClause (CaseClause _ e ss) =
@@ -179,12 +194,6 @@ jsEscape (ch:chs) = sel ch ++ jsEscape chs where
     sel '\\' = "\\\\"
     sel x    = [x]
     -- We don't have to do anything about \X, \x and \u escape sequences.
-
-ppLValue :: LValue a -> Doc
-ppLValue (LVar _ x) = text x
-ppLValue (LDot _ e x) = ppMemberExpression e <> text "." <> text x
-ppLValue (LBracket _ e1 e2) = ppMemberExpression e1 <> 
-                              brackets (ppExpression True e2)
 
 -- 11.1
 ppPrimaryExpression :: Expression a -> Doc
@@ -354,14 +363,9 @@ ppAssignmentExpression hasIn e = case e of
 -- 11.14
 ppExpression :: Bool -> Expression a -> Doc
 ppExpression hasIn e = case e of
-  ListExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
+  CommaExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
   _ -> ppAssignmentExpression hasIn e
 
 maybe :: (a -> Doc) -> Maybe a -> Doc
 maybe _ Nothing  = empty
 maybe f (Just a) = f a
-
--- | Renders a JavaScript program as a document, the show instance of
--- 'Doc' will pretty-print it automatically
-javaScript :: JavaScript a -> Doc
-javaScript (Script _ ss) = stmtList ss

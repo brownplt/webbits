@@ -50,6 +50,10 @@ class HasAnnotation a where
 withAnnotation :: (HasAnnotation a) => (b -> b) -> a b -> a b
 withAnnotation f x = setAnnotation (f $ getAnnotation x) x
 
+instance HasAnnotation Program where
+  getAnnotation (Program a _) = a
+  setAnnotation a (Program _ stmts) = Program a stmts
+
 instance HasAnnotation Expression where
   getAnnotation e = case e of
    (StringLit a s)              -> a
@@ -70,7 +74,7 @@ instance HasAnnotation Expression where
    (InfixExpr a op e1 e2)       -> a
    (CondExpr a g et ef)         -> a
    (AssignExpr a op lv e)       -> a
-   (ListExpr a es)              -> a
+   (CommaExpr a es)              -> a
    (CallExpr a fn params)       -> a
    (FuncExpr a mid args s)      -> a
   setAnnotation a e = case e of
@@ -92,7 +96,7 @@ instance HasAnnotation Expression where
     (InfixExpr _ op e1 e2)       -> (InfixExpr a op e1 e2)
     (CondExpr _ g et ef)         -> (CondExpr a g et ef)
     (AssignExpr _ op lv e)       -> (AssignExpr a op lv e)
-    (ListExpr _ es)              -> (ListExpr a es)
+    (CommaExpr _ es)             -> (CommaExpr a es)
     (CallExpr _ fn params)       -> (CallExpr a fn params)
     (FuncExpr _ mid args s)      -> (FuncExpr a mid args s)
     x -> x
@@ -139,15 +143,15 @@ instance HasAnnotation Statement where
     VarDeclStmt _ vds    -> VarDeclStmt a vds
     FunctionStmt _ n as b-> FunctionStmt a n as b    
     
-instance HasAnnotation LValue where
-  getAnnotation lv = case lv of
-    LVar a _ -> a
-    LDot a _ _ -> a
-    LBracket a _ _ -> a
-  setAnnotation a lv = case lv of
-    LVar _ n -> LVar a n
-    LDot _ o f -> LDot a o f
-    LBracket a o fe -> LBracket a o fe    
+-- instance HasAnnotation LValue where
+--   getAnnotation lv = case lv of
+--     LVar a _ -> a
+--     LDot a _ _ -> a
+--     LBracket a _ _ -> a
+--   setAnnotation a lv = case lv of
+--     LVar _ n -> LVar a n
+--     LDot _ o f -> LDot a o f
+--     LBracket a o fe -> LBracket a o fe    
   
 instance HasAnnotation VarDecl where
   getAnnotation (VarDecl a _ _) = a
