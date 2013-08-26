@@ -871,7 +871,6 @@ parseStatement =
   choice
   [ parseBlock 
   , variableStatement 
-  , emptyStatement 
   , expressionStatement 
   , ifStatement 
   , iterationStatement 
@@ -883,7 +882,8 @@ parseStatement =
   , switchStatement 
   , throwStatement 
   , tryStatement 
-  , debuggerStatement ]
+  , debuggerStatement
+  , emptyStatement ]
 
 statementList :: Parser [Positioned Statement]
 statementList = many1 (withPos parseStatement)
@@ -1090,7 +1090,7 @@ block = withPos $ BlockStmt def <$> inBraces (option [] statementList)
   
 debuggerStatement :: PosParser Statement
 debuggerStatement = 
-  withPos $ DebuggerStmt def <$ kdebugger <* psemi
+  withPos $ DebuggerStmt def <$ kdebugger <* autoSemi
 
 -- | A parser that parses ECMAScript statements
 statement :: PosParser Statement
