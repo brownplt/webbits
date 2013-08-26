@@ -123,6 +123,10 @@ unitTests runTest =
        runTest "new-expression-precedence" 
        [ ExprStmt () (NewExpr () (BracketRef () (VarRef () (Id () "obj")) (VarRef () (Id () "foo"))) [VarRef () (Id () "bar")])
        , ExprStmt () (BracketRef () (NewExpr () (DotRef () (VarRef () (Id () "foo")) (Id () "bar")) [VarRef () (Id () "cux")]) (VarRef () (Id () "qux")))]
+  $: testCase "NoLineTerminatorHere in post increment (i++)" $$
+       runTest "postinc-autosemi"
+       [ ExprStmt () $ VarRef () $ Id () "i"
+       , ExprStmt () $ UnaryAssignExpr () PrefixInc $ VarRef () $ Id () "j" ]
   $: []
 
 
