@@ -161,16 +161,16 @@ lineTerminatorSequence = forget (uLF <|> uCRalone <|> uLS <|> uPS ) <|> forget u
 
 --7.4
 comment :: Parser String
-comment = char '/' *> (multiLineComment <|> singleLineComment)
+comment = try multiLineComment <|> try singleLineComment
 
 singleLineCommentChar :: Parser Char
 singleLineCommentChar  = notFollowedBy lineTerminator *> noneOf ""
 
 multiLineComment :: Parser String
-multiLineComment = char '*' *> (concat <$> many insideMultiLineComment) <* string "*/"
+multiLineComment = string "/*" *> (concat <$> many insideMultiLineComment) <* string "*/"
 
 singleLineComment :: Parser String
-singleLineComment = char '/' >> many singleLineCommentChar
+singleLineComment = string "//" >> many singleLineCommentChar
 
 insideMultiLineComment :: Parser [Char]
 insideMultiLineComment = noAsterisk <|> try asteriskInComment
@@ -306,9 +306,9 @@ pleqt = forget $ lexeme $ string "<="
 pgeqt :: Parser ()
 pgeqt = forget $ lexeme $ string ">="
 peq :: Parser ()
-peq  = forget $ lexeme $ string "=="
+peq  = forget $ lexeme $ string "==" *> notFollowedBy (char '=')
 pneq :: Parser ()
-pneq = forget $ lexeme $ string "!="
+pneq = forget $ lexeme $ string "!=" *> notFollowedBy (char '=')
 pseq :: Parser ()
 pseq = forget $ lexeme $ string "==="
 psneq :: Parser ()
@@ -330,9 +330,9 @@ pplusplus = forget $ lexeme $ string "++"
 pminusminus :: Parser ()
 pminusminus = forget $ lexeme $ string "--"
 pshl :: Parser ()
-pshl = forget $ lexeme $ string "<<"
+pshl = forget $ lexeme $ string "<<" *> notFollowedBy (char '<')
 pshr :: Parser ()
-pshr = forget $ lexeme $ string ">>"
+pshr = forget $ lexeme $ string ">>" *> notFollowedBy (char '>')
 pushr :: Parser ()
 pushr = forget $ lexeme $ string ">>>"
 pband :: Parser ()
@@ -662,13 +662,13 @@ objectLiteral = lexeme $ withPos $
 
 propertyAssignment :: Parser (Positioned PropAssign)
 propertyAssignment = lexeme $ withPos $
-                     (do lexeme $ string "get"
+                     (do try (makeKeyword "get" <* notFollowedBy pcolon)
                          pname <- propertyName
                          prparen
                          plparen
                          body <- inBraces functionBody
                          return $ PGet def pname body)
-                  <|>(do lexeme $ string "set"
+                  <|>(do try (makeKeyword "set" <* notFollowedBy pcolon)
                          pname <- propertyName
                          param <- inParens identifierName
                          body <- inBraces functionBody
@@ -762,25 +762,32 @@ conditionalExpressionGen =
 
 type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
+mkOp str =
+  let end :: Parser Char
+      end =  if all isAlphaNum str 
+             then alphaNum
+             else oneOf "+-!~*/%<>=&^|"
+  in liftIn $ lexeme $ try $ (string str <* notFollowedBy end)
+
 makeInfixExpr :: Stream s Identity Char => String -> InfixOp -> InOp s
 makeInfixExpr str constr = Infix parser AssocLeft where
   parser = 
-      liftIn (try $ lexeme $ string str) *> return (InfixExpr def constr)
+      mkOp str *> return (InfixExpr def constr)
 
 makeUnaryAssnExpr str prefixConstr postfixConstr =
   [ Prefix  $ parser prefixConstr
   , Postfix $ parser postfixConstr ]
   where
-    parser x = UnaryAssignExpr def x <$ liftIn (try $ lexeme $ string str)
+    parser x = UnaryAssignExpr def x <$ mkOp str
 
 makePrefixExpr str constr =
-  Prefix  $ UnaryAssignExpr def constr <$ liftIn (try $ lexeme $ string str) 
+  Prefix  $ UnaryAssignExpr def constr <$ mkOp str
 
 makePostfixExpr str constr =
-  Postfix $ UnaryAssignExpr def constr <$ liftIn (try $ lexeme $ string str) 
+  Postfix $ UnaryAssignExpr def constr <$ mkOp str
 
 makeUnaryExpr str constr =
-  Prefix  $ PrefixExpr def constr <$ liftIn (try $ lexeme $ string str) 
+  Prefix  $ PrefixExpr def constr <$ mkOp str
 
 exprTable:: Stream s Identity Char => [[InOp s]]
 exprTable =
@@ -804,28 +811,29 @@ exprTable =
   , [ makeInfixExpr "+" OpAdd
     , makeInfixExpr "-" OpSub
     ]
-  , [ makeInfixExpr "<<" OpLShift
-    , makeInfixExpr ">>" OpSpRShift
-    , makeInfixExpr ">>>" OpZfRShift
+  , [ makeInfixExpr ">>>" OpZfRShift
+    , makeInfixExpr ">>"  OpSpRShift
+    , makeInfixExpr "<<"  OpLShift
     ]
-  , [ makeInfixExpr "<" OpLT
-    , makeInfixExpr "<=" OpLEq
-    , makeInfixExpr ">" OpGT
+  , [ makeInfixExpr "<=" OpLEq
+    , makeInfixExpr "<"  OpLT
     , makeInfixExpr ">=" OpGEq
+    , makeInfixExpr ">"  OpGT
     , makeInfixExpr "instanceof" OpInstanceof
     , makeInfixExpr "in" OpIn
     ]
-  , [ makeInfixExpr "==" OpEq
-    , makeInfixExpr "!=" OpNEq
-    , makeInfixExpr "===" OpStrictEq
+  , [ makeInfixExpr "===" OpStrictEq
     , makeInfixExpr "!==" OpStrictNEq
+    , makeInfixExpr "=="  OpEq
+    , makeInfixExpr "!="  OpNEq
     ]
-  , [ makeInfixExpr "&" OpBAnd ]
-  , [ makeInfixExpr "^" OpBXor ]
-  , [ makeInfixExpr "|" OpBOr ]
+  , [ makeInfixExpr "&"  OpBAnd ]
+  , [ makeInfixExpr "^"  OpBXor ]
+  , [ makeInfixExpr "|"  OpBOr ]
   , [ makeInfixExpr "&&" OpLAnd ]
   , [ makeInfixExpr "||" OpLOr ]
   ]
+
 
 logicalOrExpressionGen :: PosInParser Expression
 logicalOrExpressionGen = 
