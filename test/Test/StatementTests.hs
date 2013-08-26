@@ -1,8 +1,7 @@
-import System.Directory
+module Test.StatementTests (tests_ecmascript5_parser) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Test.HUnit
 import System.IO.Unsafe
 import Language.ECMAScript5.Syntax.Annotations (reannotate)
 import Language.ECMAScript5.Syntax
@@ -12,8 +11,8 @@ import Text.Parsec (SourcePos, errorPos, sourceLine, sourceColumn)
 import Language.ECMAScript5.PrettyPrint
 import Language.ECMAScript5.Parser
 
-tests :: TestTree
-tests = testGroup "Parser tests" unitTests
+tests_ecmascript5_parser :: TestTree
+tests_ecmascript5_parser = testGroup "Parser tests" unitTests
 
 infix 1 $$
 ($$) = ($)
@@ -46,6 +45,7 @@ expectedParseFail file (expectedLine, expectedCol) =
                     assertEqual "Parse failure at wrong line" col expectedCol
          
 
+
 unitTests =
      testCase "Test function definition" $$
        parseTest "empty-function" 
@@ -66,12 +66,12 @@ unitTests =
        expectedParseFail "switch-double-default" (6,12)
   $: testCase "If-statement" $$
        parseTest "if-statement"
-       [IfStmt () (PrefixExpr () PrefixLNot (InfixExpr () OpEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar")))) (ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 10)))) (IfStmt () (InfixExpr () OpNEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar"))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 30)))])),EmptyStmt ()]
+       [IfStmt () (PrefixExpr () PrefixLNot (InfixExpr () OpEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar")))) (ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 10)))) (IfStmt () (InfixExpr () OpNEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar"))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 30)))]))]
   $: testCase "Dangling else" $$
        parseTest "dangling-else"
-       [IfStmt () (VarRef () (Id () "foo")) (BlockStmt () [ExprStmt () (CallExpr () (VarRef () (Id () "bar")) [])]) (EmptyStmt ()),IfStmt () (VarRef () (Id () "bar")) (BlockStmt () [ExprStmt () (CallExpr () (VarRef () (Id () "cux")) [])]) (BlockStmt () [ExprStmt () (CallExpr () (VarRef () (Id () "baz")) [])])]
+       [IfStmt () (VarRef () (Id () "foo")) (ExprStmt () (CallExpr () (VarRef () (Id () "bar")) [])) (EmptyStmt ()),IfStmt () (VarRef () (Id () "bar")) (ExprStmt () (CallExpr () (VarRef () (Id () "cux")) [])) (ExprStmt () (CallExpr () (VarRef () (Id () "baz")) []))]
   $: []
 
 
 pp = putStr . renderStatements
-main = defaultMain tests
+run = defaultMain tests_ecmascript5_parser

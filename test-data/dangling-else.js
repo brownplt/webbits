@@ -1,10 +1,7 @@
-if (foo) {
+if (foo)
   bar();
-}
-if (bar) {
+if (bar)
   cux();
-}
-else {
+else
   baz();
-}
   
