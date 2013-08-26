@@ -127,6 +127,34 @@ unitTests runTest =
        runTest "postinc-autosemi"
        [ ExprStmt () $ VarRef () $ Id () "i"
        , ExprStmt () $ UnaryAssignExpr () PrefixInc $ VarRef () $ Id () "j" ]
+  $: testCase "NoLineTerminatorHere in the return statement" $$
+       runTest "return-autosemi"
+       [ ReturnStmt () Nothing
+       , ExprStmt () $ VarRef () $ Id () "x" ]
+  $: testCase "Example 1 from spec 7.9.2 (failing)" $$
+       expectedParseFail "7.9.2-1" (1,5)
+  $: testCase "Example 2 from spec 7.9.2" $$
+       runTest "7.9.2-2"
+       [ BlockStmt () [ ExprStmt () $ NumLit () $ Left 1
+                      , ExprStmt () $ NumLit () $ Left 2 ]
+       , ExprStmt () $ NumLit () $ Left 3 ]
+  $: testCase "Example 3 from spec 7.9.2 (failing)" $$
+       expectedParseFail "7.9.2-3" (2,1)
+  $: testCase "Example 4 from spec 7.9.2" $$
+       runTest "7.9.2-4"
+       [ ReturnStmt () Nothing
+       , ExprStmt () $ InfixExpr () OpAdd (VarRef () $ Id () "a") (VarRef () $ Id () "b")]
+  $: testCase "Example 5 from spec 7.9.2" $$
+       runTest "7.9.2-5"
+       [ ExprStmt () $ AssignExpr () (VarRef () $ Id () "a") OpAssign (VarRef () $ Id () "b")
+       , ExprStmt () $ UnaryAssignExpr () PrefixInc (VarRef () $ Id () "b") ]
+  $: testCase "Example 6 from spec 7.9.2 (failing)" $$
+       expectedParseFail "7.9.2-6" (2,1)
+  $: testCase "Example 7 from spec 7.9.2" $$
+       runTest "7.9.2-7"
+       [ ExprStmt () $ AssignExpr () (VarRef () $ Id () "a") OpAssign $
+         InfixExpr () OpAdd (VarRef () $ Id () "b") $
+         CallExpr () (InfixExpr () OpAdd (VarRef () $ Id () "d") (VarRef () $ Id () "e")) [] ]
   $: []
 
 
