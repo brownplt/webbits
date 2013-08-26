@@ -14,7 +14,7 @@ import Language.ECMAScript5.Parser
 
 tests_ecmascript5_parser :: TestTree
 tests_ecmascript5_parser = 
-  testGroup "Parser tests" $ unitTests (parseTest False) ++ [whileEmptyTest]
+  testGroup "Parser tests" $ unitTests (parseTest False) ++ [whileEmptyTest, commentTest]
 
 -- A re-run all the tests withf automatic semi-colon-insertion
 
@@ -113,9 +113,27 @@ unitTests runTest =
   $: testCase "while-loop" $$ 
        runTest "while" 
        [WhileStmt () (InfixExpr () OpLT (VarRef () (Id () "i")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (UnaryAssignExpr () PrefixInc (VarRef () (Id () "i")))])]
+  $: testCase "new/member" $$
+       runTest "new-member" 
+       [ExprStmt () (NewExpr () (VarRef () (Id () "jQuery")) [VarRef () (Id () "selector"),VarRef () (Id () "context"),VarRef () (Id () "rootjQuery")])]
+  $: testCase "new-expression with no constructor call" $$
+       runTest "new-expression" 
+       [ExprStmt () (InfixExpr () OpAdd (NewExpr () (VarRef () (Id () "jQuery")) []) (NumLit () (Left 10)))]
+  $: testCase "new-expression precedence" $$
+       runTest "new-expression-precedence" 
+       [ ExprStmt () (NewExpr () (BracketRef () (VarRef () (Id () "obj")) (VarRef () (Id () "foo"))) [VarRef () (Id () "bar")])
+       , ExprStmt () (BracketRef () (NewExpr () (DotRef () (VarRef () (Id () "foo")) (Id () "bar")) [VarRef () (Id () "cux")]) (VarRef () (Id () "qux")))]
   $: []
 
 
+commentTest =
+  testCase "line comments" $$
+  (parseTest False) "line-comments"
+  [ExprStmt () (NumLit () (Right 3.2))]
+
+jQuery = testCase "jQuery doesn't fail to parse" $$
+         (parseTest False) "jquery"
+         []
 
 run = defaultMain tests_ecmascript5_parser
 runa = defaultMain tests_ecmascript5_parser_with_autosemi 

@@ -146,7 +146,7 @@ lexeme :: Show a => Parser a -> Parser a
 lexeme p = p <* ws 
 
 ws :: Parser Bool
-ws = many (False <$ whiteSpace <|> True <$ lineTerminator) >>= setNewLineState
+ws = many (False <$ whiteSpace <|> False <$ comment <|> True <$ lineTerminator) >>= setNewLineState
   where whiteSpace :: Parser ()
         whiteSpace = forget $ choice [uTAB, uVT, uFF, uSP, uNBSP, uBOM, uUSP]
 
@@ -160,30 +160,25 @@ lineTerminatorSequence  :: Parser ()
 lineTerminatorSequence = forget (uLF <|> uCRalone <|> uLS <|> uPS ) <|> forget uCRLF
 
 --7.4
-comment :: Parser ()
-comment = multiLineComment <|> singleLineComment
+comment :: Parser String
+comment = char '/' *> (multiLineComment <|> singleLineComment)
 
-singleLineCommentChars :: Parser ()
-singleLineCommentChars = singleLineCommentChar >> singleLineCommentChars
+singleLineCommentChar :: Parser Char
+singleLineCommentChar  = notFollowedBy lineTerminator *> noneOf ""
 
-singleLineCommentChar :: Parser ()
-singleLineCommentChar  = notP lineTerminator
-multiLineCommentChars :: Parser ()
-multiLineCommentChars  =  multiLineNotAsteriskChar *> multiLineCommentChars
-                      <|> char '*' *> postAsteriskCommentChars
-multiLineComment :: Parser ()
-multiLineComment = string "/*" *> optional multiLineCommentChars <* string "*/"
-singleLineComment :: Parser ()
-singleLineComment = string "//" >> optional singleLineCommentChars
-multiLineNotAsteriskChar :: Parser ()
-multiLineNotAsteriskChar = notP $ char '*'
-multiLineNotForwardSlashOrAsteriskChar :: Parser Char
-multiLineNotForwardSlashOrAsteriskChar = noneOf "/*"
-postAsteriskCommentChars :: Parser ()
-postAsteriskCommentChars =  multiLineNotForwardSlashOrAsteriskChar *>
-                            optional multiLineCommentChars
-                        <|> char '*' *>
-                            optional postAsteriskCommentChars
+multiLineComment :: Parser String
+multiLineComment = char '*' *> (concat <$> many insideMultiLineComment) <* string "*/"
+
+singleLineComment :: Parser String
+singleLineComment = char '/' >> many singleLineCommentChar
+
+insideMultiLineComment :: Parser [Char]
+insideMultiLineComment = noAsterisk <|> try asteriskInComment
+ where 
+  noAsterisk = 
+    stringify $ noneOf "*"
+  asteriskInComment =
+    (:) <$> char '*' <*> (stringify (noneOf "/*") <|> "" <$ lookAhead (char '*') )
 
 --7.5
 --token = identifierName <|> punctuator <|> numericLiteral <|> stringLiteral
@@ -704,8 +699,8 @@ memberExpression =
           , flip (DotRef      def) <$  pdot <*> identifierName])
                                           
 newExpression :: PosParser Expression
-newExpression = (lexeme $ withPos $ NewExpr def <$ knew <*> newExpression <*> return [])
-             <|> memberExpression
+newExpression = try memberExpression
+                <|> (lexeme $ withPos $ NewExpr def <$ knew <*> newExpression <*> return [])
 
 callExpression :: PosParser Expression
 callExpression = 
