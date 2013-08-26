@@ -43,8 +43,6 @@ expectedParseFail file (expectedLine, expectedCol) =
                    in do
                     assertEqual "Parse failure at wrong line" line expectedLine
                     assertEqual "Parse failure at wrong line" col expectedCol
-         
-
 
 unitTests =
      testCase "Test function definition" $$

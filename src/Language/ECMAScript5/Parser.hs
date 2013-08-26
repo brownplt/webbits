@@ -881,7 +881,7 @@ parseStatement =
   [ parseBlock 
   , variableStatement 
   , emptyStatement 
-  , try expressionStatement 
+  , expressionStatement 
   , ifStatement 
   , iterationStatement 
   , continueStatement 
