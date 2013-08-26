@@ -14,6 +14,7 @@ main = do unittests_ecmascript3 <- tests_unit
           
           defaultMain $ testGroup "all tests" $
              tests_ecmascript5_parser :
+             tests_ecmascript5_parser_with_autosemi :
              -- propertytest_ecmascript3_pretty :
              unittests_ecmascript3 : 
              unittests_ecmascript3_diff :

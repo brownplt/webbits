@@ -1,4 +1,4 @@
-module Test.StatementTests (tests_ecmascript5_parser) where
+module Test.StatementTests (tests_ecmascript5_parser, tests_ecmascript5_parser_with_autosemi) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -7,12 +7,29 @@ import Language.ECMAScript5.Syntax.Annotations (reannotate)
 import Language.ECMAScript5.Syntax
 
 import Text.Parsec (SourcePos, errorPos, sourceLine, sourceColumn)
+import Data.List
 
 import Language.ECMAScript5.PrettyPrint
 import Language.ECMAScript5.Parser
 
 tests_ecmascript5_parser :: TestTree
-tests_ecmascript5_parser = testGroup "Parser tests" (unitTests parseTest)
+tests_ecmascript5_parser = 
+  testGroup "Parser tests" $ unitTests (parseTest False) ++ [whileEmptyTest]
+
+-- A re-run all the tests withf automatic semi-colon-insertion
+
+tests_ecmascript5_parser_with_autosemi :: TestTree
+tests_ecmascript5_parser_with_autosemi = 
+  testGroup "Auto-;-insertion parser tests" $ unitTests (parseTest True)
+
+
+stripSemis testCase = 
+  unlines $ map strip (lines testCase) 
+  where 
+    strip line = 
+      if "for" `isPrefixOf` dropWhile (==' ') line 
+        then line
+        else filter (/=';') line
 
 infix 1 $$
 ($$) = ($)
@@ -23,10 +40,12 @@ infixr 0 $:
 deannotate :: [ParsedStatement] -> [Statement ()]
 deannotate = map $ reannotate $ const ()
 
-parseTest :: String -> [Statement ()] -> Assertion
-parseTest file ast = 
-          do content <- readFile ("test-data/" ++ file ++ ".js")
+parseTest :: Bool -> String -> [Statement ()] -> Assertion
+parseTest replaceSemiColons file ast = 
+          do c <- readFile ("test-data/" ++ file ++ ".js")
+             let content = if not replaceSemiColons then c else stripSemis c
              let res = parseScriptFromString content
+             
              case res of
                Right value -> assertEqual "Unexpected AST" ast (deannotate value)
                Left parseError -> assertFailure (show parseError)
@@ -44,6 +63,11 @@ expectedParseFail file (expectedLine, expectedCol) =
                     assertEqual "Parse failure at wrong line" line expectedLine
                     assertEqual "Parse failure at wrong line" col expectedCol
 
+whileEmptyTest = 
+  testCase "while-empty" $$ 
+    (parseTest False) "while-empty" 
+    [WhileStmt () (InfixExpr () OpLT (UnaryAssignExpr () PostfixInc (VarRef () (Id () "i"))) (NumLit () (Left 10))) (EmptyStmt ())]
+
 unitTests runTest =
      testCase "Test function definition" $$
        runTest "empty-function" 
@@ -53,13 +77,13 @@ unitTests runTest =
        [ExprStmt () (FuncExpr () Nothing [] [ReturnStmt () (Just (FuncExpr () Nothing [] []))])]
   $: testCase "Function w/ body" $$
        runTest "function-with-body"
-       [ExprStmt () (FuncExpr () Nothing [] [VarDeclStmt () [VarDecl () (Id () "x") (Just (CallExpr () (VarRef () (Id () "g")) []))],IfStmt () (InfixExpr () OpEq (VarRef () (Id () "x")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (EmptyStmt ()),EmptyStmt ()])]
+       [ExprStmt () (FuncExpr () Nothing [] [VarDeclStmt () [VarDecl () (Id () "x") (Just (CallExpr () (VarRef () (Id () "g")) []))],IfStmt () (InfixExpr () OpEq (VarRef () (Id () "x")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (EmptyStmt ())])]
   $: testCase "Two statements" $$
        runTest "two-statements"
        [VarDeclStmt () [VarDecl () (Id () "x") (Just (NumLit () (Left 10)))],VarDeclStmt () [VarDecl () (Id () "y") (Just (NumLit () (Left 20)))]]
   $: testCase "Switch statement" $$
        runTest "switch-statements"
-       [SwitchStmt () (VarRef () (Id () "foo")) [CaseClause () (NumLit () (Left 10)) [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "10!"])],CaseClause () (NumLit () (Left 20)) [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "20!"])],CaseDefault () [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "something else!"])]],EmptyStmt ()]
+       [SwitchStmt () (VarRef () (Id () "foo")) [CaseClause () (NumLit () (Left 10)) [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "10!"])],CaseClause () (NumLit () (Left 20)) [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "20!"])],CaseDefault () [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "something else!"])]]]
   $: testCase "Switch statement w/ two defaults" $$
        expectedParseFail "switch-double-default" (6,12)
   $: testCase "If-statement" $$
@@ -89,11 +113,9 @@ unitTests runTest =
   $: testCase "while-loop" $$ 
        runTest "while" 
        [WhileStmt () (InfixExpr () OpLT (VarRef () (Id () "i")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (UnaryAssignExpr () PrefixInc (VarRef () (Id () "i")))])]
-  $: testCase "while-empty" $$ 
-       runTest "while-empty" 
-       [WhileStmt () (InfixExpr () OpLT (UnaryAssignExpr () PostfixInc (VarRef () (Id () "i"))) (NumLit () (Left 10))) (EmptyStmt ())]
   $: []
 
 
 pp = putStr . renderStatements
 run = defaultMain tests_ecmascript5_parser
+runa = defaultMain tests_ecmascript5_parser_with_autosemi 
