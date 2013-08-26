@@ -842,8 +842,8 @@ makeExpression xs = CommaExpr def xs
 
 -- | A parser that parses ECMAScript expressions
 expression, expressionNoIn :: PosParser Expression
-expression     = withPos $ makeExpression <$> assignmentExpression     `sepBy` pcomma
-expressionNoIn = withPos $ makeExpression <$> assignmentExpressionNoIn `sepBy` pcomma
+expression     = withPos $ makeExpression <$> assignmentExpression     `sepBy1` pcomma
+expressionNoIn = withPos $ makeExpression <$> assignmentExpressionNoIn `sepBy1` pcomma
 
 functionBody :: Parser [Positioned Statement]
 functionBody = option [] sourceElements
