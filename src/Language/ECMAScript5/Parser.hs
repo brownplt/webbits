@@ -6,6 +6,7 @@ module Language.ECMAScript5.Parser (parse
                                    , ParseError
                                    , SourcePos
                                    , SourceSpan
+                                   , Positioned
                                    , expression
                                    , statement
                                    , program
@@ -927,7 +928,7 @@ initalizerNoIn =
 
 emptyStatement :: PosParser Statement
 emptyStatement = 
-  withPos $ EmptyStmt def <$ autoSemi
+  withPos $ EmptyStmt def <$ psemi
 
 expressionStatement :: PosParser Statement
 expressionStatement = 
@@ -1098,7 +1099,7 @@ statement = parseStatement
 
 -- | A parser that parses an ECMAScript program.
 program :: PosParser Program
-program = whiteSpace *> withPos (Program def <$> many statement) <* endOfProgram
+program = ws *> withPos (Program def <$> many statement) <* eof
 
 -- | Parse from a stream given a parser, same as 'Text.Parsec.parse'
 -- in Parsec. We can use this to parse expressions or statements

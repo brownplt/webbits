@@ -37,23 +37,23 @@ infix 1 $$
 infixr 0 $:
 ($:) = (:)
 
-deannotate :: [ParsedStatement] -> [Statement ()]
+deannotate :: [Positioned Statement] -> [Statement ()]
 deannotate = map $ reannotate $ const ()
 
 parseTest :: Bool -> String -> [Statement ()] -> Assertion
 parseTest replaceSemiColons file ast = 
           do c <- readFile ("test-data/" ++ file ++ ".js")
              let content = if not replaceSemiColons then c else stripSemis c
-             let res = parseScriptFromString content
+             let res = parseFromString content
              
              case res of
-               Right value -> assertEqual "Unexpected AST" ast (deannotate value)
+               Right (Program _ statements) -> assertEqual "Unexpected AST" ast (deannotate statements)
                Left parseError -> assertFailure (show parseError)
      
 expectedParseFail :: String -> (Int, Int) -> Assertion
 expectedParseFail file (expectedLine, expectedCol) = 
   do content <- readFile ("test-data/" ++ file ++ ".js")
-     let res = parseScriptFromString content
+     let res = parseFromString content
      case res of 
        Right value -> assertFailure "Expected parse error"
        Left err -> let pos  = errorPos err
@@ -116,6 +116,6 @@ unitTests runTest =
   $: []
 
 
-pp = putStr . renderStatements
+
 run = defaultMain tests_ecmascript5_parser
 runa = defaultMain tests_ecmascript5_parser_with_autosemi 
