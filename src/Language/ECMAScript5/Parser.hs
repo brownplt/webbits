@@ -13,6 +13,9 @@ module Language.ECMAScript5.Parser (parse
                                    , parseFromFile
                                    ) where
 
+import Debug.Trace
+import System.IO.Unsafe
+
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
 import Language.ECMAScript5.Parser.Util
@@ -43,7 +46,7 @@ type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identi
 --import Numeric as Numeric
 
 -- the statement label stack
-type ParserState = [String]
+type ParserState = (Bool, [String])
 
 data SourceSpan = SourceSpan (SourcePos, SourcePos)
 type Positioned x = x SourceSpan
@@ -90,24 +93,24 @@ changeState forward backward = mkPT . transform . runParsecT
     transform p st = (fmap . fmap . fmap) (mapReply forward) (p (mapState backward st))
 
 initialParserState :: ParserState
-initialParserState = []
+initialParserState = (False, [])
 
 -- | checks if the label is not yet on the stack, if it is -- throws
 -- an error; otherwise it pushes it onto the stack
 pushLabel :: String -> Parser ()
-pushLabel lab = do labs <- getState
+pushLabel lab = do (nl, labs) <- getState
                    pos <- getPosition
                    if lab `elem` labs 
                      then fail $ "Duplicate label at " ++ show pos
-                     else putState (lab:labs)
+                     else putState (nl, lab:labs)
 
 popLabel :: Parser ()
-popLabel = modifyState safeTail
+popLabel = modifyState (second safeTail)
   where safeTail [] = []
         safeTail (_:xs) = xs
 
 clearLabels :: ParserState -> ParserState
-clearLabels _ = []
+clearLabels = second (const [])
 
 withFreshLabelStack :: Parser a -> Parser a
 withFreshLabelStack p = do oldState <- getState
@@ -115,6 +118,18 @@ withFreshLabelStack p = do oldState <- getState
                            a <- p
                            putState oldState
                            return a
+
+-- was newline consumed? keep as parser state set in 'ws' parser
+
+setNewLineState :: [Bool] -> Parser Bool
+setNewLineState wsConsumed = 
+  let consumedNewLine = any id wsConsumed in do
+    when (not.null $ wsConsumed) $
+      modifyState (first $ const $ consumedNewLine)
+    return consumedNewLine
+
+hadNewLine :: Parser ()
+hadNewLine = fst <$> getState >>= guard
 
 -- a convenience wrapper to take care of the position, "with position"
 withPos   :: (HasAnnotation x, Stream s Identity Char) => ParsecT s u Identity (Positioned x) -> ParsecT s u Identity (Positioned x)
@@ -125,17 +140,14 @@ withPos p = do start <- getPosition
 
 -- Below "x.y.z" are references to ECMAScript 5 spec chapters that discuss the corresponding grammar production
 --7.2
-whiteSpace :: Parser ()
-whiteSpace = forget $ choice [uTAB, uVT, uFF, uSP, uNBSP, uBOM, uUSP]
 
-spaces :: Parser ()
-spaces = skipMany (whiteSpace <|> comment <?> "")
-
-lexeme :: Parser a -> Parser a
+lexeme :: Show a => Parser a -> Parser a
 lexeme p = p <* ws 
 
 ws :: Parser Bool
-ws = fmap (any id) $ many (False <$ whiteSpace <|> True <$ lineTerminator)
+ws = many (False <$ whiteSpace <|> True <$ lineTerminator) >>= setNewLineState
+  where whiteSpace :: Parser ()
+        whiteSpace = forget $ choice [uTAB, uVT, uFF, uSP, uNBSP, uBOM, uUSP]
 
 --7.3
 uCRalone :: Parser Char
@@ -620,28 +632,7 @@ regularExpressionFlags' (g, i, m) =
 -- doWhileStatement, continuteStatement, breakStatement,
 -- returnStatement and throwStatement.
 autoSemi :: Parser ()
-autoSemi = psemi
-        <|>lineTerminator
-        <|>prbrace
-  
--- | Automatic Semicolon Insertion algorithm, rule 2;
--- to be used at the end of the program
-endOfProgram :: Parser ()
-endOfProgram = forget (char ';') <|> eof
-           
--- | Automatic Semicolon Insertion algorithm, rule 3; it takes 2
--- parsers: 'left' that parses whatever is to the left of [no
--- LineTerminator here] and 'right' that parses whatever is to the
--- right; if after parsing 'left' and any number of whiteSpaces a
--- lineTerminator is found, 'right' is not invoked and (l, Nothing) is
--- returned, where 'l' is the result of left; otherwise (l, Just r) is
--- returned, where 'l' and 'r' are results of left and right
--- respectively.
-noLineTerminator :: Parser a -> Parser b -> Parser (a, Maybe b)
-noLineTerminator left right = do l <- left
-                                 spaces
-                                 (l, Nothing) <$ try lineTerminator <|>
-                                   (\r-> (l, Just r)) <$> right
+autoSemi = psemi <|> hadNewLine <|> lookAhead prbrace <|> eof
 
 -- 11.1
 -- primary expressions

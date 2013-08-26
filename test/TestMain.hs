@@ -12,12 +12,13 @@ main = do unittests_ecmascript3 <- tests_unit
           unittests_ecmascript3_diff <- tests_diff
           let propertytest_ecmascript3_pretty = tests_pretty
           
-          defaultMain $ testGroup "all tests" 
-            [ propertytest_ecmascript3_pretty
-            , unittests_ecmascript3
-            , unittests_ecmascript3_diff
-            , tests_ecmascript5_parser
-            ]
+          defaultMain $ testGroup "all tests" $
+             tests_ecmascript5_parser :
+             -- propertytest_ecmascript3_pretty :
+             unittests_ecmascript3 : 
+             unittests_ecmascript3_diff :
+             []
+            
           
 
 
