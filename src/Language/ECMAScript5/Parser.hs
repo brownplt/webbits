@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Language.ECMAScript5.Parser (parse
                                    , PosParser
@@ -956,7 +956,7 @@ ifStatement =
   <*> option (EmptyStmt def) (kelse *> parseStatement)
   
 iterationStatement :: PosParser Statement
-iterationStatement = doStatement <|> whileStatement
+iterationStatement = doStatement <|> whileStatement <|> forStatement
 
 doStatement :: PosParser Statement
 doStatement = 

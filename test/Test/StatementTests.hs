@@ -1,5 +1,7 @@
 module Test.StatementTests (tests_ecmascript5_parser) where
 
+import Text.Show.Pretty
+
 import Test.Tasty
 import Test.Tasty.HUnit
 import System.IO.Unsafe
@@ -68,6 +70,30 @@ unitTests =
   $: testCase "Dangling else" $$
        parseTest "dangling-else"
        [IfStmt () (VarRef () (Id () "foo")) (ExprStmt () (CallExpr () (VarRef () (Id () "bar")) [])) (EmptyStmt ()),IfStmt () (VarRef () (Id () "bar")) (ExprStmt () (CallExpr () (VarRef () (Id () "cux")) [])) (ExprStmt () (CallExpr () (VarRef () (Id () "baz")) []))]
+  $: testCase "For loop" $$
+       parseTest "for-loop"
+       [ForStmt () (VarInit [VarDecl () (Id () "i") (Just (NumLit () (Left 0)))]) (Just (InfixExpr () OpLT (VarRef () (Id () "i")) (NumLit () (Left 10)))) (Just (UnaryAssignExpr () PostfixInc (VarRef () (Id () "i")))) (BlockStmt () [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "hello"])])] 
+  $: testCase "For-each loop" $$
+       parseTest "for-each-loop"
+       [ForInStmt () (ForInVar (VarDecl () (Id () "i") Nothing)) (VarRef () (Id () "foos")) (BlockStmt () [ExprStmt () (CallExpr () (VarRef () (Id () "foo")) [])])]
+  $: testCase "Weird in for-each loop" $$ 
+       parseTest "weird-in-for-each" 
+       [ForInStmt () (ForInVar (VarDecl () (Id () "i") Nothing)) (InfixExpr () OpIn (NumLit () (Left 3)) (ObjectLit () [])) (BlockStmt () [])]
+  $: testCase "for (;;)" $$ 
+       parseTest "empty-for" 
+       [ForStmt () (ExprInit (CommaExpression () [])) (Just (CommaExpression () [])) (Just (CommaExpression () [])) (BlockStmt () [])]
+  $: testCase "Self-applying function" $$ 
+       parseTest "self-applying-function" 
+       [ExprStmt () (CallExpr () (FuncExpr () Nothing [Id () "foo"] [ReturnStmt () (Just (VarRef () (Id () "foo")))]) [NumLit () (Left 10)])]
+  $: testCase "do-while" $$ 
+       parseTest "do-while" 
+       [DoWhileStmt () (BlockStmt () [ExprStmt () (UnaryAssignExpr () PrefixInc (VarRef () (Id () "i")))]) (InfixExpr () OpGT (VarRef () (Id () "i")) (NumLit () (Left 10)))]
+  $: testCase "while-loop" $$ 
+       parseTest "while" 
+       [WhileStmt () (InfixExpr () OpLT (VarRef () (Id () "i")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (UnaryAssignExpr () PrefixInc (VarRef () (Id () "i")))])]
+  $: testCase "while-empty" $$ 
+       parseTest "while-empty" 
+       [WhileStmt () (InfixExpr () OpLT (UnaryAssignExpr () PostfixInc (VarRef () (Id () "i"))) (NumLit () (Left 10))) (EmptyStmt ())]
   $: []
 
 
