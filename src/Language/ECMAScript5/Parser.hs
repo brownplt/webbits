@@ -15,7 +15,7 @@ module Language.ECMAScript5.Parser (parse
 
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
-import Language.ECMAScript5.Parser.Util hiding (butNot)
+import Language.ECMAScript5.Parser.Util
 import Language.ECMAScript5.Parser.Unicode
 import Data.Default.Class
 import Data.Default.Instances.Base
@@ -175,20 +175,16 @@ postAsteriskCommentChars =  multiLineNotForwardSlashOrAsteriskChar *>
 --7.5
 --token = identifierName <|> punctuator <|> numericLiteral <|> stringLiteral
 
-butNot :: (Monad m, Stream s m c, Show a, Show a1)
-       => ParsecT s st m a -> ParsecT s st m a1 -> ParsecT s st m a
-butNot positive negative = do lookAhead $ notFollowedBy negative 
-                              positive
 --7.6
 identifier :: PosParser Expression
-identifier = lexeme $ withPos $ do name <- identifierName `butNot` reservedWord
+identifier = lexeme $ withPos $ do name <- identifierName
                                    return $ VarRef def name
 
 identifierName :: PosParser Id
-identifierName = lexeme $ withPos $ fmap (Id def) $ (:)
+identifierName = lexeme $ withPos $ flip butNot reservedWord $ fmap (Id def) $ 
+                 (:)
                  <$> identifierStart
                  <*> many identifierPart
-
 identifierStart :: Parser Char
 identifierStart = unicodeLetter <|> char '$' <|> char '_' <|> unicodeEscape
 
@@ -885,7 +881,7 @@ parseStatement =
   [ parseBlock 
   , variableStatement 
   , emptyStatement 
-  , expressionStatement 
+  , try expressionStatement 
   , ifStatement 
   , iterationStatement 
   , continueStatement 
@@ -1054,7 +1050,7 @@ switchStatement =
   <*> inParens expression
   <*> caseBlock
   where 
-    makeCaseClauses cs d cs2 = cs ++ maybeToList d ++ cs
+    makeCaseClauses cs d cs2 = cs ++ maybeToList d ++ cs2
     caseBlock = 
       inBraces $ 
       makeCaseClauses
@@ -1103,7 +1099,7 @@ block = withPos $ BlockStmt def <$> inBraces (option [] statementList)
   
 debuggerStatement :: PosParser Statement
 debuggerStatement = 
-  withPos $ DebuggerStmt def <$ kdebugger <* autoSemi
+  withPos $ DebuggerStmt def <$ kdebugger <* psemi
 
 -- | A parser that parses ECMAScript statements
 statement :: PosParser Statement
