@@ -79,7 +79,7 @@ unitTests runTest =
        [ForInStmt () (ForInVar (VarDecl () (Id () "i") Nothing)) (InfixExpr () OpIn (NumLit () (Left 3)) (ObjectLit () [])) (BlockStmt () [])]
   $: testCase "for (;;)" $$ 
        runTest "empty-for" 
-       [ForStmt () (ExprInit (CommaExpression () [])) (Just (CommaExpression () [])) (Just (CommaExpression () [])) (BlockStmt () [])]
+       [ForStmt () NoInit Nothing Nothing (BlockStmt () [])]
   $: testCase "Self-applying function" $$ 
        runTest "self-applying-function" 
        [ExprStmt () (CallExpr () (FuncExpr () Nothing [Id () "foo"] [ReturnStmt () (Just (VarRef () (Id () "foo")))]) [NumLit () (Left 10)])]
