@@ -63,7 +63,7 @@ expectedParseFail file (expectedLine, expectedCol) =
                     assertEqual "Parse failure at wrong column" expectedCol col
 
 ableToParse file =
-  do content <- readFile ("../test-data/" ++ file ++ ".js")
+  do content <- readFile ("test-data/" ++ file ++ ".js")
      let res = parseFromString content
      case res of
        Right _ -> return ()

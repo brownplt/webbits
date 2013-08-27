@@ -353,30 +353,30 @@ pcolon = forget $ lexeme $ char ':'
 passign :: Parser ()
 passign = lexeme $ char '=' *> notFollowedBy (char '=')
 passignadd :: Parser ()
-passignadd = forget $ lexeme $ string "+="
+passignadd = forget $ lexeme $ try (string "+=")
 passignsub :: Parser ()
-passignsub = forget $ lexeme $ string "-="
+passignsub = forget $ lexeme $ try (string "-=")
 passignmul :: Parser ()
-passignmul = forget $ lexeme $ string "*="
+passignmul = forget $ lexeme $ try (string "*=")
 passignmod :: Parser ()
-passignmod = forget $ lexeme $ string "%="
+passignmod = forget $ lexeme $ try (string "%=")
 passignshl :: Parser ()
-passignshl = forget $ lexeme $ string "<<="
+passignshl = forget $ lexeme $ try (string "<<=")
 passignshr :: Parser ()
-passignshr = forget $ lexeme $ string ">>="
+passignshr = forget $ lexeme $ try (string ">>=")
 passignushr :: Parser ()
-passignushr = forget $ lexeme $ string ">>>="
+passignushr = forget $ lexeme $ try (string ">>>=")
 passignband :: Parser ()
-passignband = forget $ lexeme $ string "&="
+passignband = forget $ lexeme $ try (string "&=")
 passignbor :: Parser ()
-passignbor = forget $ lexeme $ string "|="
+passignbor = forget $ lexeme $ try (string "|=")
 passignbxor :: Parser ()
-passignbxor = forget $ lexeme $ string "^="
+passignbxor = forget $ lexeme $ try (string "^=")
 divPunctuator :: Parser ()
 divPunctuator = choice [ passigndiv, pdiv ]
 
 passigndiv :: Parser ()
-passigndiv = forget $ lexeme $ string "/="
+passigndiv = forget $ lexeme $ try (string "/=")
 pdiv :: Parser ()
 pdiv = forget $ lexeme $ do char '/' *> notFollowedBy (char '=')
 
@@ -707,37 +707,41 @@ functionExpression = withPos $
 
 assignmentExpressionGen :: PosInParser Expression
 assignmentExpressionGen =
-  try (AssignExpr def <$> liftIn leftHandSideExpression <*> liftIn assignOp <*> assignmentExpressionGen)
-  <|> conditionalExpressionGen
+  do l <- logicalOrExpressionGen 
+     assignment l <|> conditionalExpressionGen l <|> return l
+  where
+    assignment :: Positioned Expression -> PosInParser Expression
+    assignment l = 
+     AssignExpr def l <$> liftIn assignOp <*> assignmentExpressionGen
 
 assignOp :: Parser AssignOp
 assignOp = choice $
-  [ OpAssign         <$ lexeme (string "=")
-  , OpAssignAdd      <$ lexeme (string "+=")
-  , OpAssignSub      <$ lexeme (string "-=")
-  , OpAssignMul      <$ lexeme (string "*=")
-  , OpAssignDiv      <$ lexeme (string "/=")
-  , OpAssignMod      <$ lexeme (string "%=")
-  , OpAssignLShift   <$ lexeme (string "<<=")
-  , OpAssignSpRShift <$ lexeme (string ">>=")
-  , OpAssignZfRShift <$ lexeme (string ">>>=")
-  , OpAssignBAnd     <$ lexeme (string "&=")
-  , OpAssignBXor     <$ lexeme (string "^=")
-  , OpAssignBOr      <$ lexeme (string "|=")]
-
+  [ OpAssign         <$ passign
+  , OpAssignAdd      <$ passignadd
+  , OpAssignSub      <$ passignsub
+  , OpAssignMul      <$ passignmul
+  , OpAssignDiv      <$ passigndiv
+  , OpAssignMod      <$ passignmod
+  , OpAssignLShift   <$ passignshl
+  , OpAssignSpRShift <$ passignshr
+  , OpAssignZfRShift <$ passignushr
+  , OpAssignBAnd     <$ passignband
+  , OpAssignBXor     <$ passignbxor
+  , OpAssignBOr      <$ passignbor
+  ]
+    
 assignmentExpression, assignmentExpressionNoIn :: PosParser Expression
 assignmentExpression     = withIn   assignmentExpressionGen
 assignmentExpressionNoIn = withNoIn assignmentExpressionGen
 
-conditionalExpressionGen :: PosInParser Expression
-conditionalExpressionGen =
-  do l <- logicalOrExpressionGen
-     let cond = CondExpr def l
-                <$  liftIn pquestion
-                <*> assignmentExpressionGen
-                <*  liftIn pcolon
-                <*> assignmentExpressionGen
-     withPos cond <|> return l
+conditionalExpressionGen :: Positioned Expression -> PosInParser Expression
+conditionalExpressionGen l = 
+  withPos $ CondExpr def l
+  <$  liftIn pquestion
+  <*> assignmentExpressionGen
+  <*  liftIn pcolon
+  <*> assignmentExpressionGen
+  
 
 type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
