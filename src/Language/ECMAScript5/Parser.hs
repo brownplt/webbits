@@ -133,6 +133,9 @@ setNewLineState wsConsumed =
 hadNewLine :: Parser ()
 hadNewLine = fst <$> getState >>= guard
 
+hadNoNewLine :: Parser()
+hadNoNewLine = fst <$> getState >>= guard.not
+
 -- a convenience wrapper to take care of the position, "with position"
 withPos   :: (HasAnnotation x, Stream s Identity Char) => ParsecT s u Identity (Positioned x) -> ParsecT s u Identity (Positioned x)
 withPos p = do start <- getPosition
@@ -772,7 +775,7 @@ makePrefixExpr str constr =
   Prefix  $ UnaryAssignExpr def constr <$ mkOp str
 
 makePostfixExpr str constr =
-  Postfix $ UnaryAssignExpr def constr <$ mkOp str
+  Postfix $ UnaryAssignExpr def constr <$ (liftIn hadNoNewLine >> mkOp str)
 
 makeUnaryExpr str constr =
   Prefix  $ PrefixExpr def constr <$ mkOp str

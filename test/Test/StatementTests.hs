@@ -147,7 +147,7 @@ unitTests runTest =
   $: testCase "Example 5 from spec 7.9.2" $$
        runTest "7.9.2-5"
        [ ExprStmt () $ AssignExpr () (VarRef () $ Id () "a") OpAssign (VarRef () $ Id () "b")
-       , ExprStmt () $ UnaryAssignExpr () PrefixInc (VarRef () $ Id () "b") ]
+       , ExprStmt () $ UnaryAssignExpr () PrefixInc (VarRef () $ Id () "c") ]
   $: testCase "Example 6 from spec 7.9.2 (failing)" $$
        expectedParseFail "7.9.2-6" (2,6)
   $: testCase "Example 7 from spec 7.9.2" $$
