@@ -45,8 +45,6 @@ import Control.Arrow
 
 type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identity a
 
---import Numeric as Numeric
-
 -- the statement label stack
 type ParserState = (Bool, [String])
 
@@ -782,11 +780,11 @@ makeUnaryExpr str constr =
 
 exprTable:: Stream s Identity Char => [[InOp s]]
 exprTable =
-  -- AC: Dang it! Where am I supposed to put 'noLineTerminator'?!
-  [ [ makePrefixExpr  "++" PrefixInc
-    , makePostfixExpr "++" PostfixInc
-    , makePrefixExpr  "--" PrefixDec
+  [ [ makePostfixExpr "++" PostfixInc
     , makePostfixExpr "--" PostfixDec
+    ]
+  , [ makePrefixExpr  "++" PrefixInc
+    , makePrefixExpr  "--" PrefixDec
     , makeUnaryExpr "!" PrefixLNot
     , makeUnaryExpr "~" PrefixBNot
     , makeUnaryExpr "+" PrefixPlus
@@ -1007,7 +1005,7 @@ breakStatement =
 
 throwStatement :: PosParser Statement
 throwStatement =
-  restricted kthrow ThrowStmt (fail "Expected expression") expression
+  restricted kthrow ThrowStmt (fail "Illegal newline after throw") expression
 
 returnStatement :: PosParser Statement
 returnStatement =

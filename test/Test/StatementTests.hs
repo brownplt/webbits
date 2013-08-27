@@ -2,7 +2,7 @@ module Test.StatementTests (tests_ecmascript5_parser, tests_ecmascript5_parser_w
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import System.IO.Unsafe
+
 import Language.ECMAScript5.Syntax.Annotations (reannotate)
 import Language.ECMAScript5.Syntax
 
@@ -21,7 +21,6 @@ tests_ecmascript5_parser =
 tests_ecmascript5_parser_with_autosemi :: TestTree
 tests_ecmascript5_parser_with_autosemi = 
   testGroup "Auto-;-insertion parser tests" $ unitTests (parseTest True)
-
 
 stripSemis testCase = 
   unlines $ map strip (lines testCase) 
