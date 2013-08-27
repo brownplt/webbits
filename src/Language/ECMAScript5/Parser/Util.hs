@@ -3,6 +3,7 @@ module Language.ECMAScript5.Parser.Util where
 
 import Text.Parsec
 import Text.Parsec.Char
+import Control.Applicative ((<$>), (<*>), (<$))
 
 -- | parses any character in the range [left .. right]
 rangeChar :: (Monad m, Stream s m Char)
@@ -10,7 +11,7 @@ rangeChar :: (Monad m, Stream s m Char)
 rangeChar left right = satisfy (\x -> x >= left && x <= right)
 
 -- | parses anything, but not the given parser
-notP :: (Monad m, Stream s m c, Show a) 
+notP :: (Monad m, Stream s m c, Show a)
      => ParsecT s st m a -> ParsecT s st m ()
 notP p = do s <- p
             unexpected (show s)
@@ -18,7 +19,7 @@ notP p = do s <- p
 -- | parses anything parsable by the first parser, and not the second
 butNot :: (Monad m, Stream s m c, Show a, Show a1)
        => ParsecT s st m a -> ParsecT s st m a1 -> ParsecT s st m a
-butNot positive negative = do notFollowedBy negative 
+butNot positive negative = do notFollowedBy negative
                               positive
 
 -- | to accomodate the requirement that <CR><LF> should be considered
@@ -33,6 +34,11 @@ forget   :: ParsecT s st m a -> ParsecT s st m ()
 forget p = p >> return ()
 
 -- | concat in a monad
-concatM   :: Monad m => m [[a]] -> m [a] 
+concatM   :: Monad m => m [[a]] -> m [a]
 concatM x = x >>= (\y -> return $ concat y)
-               
+
+withPostfix qs p =
+  flip ($) <$> p <*> (foldr (flip (.)) id <$> many (choice qs))
+
+withPrefix qs p =
+  ($) <$> (foldl (.) id <$> many (choice qs)) <*> p

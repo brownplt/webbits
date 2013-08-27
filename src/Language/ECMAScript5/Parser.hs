@@ -687,36 +687,25 @@ propertyName = lexeme $ withPos $
         string2Prop (StringLit a s) = return $ PropString a s
         num2Prop (NumLit a i) = return $ PropNum a i
 
--- 11.2
-memberExpression :: PosParser Expression
-memberExpression = 
-  lexeme $ withPos $ 
-  flip ($)
-     <$> (  NewExpr def <$ knew <*> memberExpression <*> arguments
-        <|> primaryExpression <|> functionExpression)
-     <*> (fmap (foldl (.) id) $ many $ choice
-          [ flip (BracketRef  def) <$> inBrackets expression
-          , flip (DotRef      def) <$  pdot <*> identifierName])
-                                          
-newExpression :: PosParser Expression
-newExpression = try memberExpression
-                <|> (lexeme $ withPos $ NewExpr def <$ knew <*> newExpression <*> return [])
+bracketed, dotref, called :: Parser (Positioned Expression -> Positioned Expression)
+bracketed = flip (BracketRef def) <$> inBrackets expression
+dotref    = flip (DotRef def)     <$  pdot <*> identifierName
+called    = flip (CallExpr def)   <$> arguments
 
-callExpression :: PosParser Expression
-callExpression = 
-  lexeme $ withPos $ 
-  flip ($)
-    <$> (CallExpr def <$> memberExpression <*> arguments) 
-    <*> (fmap (foldl (.) id) $ many $ choice $ map try
-          [ flip (CallExpr def)   <$> arguments               
-          , flip (BracketRef def) <$> inBrackets expression 
-          , flip (DotRef def)     <$  pdot <*> identifierName ] )
+newExpression :: PosParser Expression
+newExpression = 
+  withPostfix [bracketed, dotref] $
+    NewExpr def <$ knew <*> newExpression <*> option [] arguments
+    <|> primaryExpression
+    <|> functionExpression
+
+-- 11.2
 
 arguments :: Parser [Positioned Expression]
-arguments = lexeme $ inParens $ assignmentExpression `sepBy` pcomma
+arguments = inParens $ assignmentExpression `sepBy` pcomma
                         
 leftHandSideExpression :: PosParser Expression
-leftHandSideExpression = try callExpression <|> newExpression
+leftHandSideExpression = withPostfix [bracketed, dotref, called] newExpression
 
 functionExpression :: PosParser Expression
 functionExpression = withPos $
