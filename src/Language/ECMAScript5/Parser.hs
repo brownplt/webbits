@@ -612,9 +612,7 @@ regularExpressionClassChar =
 regularExpressionFlags :: Parser (Bool, Bool, Bool) -- g, i, m    
 regularExpressionFlags = regularExpressionFlags' (False, False, False)
   
-regularExpressionFlags' :: (Bool, Bool, Bool) 
-                        -> Parser (Bool, Bool, Bool)
-
+regularExpressionFlags' :: (Bool, Bool, Bool) -> Parser (Bool, Bool, Bool)
 regularExpressionFlags' (g, i, m) = 
     (char 'g' >> (if not g then regularExpressionFlags' (True, i, m) else unexpected "duplicate 'g' in regular expression flags")) <|>
     (char 'i' >> (if not i then regularExpressionFlags' (g, True, m) else unexpected "duplicate 'i' in regular expression flags")) <|>
@@ -964,16 +962,16 @@ forStatement :: PosParser Statement
 forStatement =
   withPos $
   kfor
-   >> inParens (try forStmt <|> forInStmt) 
+   >> inParens (forStmt <|> forInStmt) 
   <*> parseStatement
   where 
     forStmt :: Parser (Positioned Statement -> Positioned Statement)
     forStmt = 
       ForStmt def
-      <$> choice [ VarInit <$> (kvar *> variableDeclarationListNoIn)
+      <$> try (choice [ VarInit <$> (kvar *> variableDeclarationListNoIn)
                  , ExprInit <$> expressionNoIn 
                  , return NoInit ]
-      <* psemi <*> optionMaybe expression
+      <* psemi) <*> optionMaybe expression
       <* psemi <*> optionMaybe expression 
     forInStmt :: Parser (Positioned Statement -> Positioned Statement)
     forInStmt = 

@@ -61,7 +61,7 @@ expectedParseFail file (expectedLine, expectedCol) =
                        col  = sourceColumn pos
                    in do
                     assertEqual "Parse failure at wrong line" line expectedLine
-                    assertEqual "Parse failure at wrong line" col expectedCol
+                    assertEqual "Parse failure at wrong column" col expectedCol
 
 whileEmptyTest = 
   testCase "while-empty" $$ 
