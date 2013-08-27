@@ -60,8 +60,8 @@ expectedParseFail file (expectedLine, expectedCol) =
                        line = sourceLine pos
                        col  = sourceColumn pos
                    in do
-                    assertEqual "Parse failure at wrong line" line expectedLine
-                    assertEqual "Parse failure at wrong column" col expectedCol
+                    assertEqual "Parse failure at wrong line" expectedLine line
+                    assertEqual "Parse failure at wrong column" expectedCol col
 
 whileEmptyTest = 
   testCase "while-empty" $$ 
@@ -149,12 +149,12 @@ unitTests runTest =
        [ ExprStmt () $ AssignExpr () (VarRef () $ Id () "a") OpAssign (VarRef () $ Id () "b")
        , ExprStmt () $ UnaryAssignExpr () PrefixInc (VarRef () $ Id () "b") ]
   $: testCase "Example 6 from spec 7.9.2 (failing)" $$
-       expectedParseFail "7.9.2-6" (2,1)
+       expectedParseFail "7.9.2-6" (2,6)
   $: testCase "Example 7 from spec 7.9.2" $$
        runTest "7.9.2-7"
-       [ ExprStmt () $ AssignExpr () (VarRef () $ Id () "a") OpAssign $
-         InfixExpr () OpAdd (VarRef () $ Id () "b") $
-         CallExpr () (InfixExpr () OpAdd (VarRef () $ Id () "d") (VarRef () $ Id () "e")) [] ]
+       [ ExprStmt () (AssignExpr () (VarRef () (Id () "a")) OpAssign 
+                      (InfixExpr () OpAdd (VarRef () (Id () "b")) 
+                       (CallExpr () (DotRef () (CallExpr () (VarRef () (Id () "c")) [InfixExpr () OpAdd (VarRef () (Id () "d")) (VarRef () (Id () "e"))]) (Id () "print")) [])))]
   $: []
 
 

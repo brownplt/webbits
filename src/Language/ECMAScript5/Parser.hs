@@ -16,6 +16,7 @@ module Language.ECMAScript5.Parser (parse
 
 import Debug.Trace
 import System.IO.Unsafe
+import Data.Monoid (mempty)
 
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
@@ -60,9 +61,9 @@ instance Default SourceSpan where
   def = SourceSpan def
 
 instance Show SourceSpan where
-  show (SourceSpan (p1,p2)) = let 
+  show (SourceSpan (p1,p2)) = let
     l1 = show $ sourceLine p1
-    c1 = show $ sourceColumn p1 
+    c1 = show $ sourceColumn p1
     l2 = show $ sourceLine p2
     c2 = show $ sourceColumn p2
     s1 = l1 ++ "-" ++ c1
@@ -70,7 +71,7 @@ instance Show SourceSpan where
     in "(" ++ show (s1 ++ "/" ++ s2) ++ ")"
 
 -- for parsers that have with/without in-clause variations
-type InParser a =  forall s. Stream s Identity Char 
+type InParser a =  forall s. Stream s Identity Char
                  => ParsecT s (Bool, ParserState) Identity a
 type PosInParser x = InParser (Positioned x)
 liftIn :: Parser a -> InParser a
@@ -101,7 +102,7 @@ initialParserState = (False, [])
 pushLabel :: String -> Parser ()
 pushLabel lab = do (nl, labs) <- getState
                    pos <- getPosition
-                   if lab `elem` labs 
+                   if lab `elem` labs
                      then fail $ "Duplicate label at " ++ show pos
                      else putState (nl, lab:labs)
 
@@ -123,7 +124,7 @@ withFreshLabelStack p = do oldState <- getState
 -- was newline consumed? keep as parser state set in 'ws' parser
 
 setNewLineState :: [Bool] -> Parser Bool
-setNewLineState wsConsumed = 
+setNewLineState wsConsumed =
   let consumedNewLine = any id wsConsumed in do
     when (not.null $ wsConsumed) $
       modifyState (first $ const $ consumedNewLine)
@@ -143,7 +144,7 @@ withPos p = do start <- getPosition
 --7.2
 
 lexeme :: Show a => Parser a -> Parser a
-lexeme p = p <* ws 
+lexeme p = p <* ws
 
 ws :: Parser Bool
 ws = many (False <$ whiteSpace <|> False <$ comment <|> True <$ lineTerminator) >>= setNewLineState
@@ -174,8 +175,8 @@ singleLineComment = string "//" >> many singleLineCommentChar
 
 insideMultiLineComment :: Parser [Char]
 insideMultiLineComment = noAsterisk <|> try asteriskInComment
- where 
-  noAsterisk = 
+ where
+  noAsterisk =
     stringify $ noneOf "*"
   asteriskInComment =
     (:) <$> char '*' <*> (stringify (noneOf "/*") <|> "" <$ lookAhead (char '*') )
@@ -189,7 +190,7 @@ identifier = lexeme $ withPos $ do name <- identifierName
                                    return $ VarRef def name
 
 identifierName :: PosParser Id
-identifierName = lexeme $ withPos $ flip butNot reservedWord $ fmap (Id def) $ 
+identifierName = lexeme $ withPos $ flip butNot reservedWord $ fmap (Id def) $
                  (:)
                  <$> identifierStart
                  <*> many identifierPart
@@ -266,12 +267,12 @@ ksuper   = makeKeyword "super"
 
 --7.7
 punctuator :: Parser ()
-punctuator = choice [ passignadd, passignsub, passignmul, passignmod, 
+punctuator = choice [ passignadd, passignsub, passignmul, passignmod,
                       passignshl, passignshr,
                       passignushr, passignband, passignbor, passignbxor,
                       pshl, pshr, pushr,
                       pleqt, pgeqt,
-                      plbrace, prbrace, plparen, prparen, plbracket, 
+                      plbrace, prbrace, plparen, prparen, plbracket,
                       prbracket, pdot, psemi, pcomma,
                       plangle, prangle, pseq, peq, psneq, pneq,
                       pplusplus, pminusminus,
@@ -398,7 +399,7 @@ nullLiteral = lexeme $ withPos (string "null" >> return (NullLit def))
 
 --7.8.2
 booleanLiteral :: PosParser Expression
-booleanLiteral = lexeme $ withPos $ BoolLit def 
+booleanLiteral = lexeme $ withPos $ BoolLit def
                  <$> (True <$ makeKeyword "true" <|> False <$ makeKeyword "false")
 
 --7.8.3
@@ -407,7 +408,7 @@ numericLiteral = hexIntegerLiteral <|> decimalLiteral
 
 -- Creates a decimal value from a whole, fractional and exponent parts.
 mkDecimal :: Integer -> Integer -> Integer -> Integer -> Double
-mkDecimal whole frac fracLen exp = 
+mkDecimal whole frac fracLen exp =
   ((fromInteger whole) + ((fromInteger frac) * (10 ^^ (-fracLen)))) * (10 ^^ exp)
 
 -- Creates an integer value from a whole and exponent parts.
@@ -421,28 +422,28 @@ decimalLiteral = lexeme $ withPos $
       mexp  <- optionMaybe exponentPart
       if (mfraclen == Nothing && mexp == Nothing)
         then return $ NumLit def $ Left $ fromInteger whole
-        else let (frac, flen) = fromMaybe (0, 0) mfraclen 
-                 exp          = fromMaybe 0 mexp 
+        else let (frac, flen) = fromMaybe (0, 0) mfraclen
+                 exp          = fromMaybe 0 mexp
              in  return $ NumLit def $ Right $ mkDecimal whole frac flen exp)
   <|>
   (do (frac, flen) <- pdot >> decimalDigitsWithLength
       exp <- option 0 exponentPart
       return $ NumLit def $ Right $ mkDecimal 0 frac flen exp)
 
-decimalDigitsWithLength :: Parser (Integer, Integer)   
+decimalDigitsWithLength :: Parser (Integer, Integer)
 decimalDigitsWithLength = do digits <- many decimalDigit
                              return $ digits2NumberAndLength digits
-                             
+
 digits2NumberAndLength :: [Integer] -> (Integer, Integer)
-digits2NumberAndLength is = 
-  let (_, n, l) = foldr (\d (pow, acc, len) -> (pow*10, acc + d*pow, len+1)) 
+digits2NumberAndLength is =
+  let (_, n, l) = foldr (\d (pow, acc, len) -> (pow*10, acc + d*pow, len+1))
                         (1, 0, 0) is
   in (n, l)
-          
+
 decimalIntegerLiteral :: PosParser Expression
-decimalIntegerLiteral = lexeme $ withPos $ decimalInteger >>= 
+decimalIntegerLiteral = lexeme $ withPos $ decimalInteger >>=
                         \i -> return $ NumLit def $ Left $ fromInteger i
-                                  
+
 decimalInteger :: Parser Integer
 decimalInteger = (char '0' >> return 0)
               <|>(do d  <- nonZeroDecimalDigit
@@ -451,30 +452,30 @@ decimalInteger = (char '0' >> return 0)
 
 -- the spec says that decimalDigits should be intead of decimalIntegerLiteral, but that seems like an error
 signedInteger :: Parser Integer
-signedInteger = (char '+' >> decimalInteger) <|> 
+signedInteger = (char '+' >> decimalInteger) <|>
                 (char '-' >> negate <$> decimalInteger) <|>
                 decimalInteger
 
 decimalDigit :: Parser Integer
 decimalDigit  = do c <- decimalDigitChar
                    return $ toInteger $ ord c - ord '0'
-                   
+
 decimalDigitChar :: Parser Char
 decimalDigitChar = rangeChar '0' '9'
-                   
+
 nonZeroDecimalDigit :: Parser Integer
 nonZeroDecimalDigit  = do c <- rangeChar '1' '9'
                           return $ toInteger $ ord c - ord '0'
-                                                   
+
 --hexDigit = ParsecChar.hexDigit
 
 exponentPart :: Parser Integer
 exponentPart = (char 'e' <|> char 'E') >> signedInteger
-       
+
 
 fromHex digits = do [(hex,"")] <- return $ Numeric.readHex digits
                     return hex
-                    
+
 fromDecimal digits = do [(hex,"")] <- return $ Numeric.readDec digits
                         return hex
 hexIntegerLiteral :: PosParser Expression
@@ -483,7 +484,7 @@ hexIntegerLiteral = lexeme $ withPos $ do
   digits <- many1 hexDigit
   n <- fromHex digits
   return $ NumLit def $ Left $ fromInteger n
-                         
+
 --7.8.4
 dblquote :: Parser Char
 dblquote = char '"'
@@ -503,20 +504,20 @@ inBraces :: Parser a -> Parser a
 inBraces x = between plbrace prbrace x
 
 stringLiteral :: PosParser (Expression)
-stringLiteral =  lexeme $ withPos $ 
+stringLiteral =  lexeme $ withPos $
                  do s <- ((inDblQuotes $ concatM $ many doubleStringCharacter)
-                          <|> 
+                          <|>
                           (inQuotes $ concatM $ many singleStringCharacter))
                     return $ StringLit def s
 
 doubleStringCharacter :: Parser String
-doubleStringCharacter = 
+doubleStringCharacter =
   stringify ((anyChar `butNot` choice[forget dblquote, forget backslash, lineTerminator])
              <|> backslash *> escapeSequence)
-  <|> lineContinuation 
+  <|> lineContinuation
 
 singleStringCharacter :: Parser String
-singleStringCharacter =  
+singleStringCharacter =
   stringify ((anyChar `butNot` choice[forget quote, forget backslash, forget lineTerminator])
              <|> backslash *> escapeSequence)
   <|> lineContinuation
@@ -529,14 +530,14 @@ escapeSequence = characterEscapeSequence
               <|>(char '0' >> notFollowedBy decimalDigitChar >> return cNUL)
               <|>hexEscapeSequence
               <|>unicodeEscapeSequence
-                 
+
 characterEscapeSequence :: Parser Char
 characterEscapeSequence = singleEscapeCharacter <|> nonEscapeCharacter
 
 singleEscapeCharacter :: Parser Char
-singleEscapeCharacter = choice $ map (\(ch, cod) -> (char ch >> return cod)) 
+singleEscapeCharacter = choice $ map (\(ch, cod) -> (char ch >> return cod))
                         [('b', cBS), ('t', cHT), ('n', cLF), ('v', cVT),
-                         ('f', cFF), ('r', cCR), ('"', '"'), ('\'', '\''), 
+                         ('f', cFF), ('r', cCR), ('"', '"'), ('\'', '\''),
                          ('\\', '\\')]
 
 nonEscapeCharacter :: Parser Char
@@ -560,65 +561,65 @@ unicodeEscapeSequence = do digits <- char 'u' >> count 4 hexDigit
 
 --7.8.5 and 15.10.4.1
 regularExpressionLiteral :: PosParser Expression
-regularExpressionLiteral = 
-    lexeme $ withPos $ do 
+regularExpressionLiteral =
+    lexeme $ withPos $ do
       body <- between pdiv pdiv regularExpressionBody
       (g, i, m) <- regularExpressionFlags
-      return $ RegexpLit def body g i m 
-                           
+      return $ RegexpLit def body g i m
+
 -- TODO: The spec requires the parser to make sure the body is a valid
 -- regular expression; were are not doing it at present.
 regularExpressionBody :: Parser String
-regularExpressionBody = do c <- regularExpressionFirstChar 
-                           cs <- concatM regularExpressionChars  
+regularExpressionBody = do c <- regularExpressionFirstChar
+                           cs <- concatM regularExpressionChars
                            return (c++cs)
-                         
+
 regularExpressionChars :: Parser [String]
 regularExpressionChars = many regularExpressionChar
 
 regularExpressionFirstChar :: Parser String
-regularExpressionFirstChar = 
+regularExpressionFirstChar =
   choice [
     stringify $ regularExpressionNonTerminator `butNot` oneOf ['*', '\\', '/', '[' ],
     regularExpressionBackslashSequence,
     regularExpressionClass ]
 
 regularExpressionChar :: Parser String
-regularExpressionChar = 
+regularExpressionChar =
   choice [
     stringify $ regularExpressionNonTerminator `butNot` oneOf ['\\', '/', '[' ],
     regularExpressionBackslashSequence,
     regularExpressionClass ]
 
 regularExpressionBackslashSequence :: Parser String
-regularExpressionBackslashSequence = do c <-char '\\'  
+regularExpressionBackslashSequence = do c <-char '\\'
                                         e <- regularExpressionNonTerminator
                                         return (c:[e])
-                                        
+
 regularExpressionNonTerminator :: Parser Char
 regularExpressionNonTerminator = anyChar `butNot` lineTerminator
 
 regularExpressionClass :: Parser String
-regularExpressionClass = do l <- char '[' 
+regularExpressionClass = do l <- char '['
                             rc <- concatM $ many regularExpressionClassChar
                             r <- char ']'
                             return (l:(rc++[r]))
 
 regularExpressionClassChar :: Parser String
-regularExpressionClassChar = 
+regularExpressionClassChar =
   stringify (regularExpressionNonTerminator `butNot` oneOf [']', '\\'])
   <|> regularExpressionBackslashSequence
-    
-regularExpressionFlags :: Parser (Bool, Bool, Bool) -- g, i, m    
+
+regularExpressionFlags :: Parser (Bool, Bool, Bool) -- g, i, m
 regularExpressionFlags = regularExpressionFlags' (False, False, False)
-  
+
 regularExpressionFlags' :: (Bool, Bool, Bool) -> Parser (Bool, Bool, Bool)
-regularExpressionFlags' (g, i, m) = 
+regularExpressionFlags' (g, i, m) =
     (char 'g' >> (if not g then regularExpressionFlags' (True, i, m) else unexpected "duplicate 'g' in regular expression flags")) <|>
     (char 'i' >> (if not i then regularExpressionFlags' (g, True, m) else unexpected "duplicate 'i' in regular expression flags")) <|>
     (char 'm' >> (if not m then regularExpressionFlags' (g, i, True) else unexpected "duplicate 'm' in regular expression flags")) <|>
     return (g, i, m)
-    
+
 -- | 7.9 || TODO: write tests based on examples from Spec 7.9.2, once I
 -- get the parser finished! Automatic Semicolon Insertion algorithm,
 -- rule 1; to be used in place of `semi` in parsers for
@@ -640,20 +641,20 @@ primaryExpression = choice [ lexeme $ withPos $ ThisRef def <$ kthis
 
 parenExpression :: PosParser Expression
 parenExpression = lexeme $ withPos $ inParens expression
-                                    
+
 -- 11.1.4
 arrayLiteral :: PosParser Expression
-arrayLiteral = lexeme $ withPos $ 
+arrayLiteral = lexeme $ withPos $
                ArrayLit def
                <$> inBrackets elementsListWithElision
 
 elementsListWithElision :: Parser [Maybe (Positioned Expression)]
 elementsListWithElision = optionMaybe assignmentExpression `sepBy` pcomma
-  
+
 -- 11.1.5
 objectLiteral :: PosParser Expression
 objectLiteral = lexeme $ withPos $
-                ObjectLit def 
+                ObjectLit def
                 <$> inBraces (
                   propertyAssignment `sepBy` pcomma <* optional pcomma)
 
@@ -691,7 +692,7 @@ dotref    = flip (DotRef def)     <$  pdot <*> identifierName
 called    = flip (CallExpr def)   <$> arguments
 
 newExpression :: PosParser Expression
-newExpression = 
+newExpression =
   withPostfix [bracketed, dotref] $
     NewExpr def <$ knew <*> newExpression <*> option [] arguments
     <|> primaryExpression
@@ -701,7 +702,7 @@ newExpression =
 
 arguments :: Parser [Positioned Expression]
 arguments = inParens $ assignmentExpression `sepBy` pcomma
-                        
+
 leftHandSideExpression :: PosParser Expression
 leftHandSideExpression = withPostfix [bracketed, dotref, called] newExpression
 
@@ -717,9 +718,9 @@ assignmentExpressionGen :: PosInParser Expression
 assignmentExpressionGen =
   try (AssignExpr def <$> liftIn leftHandSideExpression <*> liftIn assignOp <*> assignmentExpressionGen)
   <|> conditionalExpressionGen
-  
+
 assignOp :: Parser AssignOp
-assignOp = choice $ 
+assignOp = choice $
   [ OpAssign         <$ lexeme (string "=")
   , OpAssignAdd      <$ lexeme (string "+=")
   , OpAssignSub      <$ lexeme (string "-=")
@@ -740,10 +741,10 @@ assignmentExpressionNoIn = withNoIn assignmentExpressionGen
 conditionalExpressionGen :: PosInParser Expression
 conditionalExpressionGen =
   do l <- logicalOrExpressionGen
-     let cond = CondExpr def l 
-                <$  liftIn pquestion 
-                <*> assignmentExpressionGen 
-                <*  liftIn pcolon 
+     let cond = CondExpr def l
+                <$  liftIn pquestion
+                <*> assignmentExpressionGen
+                <*  liftIn pcolon
                 <*> assignmentExpressionGen
      withPos cond <|> return l
 
@@ -751,14 +752,14 @@ type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
 mkOp str =
   let end :: Parser Char
-      end =  if all isAlphaNum str 
+      end =  if all isAlphaNum str
              then alphaNum
              else oneOf "+-!~*/%<>=&^|"
   in liftIn $ lexeme $ try $ (string str <* notFollowedBy end)
 
 makeInfixExpr :: Stream s Identity Char => String -> InfixOp -> InOp s
 makeInfixExpr str constr = Infix parser AssocLeft where
-  parser = 
+  parser =
       mkOp str *> return (InfixExpr def constr)
 
 makeUnaryAssnExpr str prefixConstr postfixConstr =
@@ -823,7 +824,7 @@ exprTable =
 
 
 logicalOrExpressionGen :: PosInParser Expression
-logicalOrExpressionGen = 
+logicalOrExpressionGen =
   buildExpressionParser exprTable (liftIn leftHandSideExpression) <?> "simple expression"
 
 -- avoid putting comma expression on everything
@@ -854,25 +855,25 @@ functionDeclaration = withPos $
   <*> inBraces functionBody
 
 formalParameterList :: Parser [Positioned Id]
-formalParameterList = 
+formalParameterList =
   withPos identifierName `sepBy` pcomma
 
 parseStatement :: PosParser Statement
 parseStatement =
   choice
-  [ parseBlock 
-  , variableStatement 
-  , expressionStatement 
-  , ifStatement 
-  , iterationStatement 
-  , continueStatement 
-  , breakStatement 
-  , returnStatement 
-  , withStatement 
-  , labelledStatement 
-  , switchStatement 
-  , throwStatement 
-  , tryStatement 
+  [ parseBlock
+  , variableStatement
+  , expressionStatement
+  , ifStatement
+  , iterationStatement
+  , continueStatement
+  , breakStatement
+  , returnStatement
+  , withStatement
+  , labelledStatement
+  , switchStatement
+  , throwStatement
+  , tryStatement
   , debuggerStatement
   , emptyStatement ]
 
@@ -880,12 +881,12 @@ statementList :: Parser [Positioned Statement]
 statementList = many1 (withPos parseStatement)
 
 parseBlock :: PosParser Statement
-parseBlock = 
+parseBlock =
   withPos $ inBraces $
-  BlockStmt def <$> option [] statementList 
+  BlockStmt def <$> option [] statementList
 
 variableStatement :: PosParser Statement
-variableStatement = 
+variableStatement =
   withPos $
   VarDeclStmt def
   <$  kvar
@@ -893,154 +894,155 @@ variableStatement =
   <*  autoSemi
 
 variableDeclarationList :: Parser [Positioned VarDecl]
-variableDeclarationList = 
+variableDeclarationList =
   variableDeclaration `sepBy` pcomma
 
 variableDeclaration :: PosParser VarDecl
-variableDeclaration = 
+variableDeclaration =
   withPos $ VarDecl def <$> identifierName <*> optionMaybe initializer
 
 initializer :: PosParser Expression
-initializer = 
+initializer =
   passign *> assignmentExpression
 
 variableDeclarationListNoIn :: Parser [Positioned VarDecl]
 variableDeclarationListNoIn =
   variableDeclarationNoIn `sepBy` pcomma
-  
+
 variableDeclarationNoIn :: PosParser VarDecl
 variableDeclarationNoIn =
   withPos $ VarDecl def <$> identifierName  <*> optionMaybe initalizerNoIn
-  
+
 initalizerNoIn :: PosParser Expression
 initalizerNoIn =
   passign *> assignmentExpressionNoIn
 
 emptyStatement :: PosParser Statement
-emptyStatement = 
+emptyStatement =
   withPos $ EmptyStmt def <$ psemi
 
 expressionStatement :: PosParser Statement
-expressionStatement = 
+expressionStatement =
   withPos $
   notFollowedBy (notP $ plbrace <|> forget kfunction)
    >> ExprStmt def
-  <$> expression 
+  <$> expression
   <*  autoSemi
 
 ifStatement :: PosParser Statement
-ifStatement = 
+ifStatement =
   withPos $
   IfStmt def
   <$  kif
   <*> inParens expression
   <*> parseStatement
   <*> option (EmptyStmt def) (kelse *> parseStatement)
-  
+
 iterationStatement :: PosParser Statement
 iterationStatement = doStatement <|> whileStatement <|> forStatement
 
 doStatement :: PosParser Statement
-doStatement = 
+doStatement =
   withPos $
   DoWhileStmt def
   <$  kdo
-  <*> parseStatement 
+  <*> parseStatement
   <*  kwhile
-  <*> inParens expression 
+  <*> inParens expression
   <*  autoSemi
-  
+
 whileStatement :: PosParser Statement
-whileStatement =   
+whileStatement =
   withPos $
   WhileStmt def
   <$  kwhile
   <*> inParens expression
   <*> parseStatement
-   
+
 forStatement :: PosParser Statement
 forStatement =
   withPos $
   kfor
-   >> inParens (forStmt <|> forInStmt) 
+   >> inParens (forStmt <|> forInStmt)
   <*> parseStatement
-  where 
+  where
     forStmt :: Parser (Positioned Statement -> Positioned Statement)
-    forStmt = 
+    forStmt =
       ForStmt def
       <$> try (choice [ VarInit <$> (kvar *> variableDeclarationListNoIn)
-                 , ExprInit <$> expressionNoIn 
+                 , ExprInit <$> expressionNoIn
                  , return NoInit ]
       <* psemi) <*> optionMaybe expression
-      <* psemi <*> optionMaybe expression 
+      <* psemi <*> optionMaybe expression
     forInStmt :: Parser (Positioned Statement -> Positioned Statement)
-    forInStmt = 
-      ForInStmt def 
+    forInStmt =
+      ForInStmt def
       <$> (ForInVar <$> (kvar *> variableDeclarationNoIn) <|>
            ForInExpr <$> leftHandSideExpression )
       <* kin
       <*> expression
-      
-restricted :: (HasAnnotation x) => Parser Bool -> PosParser x -> PosParser x
-restricted keyword parser =
+
+restricted :: (HasAnnotation e)
+           =>  Parser Bool -> (SourceSpan -> a -> e SourceSpan) -> Parser a -> Parser a -> Parser (e SourceSpan)
+restricted keyword constructor null parser =
   withPos $
-  keyword >>= guard.not
-  >> parser
-  <* autoSemi
+  do consumedNewLine <- keyword 
+     rest <- if consumedNewLine 
+       then null
+       else parser
+     autoSemi
+     return (constructor def rest)
+     
 
 continueStatement :: PosParser Statement
-continueStatement = 
-  restricted kcontinue $ 
-  ContinueStmt def <$> optionMaybe identifierName 
+continueStatement =
+  restricted kcontinue ContinueStmt (return Nothing) (optionMaybe identifierName)
 
 breakStatement :: PosParser Statement
-breakStatement = 
-  restricted kbreak $
-   BreakStmt def <$> optionMaybe identifierName 
+breakStatement =
+  restricted kbreak BreakStmt (return Nothing) (optionMaybe identifierName)
 
 throwStatement :: PosParser Statement
-throwStatement = 
-  restricted kthrow $
-  ThrowStmt def <$> expression
-  
+throwStatement =
+  restricted kthrow ThrowStmt (fail "Expected expression") expression
+
 returnStatement :: PosParser Statement
-returnStatement = 
-  restricted kreturn $
-  ReturnStmt def <$> optionMaybe expression
+returnStatement =
+  restricted kreturn ReturnStmt (return Nothing) (optionMaybe expression)
 
 withStatement :: PosParser Statement
-withStatement = 
+withStatement =
   withPos $
   WithStmt def
   <$  kwith
   <*> inParens expression
-  <*> parseStatement  
-  
+  <*> parseStatement
+
 -- TODO: push statements I suppose
 labelledStatement :: PosParser Statement
 labelledStatement =
   withPos $
   LabelledStmt def
-  <$> identifierName 
+  <$> identifierName
   <*  pcolon
   <*> parseStatement
-      
+
 switchStatement :: PosParser Statement
-switchStatement = 
+switchStatement =
   SwitchStmt def
   <$  kswitch
   <*> inParens expression
   <*> caseBlock
-  where 
+  where
     makeCaseClauses cs d cs2 = cs ++ maybeToList d ++ cs2
-    caseBlock = 
-      inBraces $ 
+    caseBlock =
+      inBraces $
       makeCaseClauses
-      <$> option [] caseClauses 
-      <*> optionMaybe defaultClause 
+      <$> option [] caseClauses
+      <*> optionMaybe defaultClause
       <*> option [] caseClauses
     caseClauses :: Parser [Positioned CaseClause]
-    caseClauses = 
+    caseClauses =
       many1 caseClause
     caseClause :: Parser (Positioned CaseClause)
     caseClause =
@@ -1054,10 +1056,10 @@ switchStatement =
       withPos $
       kdefault <* pcolon
        >> CaseDefault def
-      <$> option [] statementList      
+      <$> option [] statementList
 
 tryStatement :: PosParser Statement
-tryStatement = 
+tryStatement =
   withPos $
   TryStmt def
   <$  ktry
@@ -1066,10 +1068,10 @@ tryStatement =
   <*> optionMaybe finally
   where
     catch :: Parser (Positioned CatchClause)
-    catch = withPos $ 
-            CatchClause def 
-            <$  kcatch 
-            <*> inParens identifierName 
+    catch = withPos $
+            CatchClause def
+            <$  kcatch
+            <*> inParens identifierName
             <*> block
     finally :: PosParser Statement
     finally = withPos $
@@ -1077,10 +1079,10 @@ tryStatement =
               block
 
 block :: PosParser Statement
-block = withPos $ BlockStmt def <$> inBraces (option [] statementList) 
-  
+block = withPos $ BlockStmt def <$> inBraces (option [] statementList)
+
 debuggerStatement :: PosParser Statement
-debuggerStatement = 
+debuggerStatement =
   withPos $ DebuggerStmt def <$ kdebugger <* autoSemi
 
 -- | A parser that parses ECMAScript statements
