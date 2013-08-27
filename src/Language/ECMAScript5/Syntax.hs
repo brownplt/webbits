@@ -156,7 +156,7 @@ data Expression a
     -- ^ @e1\@e2@, spec 11.5, 11.6, 11.7, 11.8, 11.9, 11.10, 11.11
   | CondExpr a (Expression a) (Expression a) (Expression a)
     -- ^ @e1 ? e2 : e3@, spec 11.12
-  | AssignExpr a (Expression a) AssignOp (Expression a)
+  | AssignExpr a AssignOp (Expression a) (Expression a)
     -- ^ @e1 \@=e2@, spec 11.13
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
   | CommaExpr a [Expression a] -- ^ @e1, e2@, spec 11.14

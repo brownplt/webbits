@@ -712,7 +712,18 @@ assignmentExpressionGen =
   where
     assignment :: Positioned Expression -> PosInParser Expression
     assignment l = 
-     AssignExpr def l <$> liftIn assignOp <*> assignmentExpressionGen
+     do op <- liftIn assignOp
+        when (not $ validLHS l) $
+          fail "Invalid left-hand-side assignment"
+        AssignExpr def op l <$> assignmentExpressionGen
+        
+validLHS :: Expression a -> Bool
+validLHS e = case e of
+  AssignExpr _ OpAssign et _ -> validLHS e
+  VarRef _ _                -> True
+  DotRef _ _ _              -> True
+  BracketRef _ _ _          -> True
+  _                         -> False
 
 assignOp :: Parser AssignOp
 assignOp = choice $
@@ -729,7 +740,7 @@ assignOp = choice $
   , OpAssignBXor     <$ passignbxor
   , OpAssignBOr      <$ passignbor
   ]
-    
+
 assignmentExpression, assignmentExpressionNoIn :: PosParser Expression
 assignmentExpression     = withIn   assignmentExpressionGen
 assignmentExpressionNoIn = withNoIn assignmentExpressionGen
@@ -742,7 +753,6 @@ conditionalExpressionGen l =
   <*  liftIn pcolon
   <*> assignmentExpressionGen
   
-
 type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
 mkOp :: Show a => Parser a -> InParser a

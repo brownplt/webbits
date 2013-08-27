@@ -14,7 +14,7 @@ import Language.ECMAScript5.Parser
 
 tests_ecmascript5_parser :: TestTree
 tests_ecmascript5_parser = 
-  testGroup "Parser tests" $ unitTests (parseTest False) ++ [whileEmptyTest, commentTest]
+  testGroup "Parser tests" $ unitTests (parseTest False) ++ [whileEmptyTest, commentTest, jQuery]
 
 -- A re-run all the tests withf automatic semi-colon-insertion
 
@@ -83,7 +83,7 @@ unitTests runTest =
        [ExprStmt () (FuncExpr () Nothing [] [ReturnStmt () (Just (FuncExpr () Nothing [] []))])]
   $: testCase "Function w/ body" $$
        runTest "function-with-body"
-       [FunctionStmt () (Id () "foo") [] [VarDeclStmt () [VarDecl () (Id () "x") (Just (CallExpr () (VarRef () (Id () "g")) []))],IfStmt () (InfixExpr () OpEq (VarRef () (Id () "x")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (EmptyStmt ())]]
+       [FunctionStmt () (Id () "foo") [] [VarDeclStmt () [VarDecl () (Id () "x") (Just (CallExpr () (VarRef () (Id () "g")) []))],IfStmt () (InfixExpr () OpEq (VarRef () (Id () "x")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 20)))]) (EmptyStmt ())]]
   $: testCase "Two statements" $$
        runTest "two-statements"
        [VarDeclStmt () [VarDecl () (Id () "x") (Just (NumLit () (Left 10)))],VarDeclStmt () [VarDecl () (Id () "y") (Just (NumLit () (Left 20)))]]
@@ -94,7 +94,7 @@ unitTests runTest =
        expectedParseFail "switch-double-default" (6,12)
   $: testCase "If-statement" $$
        runTest "if-statement"
-       [IfStmt () (PrefixExpr () PrefixLNot (InfixExpr () OpEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar")))) (ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 10)))) (IfStmt () (InfixExpr () OpNEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar"))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 30)))]))]
+       [IfStmt () (PrefixExpr () PrefixLNot (InfixExpr () OpEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar")))) (ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 10)))) (IfStmt () (InfixExpr () OpNEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar"))) (BlockStmt () [ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 20)))]) (BlockStmt () [ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 30)))]))]
   $: testCase "Dangling else" $$
        runTest "dangling-else"
        [IfStmt () (VarRef () (Id () "foo")) (ExprStmt () (CallExpr () (VarRef () (Id () "bar")) [])) (EmptyStmt ()),IfStmt () (VarRef () (Id () "bar")) (ExprStmt () (CallExpr () (VarRef () (Id () "cux")) [])) (ExprStmt () (CallExpr () (VarRef () (Id () "baz")) []))]
@@ -152,13 +152,13 @@ unitTests runTest =
        , ExprStmt () $ InfixExpr () OpAdd (VarRef () $ Id () "a") (VarRef () $ Id () "b")]
   $: testCase "Example 5 from spec 7.9.2" $$
        runTest "7.9.2-5"
-       [ ExprStmt () $ AssignExpr () (VarRef () $ Id () "a") OpAssign (VarRef () $ Id () "b")
+       [ ExprStmt () $ AssignExpr () OpAssign (VarRef () $ Id () "a") (VarRef () $ Id () "b")
        , ExprStmt () $ UnaryAssignExpr () PrefixInc (VarRef () $ Id () "c") ]
   $: testCase "Example 6 from spec 7.9.2 (failing)" $$
        expectedParseFail "7.9.2-6" (2,6)
   $: testCase "Example 7 from spec 7.9.2" $$
        runTest "7.9.2-7"
-       [ ExprStmt () (AssignExpr () (VarRef () (Id () "a")) OpAssign 
+       [ ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "a")) 
                       (InfixExpr () OpAdd (VarRef () (Id () "b")) 
                        (CallExpr () (DotRef () (CallExpr () (VarRef () (Id () "c")) [InfixExpr () OpAdd (VarRef () (Id () "d")) (VarRef () (Id () "e"))]) (Id () "print")) [])))]
   $: []
