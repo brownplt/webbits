@@ -62,6 +62,13 @@ expectedParseFail file (expectedLine, expectedCol) =
                     assertEqual "Parse failure at wrong line" expectedLine line
                     assertEqual "Parse failure at wrong column" expectedCol col
 
+ableToParse file =
+  do content <- readFile ("../test-data/" ++ file ++ ".js")
+     let res = parseFromString content
+     case res of
+       Right _ -> return ()
+       Left err -> assertFailure ("Unexpected parse error: " ++ show err)
+
 whileEmptyTest = 
   testCase "while-empty" $$ 
     (parseTest False) "while-empty" 
@@ -163,8 +170,7 @@ commentTest =
   [ExprStmt () (NumLit () (Right 3.2))]
 
 jQuery = testCase "jQuery doesn't fail to parse" $$
-         (parseTest False) "jquery"
-         []
+         ableToParse "jquery"
 
 run = defaultMain tests_ecmascript5_parser
 runa = defaultMain tests_ecmascript5_parser_with_autosemi 

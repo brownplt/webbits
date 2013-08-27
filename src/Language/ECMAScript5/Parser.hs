@@ -14,7 +14,7 @@ module Language.ECMAScript5.Parser (parse
                                    , parseFromFile
                                    ) where
 
-import Debug.Trace
+
 import System.IO.Unsafe
 import Data.Monoid (mempty)
 
@@ -124,8 +124,7 @@ withFreshLabelStack p = do oldState <- getState
 setNewLineState :: [Bool] -> Parser Bool
 setNewLineState wsConsumed =
   let consumedNewLine = any id wsConsumed in do
-    when (not.null $ wsConsumed) $
-      modifyState (first $ const $ consumedNewLine)
+    modifyState (first $ const $ consumedNewLine)
     return consumedNewLine
 
 hadNewLine :: Parser ()
@@ -187,8 +186,8 @@ insideMultiLineComment = noAsterisk <|> try asteriskInComment
 
 --7.6
 identifier :: PosParser Expression
-identifier = lexeme $ withPos $ do name <- identifierName
-                                   return $ VarRef def name
+identifier = withPos $ do name <- identifierName
+                          return $ VarRef def name
 
 identifierName :: PosParser Id
 identifierName = lexeme $ withPos $ flip butNot reservedWord $ fmap (Id def) $
@@ -213,7 +212,7 @@ andThenNot :: Show q => Parser a -> Parser q -> Parser a
 andThenNot p q = try (p <* notFollowedBy q)
 
 makeKeyword :: String -> Parser Bool
-makeKeyword word = try $ (string word `andThenNot` identifierPart) *> ws
+makeKeyword word = try (string word `andThenNot` identifierPart) *> ws
 
 --7.6.1.1
 keyword :: Parser Bool
@@ -387,11 +386,11 @@ literal = choice [nullLiteral, booleanLiteral, numericLiteral, stringLiteral, re
 
 --7.8.1
 nullLiteral :: PosParser Expression
-nullLiteral = lexeme $ withPos (string "null" >> return (NullLit def))
+nullLiteral = withPos (makeKeyword "null" >> return (NullLit def))
 
 --7.8.2
 booleanLiteral :: PosParser Expression
-booleanLiteral = lexeme $ withPos $ BoolLit def
+booleanLiteral = withPos $ BoolLit def
                  <$> (True <$ makeKeyword "true" <|> False <$ makeKeyword "false")
 
 --7.8.3
@@ -624,7 +623,7 @@ autoSemi = psemi <|> hadNewLine <|> lookAhead prbrace <|> eof
 -- 11.1
 -- primary expressions
 primaryExpression :: PosParser Expression
-primaryExpression = choice [ lexeme $ withPos $ ThisRef def <$ kthis
+primaryExpression = choice [ withPos $ ThisRef def <$ kthis
                            , identifier
                            , literal
                            , arrayLiteral
@@ -632,11 +631,11 @@ primaryExpression = choice [ lexeme $ withPos $ ThisRef def <$ kthis
                            , parenExpression]
 
 parenExpression :: PosParser Expression
-parenExpression = lexeme $ withPos $ inParens expression
+parenExpression = withPos $ inParens expression
 
 -- 11.1.4
 arrayLiteral :: PosParser Expression
-arrayLiteral = lexeme $ withPos $
+arrayLiteral = withPos $
                ArrayLit def
                <$> inBrackets elementsListWithElision
 
@@ -645,14 +644,14 @@ elementsListWithElision = optionMaybe assignmentExpression `sepBy` pcomma
 
 -- 11.1.5
 objectLiteral :: PosParser Expression
-objectLiteral = lexeme $ withPos $
+objectLiteral = withPos $
                 ObjectLit def
                 <$> inBraces (
                   propertyAssignment `sepBy` pcomma <* optional pcomma)
 
 
 propertyAssignment :: Parser (Positioned PropAssign)
-propertyAssignment = lexeme $ withPos $
+propertyAssignment = withPos $
                      (do try (makeKeyword "get" <* notFollowedBy pcolon)
                          pname <- propertyName
                          prparen
@@ -670,7 +669,7 @@ propertyAssignment = lexeme $ withPos $
                          return $ PExpr def pname e)
 
 propertyName :: Parser (Positioned Prop)
-propertyName = lexeme $ withPos $
+propertyName = withPos $
                (identifierName >>= id2Prop)
             <|>(stringLiteral >>= string2Prop)
             <|>(numericLiteral >>= num2Prop)
@@ -743,7 +742,7 @@ conditionalExpressionGen =
 type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
 mkOp :: Show a => Parser a -> InParser a
-mkOp p = liftIn $ lexeme $ try $ p
+mkOp p = liftIn $ try $ p
 
 makeInfixExpr :: Stream s Identity Char => Parser () -> InfixOp -> InOp s
 makeInfixExpr str constr = 
