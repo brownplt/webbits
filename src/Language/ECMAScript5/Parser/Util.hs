@@ -10,12 +10,6 @@ rangeChar :: (Monad m, Stream s m Char)
           => Char -> Char -> ParsecT s st m Char
 rangeChar left right = satisfy (\x -> x >= left && x <= right)
 
--- | parses anything, but not the given parser
-notP :: (Monad m, Stream s m c, Show a)
-     => ParsecT s st m a -> ParsecT s st m ()
-notP p = do s <- p
-            unexpected (show s)
-
 -- | parses anything parsable by the first parser, and not the second
 butNot :: (Monad m, Stream s m c, Show a, Show a1)
        => ParsecT s st m a -> ParsecT s st m a1 -> ParsecT s st m a
@@ -37,8 +31,14 @@ forget p = p >> return ()
 concatM   :: Monad m => m [[a]] -> m [a]
 concatM x = x >>= (\y -> return $ concat y)
 
+makePostfix ps =
+  foldr (flip (.)) id <$> many (choice ps)
+  
+makePrefix ps =
+  foldl (.) id <$> many (choice ps)
+
 withPostfix qs p =
-  flip ($) <$> p <*> (foldr (flip (.)) id <$> many (choice qs))
+  flip ($) <$> p <*> makePostfix qs
 
 withPrefix qs p =
-  ($) <$> (foldl (.) id <$> many (choice qs)) <*> p
+  ($) <$> makePrefix qs <*> p

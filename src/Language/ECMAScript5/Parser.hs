@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Rank2Types, ImpredicativeTypes #-}
 
 module Language.ECMAScript5.Parser (parse
                                    , PosParser
@@ -213,7 +213,7 @@ andThenNot :: Show q => Parser a -> Parser q -> Parser a
 andThenNot p q = try (p <* notFollowedBy q)
 
 makeKeyword :: String -> Parser Bool
-makeKeyword word = try $ string word `andThenNot` identifierPart *> ws
+makeKeyword word = try $ (string word `andThenNot` identifierPart) *> ws
 
 --7.6.1.1
 keyword :: Parser Bool
@@ -300,9 +300,9 @@ psemi = forget $ lexeme $ char ';'
 pcomma :: Parser ()
 pcomma = forget $ lexeme $ char ','
 plangle :: Parser ()
-plangle = lexeme $ char '<' *> notFollowedBy (oneOf ['=', '<'])
+plangle = lexeme $ char '<' *> notFollowedBy (oneOf "=<")
 prangle :: Parser ()
-prangle = lexeme $ char '>' *> notFollowedBy (oneOf ['=', '>'])
+prangle = lexeme $ char '>' *> notFollowedBy (oneOf "=>")
 pleqt :: Parser ()
 pleqt = forget $ lexeme $ string "<="
 pgeqt :: Parser ()
@@ -316,39 +316,31 @@ pseq = forget $ lexeme $ string "==="
 psneq :: Parser ()
 psneq = forget $ lexeme $ string "!=="
 pplus :: Parser ()
-pplus = forget $ lexeme $ do char '+'
-                             lookAhead $ notP $ choice [char '=', char '+']
+pplus = forget $ lexeme $ do char '+' *> notFollowedBy (oneOf "=+")
 pminus :: Parser ()
-pminus = forget $ lexeme $ do char '-'
-                              lookAhead $ notP $ choice [char '=', char '-']
+pminus = forget $ lexeme $ do char '-' *> notFollowedBy (oneOf "=-")
 pmul :: Parser ()
-pmul = forget $ lexeme $ do char '*'
-                            lookAhead $ char '='
+pmul = forget $ lexeme $ do char '*' *> notFollowedBy (char '=')
 pmod :: Parser ()
-pmod = forget $ lexeme $ do char '%'
-                            lookAhead $ char '='
+pmod = forget $ lexeme $ do char '%' *> notFollowedBy (char '=')
 pplusplus :: Parser ()
 pplusplus = forget $ lexeme $ string "++"
 pminusminus :: Parser ()
 pminusminus = forget $ lexeme $ string "--"
 pshl :: Parser ()
-pshl = forget $ lexeme $ string "<<" *> notFollowedBy (char '<')
+pshl = forget $ lexeme $ string "<<" *> notFollowedBy (char '=')
 pshr :: Parser ()
-pshr = forget $ lexeme $ string ">>" *> notFollowedBy (char '>')
+pshr = forget $ lexeme $ string ">>" *> notFollowedBy (oneOf ">=")
 pushr :: Parser ()
-pushr = forget $ lexeme $ string ">>>"
+pushr = forget $ lexeme $ string ">>>" *> notFollowedBy (char '=')
 pband :: Parser ()
-pband = forget $ lexeme $ do char '&'
-                             lookAhead $ notP $ char '&'
+pband = forget $ lexeme $ do char '&' *> notFollowedBy (oneOf "&=")
 pbor :: Parser ()
-pbor = forget $ lexeme $ do char '|'
-                            lookAhead $ notP $ choice [char '|', char '=']
+pbor = forget $ lexeme $ do char '|' *> notFollowedBy (oneOf "|=")
 pbxor :: Parser ()
-pbxor = forget $ lexeme $ do char '^'
-                             lookAhead $ notP $ choice [char '=']
+pbxor = forget $ lexeme $ do char '^' *> notFollowedBy (char '=')
 pnot :: Parser ()
-pnot = forget $ lexeme $ do char '!'
-                            lookAhead $ notP $ char '='
+pnot = forget $ lexeme $ do char '!' *> notFollowedBy (char '=')
 pbnot :: Parser ()
 pbnot = forget $ lexeme $ char '~'
 pand :: Parser ()
@@ -387,8 +379,7 @@ divPunctuator = choice [ passigndiv, pdiv ]
 passigndiv :: Parser ()
 passigndiv = forget $ lexeme $ string "/="
 pdiv :: Parser ()
-pdiv = forget $ lexeme $ do char '/'
-                            lookAhead $ notP $ char '='
+pdiv = forget $ lexeme $ do char '/' *> notFollowedBy (char '=')
 
 --7.8
 literal :: PosParser Expression
@@ -751,76 +742,71 @@ conditionalExpressionGen =
 
 type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
-mkOp str =
-  let end :: Parser Char
-      end =  if all isAlphaNum str
-             then alphaNum
-             else oneOf "+-!~*/%<>=&^|"
-  in liftIn $ lexeme $ try $ (string str <* notFollowedBy end)
+mkOp :: Show a => Parser a -> InParser a
+mkOp p = liftIn $ lexeme $ try $ p
 
-makeInfixExpr :: Stream s Identity Char => String -> InfixOp -> InOp s
-makeInfixExpr str constr = Infix parser AssocLeft where
-  parser =
-      mkOp str *> return (InfixExpr def constr)
-
-makeUnaryAssnExpr str prefixConstr postfixConstr =
-  [ Prefix  $ parser prefixConstr
-  , Postfix $ parser postfixConstr ]
-  where
-    parser x = UnaryAssignExpr def x <$ mkOp str
-
-makePrefixExpr str constr =
-  Prefix  $ UnaryAssignExpr def constr <$ mkOp str
-
+makeInfixExpr :: Stream s Identity Char => Parser () -> InfixOp -> InOp s
+makeInfixExpr str constr = 
+  Infix (InfixExpr def constr <$ mkOp str) AssocLeft 
+      
+makePostfixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePostfixExpr str constr =
   Postfix $ UnaryAssignExpr def constr <$ (liftIn hadNoNewLine >> mkOp str)
 
-makeUnaryExpr str constr =
-  Prefix  $ PrefixExpr def constr <$ mkOp str
+makePrefixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
+makePrefixExpr str constr =
+  Prefix $ UnaryAssignExpr def constr <$ mkOp str
+
+makeUnaryExpr pfxs =
+  let mkPrefix :: (Parser (), PrefixOp) -> InParser (Positioned Expression -> Positioned Expression)
+      mkPrefix (p, op) = PrefixExpr def op <$ mkOp p
+  in  
+    Prefix $ makePrefix (map mkPrefix pfxs)
 
 exprTable:: Stream s Identity Char => [[InOp s]]
 exprTable =
-  [ [ makePostfixExpr "++" PostfixInc
-    , makePostfixExpr "--" PostfixDec
+  [ [ makePostfixExpr pplusplus PostfixInc
+    , makePostfixExpr pminusminus PostfixDec
     ]
-  , [ makePrefixExpr  "++" PrefixInc
-    , makePrefixExpr  "--" PrefixDec
-    , makeUnaryExpr "!" PrefixLNot
-    , makeUnaryExpr "~" PrefixBNot
-    , makeUnaryExpr "+" PrefixPlus
-    , makeUnaryExpr "-" PrefixMinus
-    , makeUnaryExpr "typeof" PrefixTypeof
-    , makeUnaryExpr "void" PrefixVoid
-    , makeUnaryExpr "delete" PrefixDelete
+  , [ makePrefixExpr  pplusplus PrefixInc
+    , makePrefixExpr  pminusminus PrefixDec
+    , makeUnaryExpr [ (pnot     , PrefixLNot)
+                    , (pbnot     , PrefixBNot)
+                    , (pplus     , PrefixPlus)
+                    , (pminus    , PrefixMinus)
+                    , (forget ktypeof, PrefixTypeof)
+                    , (forget kvoid  , PrefixVoid)
+                    , (forget kdelete, PrefixDelete)
+                    ]
     ]
-  , [ makeInfixExpr "*" OpMul
-    , makeInfixExpr "/" OpDiv
-    , makeInfixExpr "%" OpMod
+  , [ makeInfixExpr pmul OpMul
+    , makeInfixExpr pdiv OpDiv
+    , makeInfixExpr pmod OpMod
     ]
-  , [ makeInfixExpr "+" OpAdd
-    , makeInfixExpr "-" OpSub
+  , [ makeInfixExpr pplus OpAdd
+    , makeInfixExpr pminus OpSub
     ]
-  , [ makeInfixExpr ">>>" OpZfRShift
-    , makeInfixExpr ">>"  OpSpRShift
-    , makeInfixExpr "<<"  OpLShift
+  , [ makeInfixExpr pushr OpZfRShift
+    , makeInfixExpr pshr  OpSpRShift
+    , makeInfixExpr pshl  OpLShift
     ]
-  , [ makeInfixExpr "<=" OpLEq
-    , makeInfixExpr "<"  OpLT
-    , makeInfixExpr ">=" OpGEq
-    , makeInfixExpr ">"  OpGT
-    , makeInfixExpr "instanceof" OpInstanceof
-    , makeInfixExpr "in" OpIn
+  , [ makeInfixExpr pleqt OpLEq
+    , makeInfixExpr plangle OpLT
+    , makeInfixExpr pgeqt OpGEq
+    , makeInfixExpr prangle  OpGT
+    , makeInfixExpr (forget kinstanceof) OpInstanceof
+    , makeInfixExpr (forget kin) OpIn
     ]
-  , [ makeInfixExpr "===" OpStrictEq
-    , makeInfixExpr "!==" OpStrictNEq
-    , makeInfixExpr "=="  OpEq
-    , makeInfixExpr "!="  OpNEq
+  , [ makeInfixExpr pseq OpStrictEq
+    , makeInfixExpr psneq OpStrictNEq
+    , makeInfixExpr peq  OpEq
+    , makeInfixExpr pneq  OpNEq
     ]
-  , [ makeInfixExpr "&"  OpBAnd ]
-  , [ makeInfixExpr "^"  OpBXor ]
-  , [ makeInfixExpr "|"  OpBOr ]
-  , [ makeInfixExpr "&&" OpLAnd ]
-  , [ makeInfixExpr "||" OpLOr ]
+  , [ makeInfixExpr pband  OpBAnd ]
+  , [ makeInfixExpr pbxor  OpBXor ]
+  , [ makeInfixExpr pbor  OpBOr ]
+  , [ makeInfixExpr pand OpLAnd ]
+  , [ makeInfixExpr por OpLOr ]
   ]
 
 
@@ -845,7 +831,7 @@ sourceElements :: Parser [Positioned Statement]
 sourceElements = many1 sourceElement
 
 sourceElement :: PosParser Statement
-sourceElement = parseStatement <|> functionDeclaration
+sourceElement = functionDeclaration <|> parseStatement
 
 functionDeclaration :: PosParser Statement
 functionDeclaration = withPos $
@@ -925,7 +911,7 @@ emptyStatement =
 expressionStatement :: PosParser Statement
 expressionStatement =
   withPos $
-  notFollowedBy (notP $ plbrace <|> forget kfunction)
+  notFollowedBy (plbrace <|> forget kfunction)
    >> ExprStmt def
   <$> expression
   <*  autoSemi
@@ -1092,7 +1078,7 @@ statement = parseStatement
 
 -- | A parser that parses an ECMAScript program.
 program :: PosParser Program
-program = ws *> withPos (Program def <$> many statement) <* eof
+program = ws *> withPos (Program def <$> many sourceElement) <* eof
 
 -- | Parse from a stream given a parser, same as 'Text.Parsec.parse'
 -- in Parsec. We can use this to parse expressions or statements

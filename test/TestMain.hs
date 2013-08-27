@@ -7,6 +7,7 @@ import Test.Unit
 import Test.Diff
 import Test.Pretty
 import Test.StatementTests
+import Test.ExpressionTests
           
 main = do unittests_ecmascript3 <- tests_unit
           unittests_ecmascript3_diff <- tests_diff

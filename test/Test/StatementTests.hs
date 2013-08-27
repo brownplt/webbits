@@ -70,13 +70,13 @@ whileEmptyTest =
 unitTests runTest =
      testCase "Test function definition" $$
        runTest "empty-function" 
-       [ExprStmt () (FuncExpr () Nothing [] [])]
+       [FunctionStmt () (Id () "f") [] []]
   $: testCase "Test function returning function" $$
        runTest "function-return-function" 
        [ExprStmt () (FuncExpr () Nothing [] [ReturnStmt () (Just (FuncExpr () Nothing [] []))])]
   $: testCase "Function w/ body" $$
        runTest "function-with-body"
-       [ExprStmt () (FuncExpr () Nothing [] [VarDeclStmt () [VarDecl () (Id () "x") (Just (CallExpr () (VarRef () (Id () "g")) []))],IfStmt () (InfixExpr () OpEq (VarRef () (Id () "x")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (EmptyStmt ())])]
+       [FunctionStmt () (Id () "foo") [] [VarDeclStmt () [VarDecl () (Id () "x") (Just (CallExpr () (VarRef () (Id () "g")) []))],IfStmt () (InfixExpr () OpEq (VarRef () (Id () "x")) (NumLit () (Left 10))) (BlockStmt () [ExprStmt () (AssignExpr () (VarRef () (Id () "x")) OpAssign (NumLit () (Left 20)))]) (EmptyStmt ())]]
   $: testCase "Two statements" $$
        runTest "two-statements"
        [VarDeclStmt () [VarDecl () (Id () "x") (Just (NumLit () (Left 10)))],VarDeclStmt () [VarDecl () (Id () "y") (Just (NumLit () (Left 20)))]]

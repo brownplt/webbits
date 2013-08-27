@@ -85,6 +85,7 @@ Test-Suite test
     Test.Unit
     Test.Pretty
     Test.StatementTests
+    Test.ExpressionTests
   Build-Depends:
     base >= 4 && < 5,
     mtl >= 1.1.0.1,

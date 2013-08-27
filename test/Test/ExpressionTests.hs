@@ -30,7 +30,7 @@ test_ecmascript5_expression = testGroup "Expression tests" unitTests
              
 unitTests = 
      testCase "double negation" $$
-       parseTest "!!x" (NumLit () (Left 3))
+       parseTest "!!x" (PrefixExpr () PrefixLNot (PrefixExpr () PrefixLNot (VarRef () (Id () "x"))))
   $: testCase "prefix/postfix precedence" $$
        parseTest "!x++" (PrefixExpr () PrefixLNot (UnaryAssignExpr () PostfixInc (VarRef () (Id () "x"))))
   $: []
