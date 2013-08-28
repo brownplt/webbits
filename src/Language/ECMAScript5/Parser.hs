@@ -15,8 +15,8 @@ module Language.ECMAScript5.Parser (parse
                                    ) where
 
 
+
 import System.IO.Unsafe
-import Data.Monoid (mempty)
 
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
@@ -72,12 +72,16 @@ instance Show SourceSpan where
 type InParser a =  forall s. Stream s Identity Char
                  => ParsecT s (Bool, ParserState) Identity a
 type PosInParser x = InParser (Positioned x)
-liftIn :: Parser a -> InParser a
-liftIn p = changeState (\s -> (True, s)) snd p
+
+liftIn :: Bool -> Parser a -> InParser a
+liftIn x p = changeState (\s -> (x, s)) snd p
 
 withIn, withNoIn :: InParser a -> Parser a
 withIn   p = changeState snd (\s -> (True, s)) p
 withNoIn p = changeState snd (\s -> (False, s)) p
+
+assertInAllowed :: InParser ()
+assertInAllowed = getState >>= guard.fst
 
 changeState
   :: forall m s u v a . (Functor m, Monad m)
@@ -712,7 +716,7 @@ assignmentExpressionGen =
   where
     assignment :: Positioned Expression -> PosInParser Expression
     assignment l = 
-     do op <- liftIn assignOp
+     do op <- liftIn True assignOp
         when (not $ validLHS l) $
           fail "Invalid left-hand-side assignment"
         AssignExpr def op l <$> assignmentExpressionGen
@@ -747,23 +751,27 @@ assignmentExpressionNoIn = withNoIn assignmentExpressionGen
 conditionalExpressionGen :: Positioned Expression -> PosInParser Expression
 conditionalExpressionGen l = 
   withPos $ CondExpr def l
-  <$  liftIn pquestion
+  <$  liftIn True pquestion
   <*> assignmentExpressionGen
-  <*  liftIn pcolon
+  <*  liftIn True pcolon
   <*> assignmentExpressionGen
   
 type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
 
 mkOp :: Show a => Parser a -> InParser a
-mkOp p = liftIn $ try $ p
+mkOp p = liftIn True $ try $ p
 
 makeInfixExpr :: Stream s Identity Char => Parser () -> InfixOp -> InOp s
 makeInfixExpr str constr = 
   Infix (InfixExpr def constr <$ mkOp str) AssocLeft 
       
+inExpr :: Stream s Identity Char => InOp s
+inExpr =
+  Infix (InfixExpr def OpIn <$ (assertInAllowed <* mkOp kin) ) AssocLeft
+
 makePostfixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePostfixExpr str constr =
-  Postfix $ UnaryAssignExpr def constr <$ (liftIn hadNoNewLine >> mkOp str)
+  Postfix $ UnaryAssignExpr def constr <$ (liftIn True hadNoNewLine >> mkOp str)
 
 makePrefixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePrefixExpr str constr =
@@ -807,7 +815,7 @@ exprTable =
     , makeInfixExpr pgeqt OpGEq
     , makeInfixExpr prangle  OpGT
     , makeInfixExpr (forget kinstanceof) OpInstanceof
-    , makeInfixExpr (forget kin) OpIn
+    , inExpr
     ]
   , [ makeInfixExpr pseq OpStrictEq
     , makeInfixExpr psneq OpStrictNEq
@@ -824,7 +832,8 @@ exprTable =
 
 logicalOrExpressionGen :: PosInParser Expression
 logicalOrExpressionGen =
-  buildExpressionParser exprTable (liftIn leftHandSideExpression) <?> "simple expression"
+  do allowIn <- fst <$> getState
+     buildExpressionParser exprTable (liftIn allowIn leftHandSideExpression) <?> "simple expression"
 
 -- avoid putting comma expression on everything
 -- probably should be binary op in the table
@@ -972,7 +981,7 @@ forStatement =
                  , ExprInit <$> expressionNoIn
                  , return NoInit ]
       <* psemi) <*> optionMaybe expression
-      <* psemi <*> optionMaybe expression
+      <* psemi  <*> optionMaybe expression
     forInStmt :: Parser (Positioned Statement -> Positioned Statement)
     forInStmt =
       ForInStmt def
