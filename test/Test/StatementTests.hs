@@ -161,6 +161,12 @@ unitTests runTest =
        [ ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "a")) 
                       (InfixExpr () OpAdd (VarRef () (Id () "b")) 
                        (CallExpr () (DotRef () (CallExpr () (VarRef () (Id () "c")) [InfixExpr () OpAdd (VarRef () (Id () "d")) (VarRef () (Id () "e"))]) (Id () "print")) [])))]
+  $: testCase "For-each with allowed extra in" $$
+       runTest "for-each-no-in" 
+       [ForInStmt () (ForInVar (VarDecl () (Id () "i") (Just (InfixExpr () OpAdd (NumLit () (Left 1)) (InfixExpr () OpIn (NumLit () (Left 2)) (ObjectLit () [])))))) (InfixExpr () OpIn (ObjectLit () []) (ObjectLit () [])) (EmptyStmt ())]
+  $: testCase "For-loop not allowed in" $$
+       expectedParseFail "for-no-in" (1,20)
+  
   $: []
 
 
