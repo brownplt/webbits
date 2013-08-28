@@ -719,7 +719,6 @@ assignmentExpressionGen =
         
 validLHS :: Expression a -> Bool
 validLHS e = case e of
-  AssignExpr _ OpAssign et _ -> validLHS e
   VarRef _ _                -> True
   DotRef _ _ _              -> True
   BracketRef _ _ _          -> True
