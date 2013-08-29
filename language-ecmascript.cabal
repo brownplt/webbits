@@ -68,6 +68,8 @@ Library
     Language.ECMAScript5.Parser
     Language.ECMAScript5.PrettyPrint
     Language.ECMAScript5.Syntax.Annotations
+  Other-Modules:  
+    Language.ECMAScript5.ParserState
     Language.ECMAScript3.Parser.Type
     Language.ECMAScript3.Parser.State
     Language.ECMAScript5.Parser.Unicode

@@ -16,7 +16,7 @@ module Language.ECMAScript5.Parser (parse
 
 
 
-import System.IO.Unsafe
+import Language.ECMAScript5.ParserState
 
 import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
@@ -45,104 +45,21 @@ import Control.Arrow
 
 type Parser a = forall s. Stream s Identity Char => ParsecT s ParserState Identity a
 
--- the statement label stack
-type ParserState = (Bool, [String])
-
-data SourceSpan = SourceSpan (SourcePos, SourcePos)
-type Positioned x = x SourceSpan
+type Positioned x = x ParserAnnotation
 type PosParser x = Parser (Positioned x)
 
-instance Default SourcePos where
-  def = initialPos ""
-
-instance Default SourceSpan where
-  def = SourceSpan def
-
-instance Show SourceSpan where
-  show (SourceSpan (p1,p2)) = let
-    l1 = show $ sourceLine p1
-    c1 = show $ sourceColumn p1
-    l2 = show $ sourceLine p2
-    c2 = show $ sourceColumn p2
-    s1 = l1 ++ "-" ++ c1
-    s2 = l2 ++ "-" ++ c2
-    in "(" ++ show (s1 ++ "/" ++ s2) ++ ")"
-
 -- for parsers that have with/without in-clause variations
-type InParser a =  forall s. Stream s Identity Char
-                 => ParsecT s (Bool, ParserState) Identity a
+type InParser a =  forall s. Stream s Identity Char => ParsecT s InParserState Identity a
 type PosInParser x = InParser (Positioned x)
 
-liftIn :: Bool -> Parser a -> InParser a
-liftIn x p = changeState (\s -> (x, s)) snd p
-
-withIn, withNoIn :: InParser a -> Parser a
-withIn   p = changeState snd (\s -> (True, s)) p
-withNoIn p = changeState snd (\s -> (False, s)) p
-
-assertInAllowed :: InParser ()
-assertInAllowed = getState >>= guard.fst
-
-changeState
-  :: forall m s u v a . (Functor m, Monad m)
-  => (u -> v)
-  -> (v -> u)
-  -> ParsecT s u m a
-  -> ParsecT s v m a
-changeState forward backward = mkPT . transform . runParsecT
-  where
-    mapState f st = st { stateUser = f (stateUser st) }
-    mapReply f (Ok a st err) = Ok a (mapState f st) err
-    mapReply _ (Error e) = Error e
-    transform p st = (fmap . fmap . fmap) (mapReply forward) (p (mapState backward st))
-
-initialParserState :: ParserState
-initialParserState = (False, [])
-
--- | checks if the label is not yet on the stack, if it is -- throws
--- an error; otherwise it pushes it onto the stack
-pushLabel :: String -> Parser ()
-pushLabel lab = do (nl, labs) <- getState
-                   pos <- getPosition
-                   if lab `elem` labs
-                     then fail $ "Duplicate label at " ++ show pos
-                     else putState (nl, lab:labs)
-
-popLabel :: Parser ()
-popLabel = modifyState (second safeTail)
-  where safeTail [] = []
-        safeTail (_:xs) = xs
-
-clearLabels :: ParserState -> ParserState
-clearLabels = second (const [])
-
-withFreshLabelStack :: Parser a -> Parser a
-withFreshLabelStack p = do oldState <- getState
-                           putState $ clearLabels oldState
-                           a <- p
-                           putState oldState
-                           return a
-
--- was newline consumed? keep as parser state set in 'ws' parser
-
-setNewLineState :: [Bool] -> Parser Bool
-setNewLineState wsConsumed =
-  let consumedNewLine = any id wsConsumed in do
-    modifyState (first $ const $ consumedNewLine)
-    return consumedNewLine
-
-hadNewLine :: Parser ()
-hadNewLine = fst <$> getState >>= guard
-
-hadNoNewLine :: Parser()
-hadNoNewLine = fst <$> getState >>= guard.not
-
 -- a convenience wrapper to take care of the position, "with position"
-withPos   :: (HasAnnotation x, Stream s Identity Char) => ParsecT s u Identity (Positioned x) -> ParsecT s u Identity (Positioned x)
+withPos   :: (HasAnnotation x, HasComments state, Stream s Identity Char) => ParsecT s state Identity (Positioned x) -> ParsecT s state Identity (Positioned x)
 withPos p = do start <- getPosition
+               comments <- getComments <$> getState
+               modifyState $ modifyComments (const [])
                result <- p
                end <- getPosition
-               return $ setAnnotation (SourceSpan (start, end)) result
+               return $ setAnnotation (SourceSpan (start, end), comments) result
 
 -- Below "x.y.z" are references to ECMAScript 5 spec chapters that discuss the corresponding grammar production
 --7.2
@@ -172,10 +89,19 @@ singleLineCommentChar :: Parser Char
 singleLineCommentChar  = notFollowedBy lineTerminator *> noneOf ""
 
 multiLineComment :: Parser String
-multiLineComment = string "/*" *> (concat <$> many insideMultiLineComment) <* string "*/"
+multiLineComment = 
+  do string "/*"
+     comment <- concat <$> many insideMultiLineComment
+     string "*/"
+     modifyState $ modifyComments (MultiLineComment comment:)
+     return comment
 
 singleLineComment :: Parser String
-singleLineComment = string "//" >> many singleLineCommentChar
+singleLineComment = 
+  do string "//" 
+     comment <- many singleLineCommentChar
+     modifyState $ modifyComments (SingleLineComment comment :)
+     return comment
 
 insideMultiLineComment :: Parser [Char]
 insideMultiLineComment = noAsterisk <|> try asteriskInComment
@@ -689,7 +615,7 @@ called    = flip (CallExpr def)   <$> arguments
 newExpression :: PosParser Expression
 newExpression =
   withPostfix [bracketed, dotref] $
-    NewExpr def <$ knew <*> newExpression <*> option [] arguments
+    withPos(NewExpr def <$ knew <*> newExpression <*> option [] arguments)
     <|> primaryExpression
     <|> functionExpression
 
@@ -750,13 +676,13 @@ assignmentExpressionNoIn = withNoIn assignmentExpressionGen
 
 conditionalExpressionGen :: Positioned Expression -> PosInParser Expression
 conditionalExpressionGen l = 
-  withPos $ CondExpr def l
-  <$  liftIn True pquestion
-  <*> assignmentExpressionGen
+  withPos $ CondExpr def l 
+  <$  liftIn True pquestion 
+  <*> assignmentExpressionGen 
   <*  liftIn True pcolon
   <*> assignmentExpressionGen
   
-type InOp s = Operator s (Bool, ParserState) Identity (Positioned Expression)
+type InOp s = Operator s InParserState Identity (Positioned Expression)
 
 mkOp :: Show a => Parser a -> InParser a
 mkOp p = liftIn True $ try $ p
@@ -832,8 +758,8 @@ exprTable =
 
 logicalOrExpressionGen :: PosInParser Expression
 logicalOrExpressionGen =
-  do allowIn <- fst <$> getState
-     buildExpressionParser exprTable (liftIn allowIn leftHandSideExpression) <?> "simple expression"
+  do inAllowed <- allowIn <$> getState
+     buildExpressionParser exprTable (liftIn inAllowed leftHandSideExpression) <?> "simple expression"
 
 -- avoid putting comma expression on everything
 -- probably should be binary op in the table
@@ -991,7 +917,7 @@ forStatement =
       <*> expression
 
 restricted :: (HasAnnotation e)
-           =>  Parser Bool -> (SourceSpan -> a -> e SourceSpan) -> Parser a -> Parser a -> Parser (e SourceSpan)
+           =>  Parser Bool -> (ParserAnnotation -> a -> e ParserAnnotation) -> Parser a -> Parser a -> Parser (e ParserAnnotation)
 restricted keyword constructor null parser =
   withPos $
   do consumedNewLine <- keyword 
@@ -1108,14 +1034,14 @@ parse :: Stream s Identity Char
       => PosParser x -- ^ The parser to use
       -> SourceName -- ^ Name of the source file
       -> s -- ^ The stream to parse, usually a 'String' or a 'ByteString'
-      -> Either ParseError (x SourceSpan)
+      -> Either ParseError (x ParserAnnotation)
 parse p = runParser p initialParserState
 
 -- | A convenience function that takes a filename and tries to parse
 -- the file contents an ECMAScript program, it fails with an error
 -- message if it can't.
 parseFromFile :: (Error e, MonadIO m, MonadError e m) => String -- ^ file name
-              -> m (Program SourceSpan)
+              -> m (Program ParserAnnotation)
 parseFromFile fname =
   liftIO (readFile fname) >>= \source ->
   case parse program fname source of
@@ -1127,5 +1053,5 @@ parseFromFile fname =
 --
 -- > parseFromString = parse program ""
 parseFromString :: String -- ^ JavaScript source to parse
-                -> Either ParseError (Program SourceSpan)
+                -> Either ParseError (Program ParserAnnotation)
 parseFromString s = parse program "" s
