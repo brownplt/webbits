@@ -278,10 +278,10 @@ expression     = withPos $ makeExpression <$> assignmentExpression     `sepBy1` 
 expressionNoIn = withPos $ makeExpression <$> assignmentExpressionNoIn `sepBy1` pcomma
 
 functionBody :: Parser [Positioned Statement]
-functionBody = option [] sourceElements
+functionBody = sourceElements
 
 sourceElements :: Parser [Positioned Statement]
-sourceElements = many1 sourceElement
+sourceElements = many sourceElement
 
 sourceElement :: PosParser Statement
 sourceElement = functionDeclaration <|> parseStatement
@@ -531,7 +531,7 @@ statement = parseStatement
 
 -- | A parser that parses an ECMAScript program.
 program :: PosParser Program
-program = ws *> withPos (Program def <$> many sourceElement) <* eof
+program = ws *> withPos (Program def <$> sourceElements) <* eof
 
 -- | Parse from a stream given a parser, same as 'Text.Parsec.parse'
 -- in Parsec. We can use this to parse expressions or statements
