@@ -478,12 +478,9 @@ switchStatement = withPos $
     caseBlock =
       inBraces $
       makeCaseClauses
-      <$> caseClauses
+      <$> many caseClause
       <*> optionMaybe defaultClause
-      <*> caseClauses
-    caseClauses :: Parser [Positioned CaseClause]
-    caseClauses =
-      many caseClause
+      <*> many caseClause
     caseClause :: Parser (Positioned CaseClause)
     caseClause =
       withPos $
