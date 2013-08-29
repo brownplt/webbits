@@ -106,12 +106,12 @@ propertyAssignment = withPos $
 
 propertyName :: Parser (Positioned Prop)
 propertyName = withPos $
-               (identifierName >>= id2Prop)
-            <|>(stringLiteral >>= string2Prop)
-            <|>(numericLiteral >>= num2Prop)
-  where id2Prop (Id a s) = return $ PropId a s
-        string2Prop (StringLit a s) = return $ PropString a s
-        num2Prop (NumLit a i) = return $ PropNum a i
+                id2Prop     <$> identifierName
+            <|> string2Prop <$> stringLiteral
+            <|> num2Prop    <$> numericLiteral
+  where id2Prop (Id a s)            = PropId a s
+        string2Prop (StringLit a s) = PropString a s
+        num2Prop (NumLit a i)       = PropNum a i
 
 bracketed, dotref, called :: Parser (Positioned Expression -> Positioned Expression)
 bracketed = flip (BracketRef def) <$> inBrackets expression

@@ -230,16 +230,16 @@ por           = forget $ lexeme $ string "||"
 pquestion     = forget $ lexeme $ char '?'
 pcolon        = forget $ lexeme $ char ':'
 passign       = forget $ lexeme $ char '=' *> notFollowedBy (char '=')
-passignadd    = forget $ lexeme $ try (string "+=")
-passignsub    = forget $ lexeme $ try (string "-=")
-passignmul    = forget $ lexeme $ try (string "*=")
-passignmod    = forget $ lexeme $ try (string "%=")
-passignshl    = forget $ lexeme $ try (string "<<=")
-passignshr    = forget $ lexeme $ try (string ">>=")
-passignushr   = forget $ lexeme $ try (string ">>>=")
-passignband   = forget $ lexeme $ try (string "&=")
-passignbor    = forget $ lexeme $ try (string "|=")
-passignbxor   = forget $ lexeme $ try (string "^=")
+passignadd    = forget $ lexeme $ string "+="
+passignsub    = forget $ lexeme $ string "-="
+passignmul    = forget $ lexeme $ string "*="
+passignmod    = forget $ lexeme $ string "%="
+passignshl    = forget $ lexeme $ string "<<="
+passignshr    = forget $ lexeme $ string ">>="
+passignushr   = forget $ lexeme $ string ">>>="
+passignband   = forget $ lexeme $ string "&="
+passignbor    = forget $ lexeme $ string "|="
+passignbxor   = forget $ lexeme $ string "^="
 pdiv          = forget $ lexeme $ do char '/' *> notFollowedBy (char '=')
 passigndiv    = forget $ lexeme $ try (string "/=")
 
