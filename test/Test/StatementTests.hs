@@ -166,7 +166,46 @@ unitTests runTest =
        [ForInStmt () (ForInVar (VarDecl () (Id () "i") (Just (InfixExpr () OpAdd (NumLit () (Left 1)) (InfixExpr () OpIn (NumLit () (Left 2)) (ObjectLit () [])))))) (InfixExpr () OpIn (ObjectLit () []) (ObjectLit () [])) (EmptyStmt ())]
   $: testCase "For-loop not allowed in" $$
        expectedParseFail "for-no-in" (1,20)
-  
+  $: testCase "Break without a label" $$
+       runTest "break"
+       [ForStmt () NoInit Nothing Nothing $ BreakStmt () Nothing]
+  $: testCase "Break with a label" $$
+       runTest "break-label"
+       [LabelledStmt () (Id () "l") $ BlockStmt () [
+           BreakStmt () $ Just $ Id () "l"]]
+  $: testCase "Break with an incorrect label" $$
+       expectedParseFail "break-label2" (2,12)
+  $: testCase "Break in a switch" $$
+       runTest "break-switch"
+       [SwitchStmt () (VarRef () $ Id () "a")
+        [CaseClause () (NumLit () $ Left 1)
+         [ExprStmt () $AssignExpr () OpAssign (VarRef () $ Id () "x")
+                                  (NumLit () $ Left 2)
+         ,BreakStmt () Nothing]
+        ,CaseDefault () [ExprStmt () $ AssignExpr () OpAssign
+                         (VarRef () $ Id () "x") (NumLit () $ Left 3)]]]
+  $: testCase "Break alone" $$
+       expectedParseFail "break-alone" (1,1)
+  $: testCase "Break in a switch with a label" $$
+       expectedParseFail "break-switch-label" (3, 14)
+  $: testCase "Continue with a label" $$
+       runTest "continue-label"
+       [LabelledStmt () (Id () "l1") $ WhileStmt () (VarRef () $ Id () "x") $
+        ContinueStmt () $ Just $ Id () "l1"]
+  $: testCase "Continue with a wrong label" $$
+       expectedParseFail "continue-label2" (2, 15)
+  $: testCase "Continue in a switch" $$
+       expectedParseFail "continue-switch" (3, 18)
+  $: testCase "Duplicate label" $$
+       expectedParseFail "duplicate-label" (1, 3)
+  $: testCase "Duplicate label across nested statements" $$
+       expectedParseFail "duplicate-label2" (1, 6)       
+  $: testCase "Non-enclosing label" $$
+       expectedParseFail "non-enclosing-label" (2, 21)
+  $: testCase "Label not in label set" $$
+       expectedParseFail "not-in-label-set" (3, 19)
+  $: testCase "Labels don't travel across funtion boundaries" $$
+       expectedParseFail "label-functions" (3, 16)
   $: []
 
 
