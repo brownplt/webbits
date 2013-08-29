@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, ImpredicativeTypes #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Language.ECMAScript5.Parser (parse
                                    , PosParser
@@ -704,10 +704,10 @@ makePrefixExpr str constr =
   Prefix $ UnaryAssignExpr def constr <$ mkOp str
 
 makeUnaryExpr pfxs =
-  let mkPrefix :: (Parser (), PrefixOp) -> InParser (Positioned Expression -> Positioned Expression)
-      mkPrefix (p, op) = PrefixExpr def op <$ mkOp p
+  let mkPrefix :: Parser () -> PrefixOp -> InParser (Positioned Expression -> Positioned Expression)
+      mkPrefix p op = PrefixExpr def op <$ mkOp p
   in  
-    Prefix $ makePrefix (map mkPrefix pfxs)
+    Prefix $ makePrefix (map (uncurry mkPrefix) pfxs)
 
 exprTable:: Stream s Identity Char => [[InOp s]]
 exprTable =
