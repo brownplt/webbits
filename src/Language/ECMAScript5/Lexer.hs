@@ -37,7 +37,7 @@ import Numeric(readDec,readOct,readHex)
 
 import Control.Monad.Identity
 import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$))
-
+import Data.Int (Int32)
 
 lexeme :: Show a => Parser a -> Parser a
 lexeme p = p <* ws
@@ -329,16 +329,16 @@ nonZeroDecimalDigit  = do c <- rangeChar '1' '9'
 exponentPart :: Parser Integer
 exponentPart = (char 'e' <|> char 'E') >> signedInteger
 
+fromHex :: String -> Int32
+fromHex = fst . head . Numeric.readHex
 
-fromHex digits = do [(hex,"")] <- return $ Numeric.readHex digits
-                    return hex
+fromDecimal :: String -> Float
+fromDecimal = fst . head . Numeric.readDec
 
-fromDecimal digits = do [(hex,"")] <- return $ Numeric.readDec digits
-                        return hex
 hexIntegerLiteral :: PosParser Expression
 hexIntegerLiteral = lexeme $ withPos $ do
   try (char '0' >> oneOf ['x', 'X'])
-  NumLit def <$> Left <$> fromInteger <$> (many1 hexDigit >>= fromHex)
+  NumLit def . Left . fromHex <$> many1 hexDigit
 
 --7.8.4
 dblquote :: Parser Char
@@ -405,14 +405,13 @@ escapeCharacter = singleEscapeCharacter
                <|>char 'u'
 
 hexEscapeSequence :: Parser Char
-hexEscapeSequence =  do digits <- (char 'x' >> count 2 hexDigit)
-                        hex <- fromHex digits
-                        return $ chr hex
+hexEscapeSequence =  chr . int32toInt . fromHex <$> (char 'x' *> count 2 hexDigit)
+
+int32toInt :: Int32 -> Int
+int32toInt = fromIntegral . toInteger
 
 unicodeEscapeSequence :: Parser Char
-unicodeEscapeSequence = do digits <- char 'u' >> count 4 hexDigit
-                           hex <- fromHex digits
-                           return $ chr hex
+unicodeEscapeSequence = chr . int32toInt . fromHex <$> (char 'u' *> count 4 hexDigit)
 
 --7.8.5 and 15.10.4.1
 regularExpressionLiteral :: PosParser Expression
