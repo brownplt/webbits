@@ -87,13 +87,13 @@ objectLiteral = withPos $
 
 propertyAssignment :: PosParser PropAssign
 propertyAssignment = withPos $
-                     (do try (makeKeyword "get" <* notFollowedBy pcolon)
+                     (do try (sget <* notFollowedBy pcolon)
                          pname <- propertyName
                          prparen
                          plparen
                          body <- inBraces functionBody
                          return $ PGet def pname body)
-                  <|>(do try (makeKeyword "set" <* notFollowedBy pcolon)
+                  <|>(do try (sset <* notFollowedBy pcolon)
                          pname <- propertyName
                          param <- inParens identifierName
                          body <- inBraces functionBody
@@ -105,13 +105,13 @@ propertyAssignment = withPos $
 
 propertyName :: Parser (Positioned Prop)
 propertyName = withPos $
-               (identifierName >>= id2Prop)
-            <|>(stringLiteral >>= string2Prop)
-            <|>(numericLiteral >>= num2Prop)
-  where id2Prop (Id a s) = return $ PropId a s
-        string2Prop (StringLit a s) = return $ PropString a s
-        num2Prop (NumLit a i) = return $ PropNum a i
-
+                id2Prop     <$> identifierName
+            <|> string2Prop <$> stringLiteral
+            <|> num2Prop    <$> numericLiteral
+  where id2Prop (Id a s)            = PropId a s
+        string2Prop (StringLit a s) = PropString a s
+        num2Prop (NumLit a i)       = PropNum a i
+           
 bracketed, dotref, called :: Parser (Positioned Expression -> Positioned Expression)
 bracketed = flip (BracketRef def) <$> inBrackets expression
 dotref    = flip (DotRef def)     <$  pdot <*> identifierName
@@ -221,7 +221,8 @@ exprTable =
     ]
   , [ makePrefixExpr  pplusplus PrefixInc
     , makePrefixExpr  pminusminus PrefixDec
-    , makeUnaryExpr [ (pnot     , PrefixLNot)
+    ]
+  , [ makeUnaryExpr [ (pnot     , PrefixLNot)
                     , (pbnot     , PrefixBNot)
                     , (pplus     , PrefixPlus)
                     , (pminus    , PrefixMinus)
