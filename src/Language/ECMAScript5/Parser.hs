@@ -318,12 +318,12 @@ parseStatement =
   , emptyStatement ]
 
 statementList :: Parser [Positioned Statement]
-statementList = many1 (withPos parseStatement)
+statementList = many (withPos parseStatement)
 
 parseBlock :: PosParser Statement
 parseBlock =
   withPos $ inBraces $
-  BlockStmt def <$> option [] statementList
+  BlockStmt def <$> statementList
 
 variableStatement :: PosParser Statement
 variableStatement =
@@ -490,13 +490,13 @@ switchStatement = withPos $
       CaseClause def
       <$  kcase
       <*> expression <* pcolon
-      <*> option [] statementList
+      <*> statementList
     defaultClause :: Parser (Positioned CaseClause)
     defaultClause =
       withPos $
       kdefault <* pcolon
        >> CaseDefault def
-      <$> option [] statementList
+      <$> statementList
 
 tryStatement :: PosParser Statement
 tryStatement =
@@ -519,7 +519,7 @@ tryStatement =
               block
 
 block :: PosParser Statement
-block = withPos $ BlockStmt def <$> inBraces (option [] statementList)
+block = withPos $ BlockStmt def <$> inBraces statementList
 
 debuggerStatement :: PosParser Statement
 debuggerStatement =
