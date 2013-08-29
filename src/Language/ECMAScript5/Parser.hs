@@ -141,12 +141,12 @@ functionExpression = withPos $
   <*> inBraces functionBody
 
 assignmentExpressionGen :: PosInParser Expression
-assignmentExpressionGen =
-  do l <- logicalOrExpressionGen 
+assignmentExpressionGen = withPos $
+  do l <- logicalOrExpressionGen
      assignment l <|> conditionalExpressionGen l <|> return l
   where
     assignment :: Positioned Expression -> PosInParser Expression
-    assignment l = withPos $
+    assignment l =
      do op <- liftIn True assignOp
         when (not $ validLHS l) $
           fail "Invalid left-hand-side assignment"
@@ -181,7 +181,7 @@ assignmentExpressionNoIn = withNoIn assignmentExpressionGen
 
 conditionalExpressionGen :: Positioned Expression -> PosInParser Expression
 conditionalExpressionGen l = 
-  withPos $ CondExpr def l 
+  CondExpr def l 
   <$  liftIn True pquestion 
   <*> assignmentExpressionGen 
   <*  liftIn True pcolon
