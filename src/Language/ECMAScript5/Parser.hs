@@ -47,12 +47,11 @@ import Control.Arrow
 type InParser a =  forall s. Stream s Identity Char => ParsecT s InParserState Identity a
 type PosInParser x = InParser (Positioned x)
 
--- | 7.9 || TODO: write tests based on examples from Spec 7.9.2, once I
--- get the parser finished! Automatic Semicolon Insertion algorithm,
--- rule 1; to be used in place of `semi` in parsers for
--- emptyStatement, variableStatement, expressionStatement,
--- doWhileStatement, continuteStatement, breakStatement,
--- returnStatement and throwStatement.
+-- | 7.9. Automatic Semicolon Insertion algorithm, rule 1; to be used
+-- in place of `semi` in parsers for emptyStatement,
+-- variableStatement, expressionStatement, doWhileStatement,
+-- continuteStatement, breakStatement, returnStatement and
+-- throwStatement.
 autoSemi :: Parser ()
 autoSemi = psemi <|> hadNewLine <|> lookAhead prbrace <|> eof
 
@@ -86,7 +85,7 @@ objectLiteral = withPos $
                   propertyAssignment `sepBy` pcomma <* optional pcomma)
 
 
-propertyAssignment :: Parser (Positioned PropAssign)
+propertyAssignment :: PosParser PropAssign
 propertyAssignment = withPos $
                      (do try (makeKeyword "get" <* notFollowedBy pcolon)
                          pname <- propertyName
@@ -147,7 +146,7 @@ assignmentExpressionGen =
      assignment l <|> conditionalExpressionGen l <|> return l
   where
     assignment :: Positioned Expression -> PosInParser Expression
-    assignment l = 
+    assignment l = withPos $
      do op <- liftIn True assignOp
         when (not $ validLHS l) $
           fail "Invalid left-hand-side assignment"
@@ -263,7 +262,7 @@ exprTable =
 
 
 logicalOrExpressionGen :: PosInParser Expression
-logicalOrExpressionGen =
+logicalOrExpressionGen = withPos $
   do inAllowed <- allowIn <$> getState
      buildExpressionParser exprTable (liftIn inAllowed leftHandSideExpression) <?> "simple expression"
 
@@ -296,7 +295,7 @@ functionDeclaration = withPos $
 
 formalParameterList :: Parser [Positioned Id]
 formalParameterList =
-  withPos identifierName `sepBy` pcomma
+  identifierName `sepBy` pcomma
 
 parseStatement :: PosParser Statement
 parseStatement =
@@ -468,7 +467,7 @@ labelledStatement =
   <*> parseStatement
 
 switchStatement :: PosParser Statement
-switchStatement =
+switchStatement = withPos $
   SwitchStmt def
   <$  kswitch
   <*> inParens expression

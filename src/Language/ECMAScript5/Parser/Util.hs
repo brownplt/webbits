@@ -31,14 +31,17 @@ forget p = p >> return ()
 concatM   :: Monad m => m [[a]] -> m [a]
 concatM x = x >>= (\y -> return $ concat y)
 
+makePostfix :: Stream s m t => [ParsecT s u m (a -> a)] -> ParsecT s u m (a -> a)
 makePostfix ps =
   foldr (flip (.)) id <$> many (choice ps)
-  
+
+makePrefix :: Stream s m t => [ParsecT s u m (a -> a)] -> ParsecT s u m (a -> a)
 makePrefix ps =
   foldl (.) id <$> many (choice ps)
 
+withPostfix :: Stream s m t => [ParsecT s u m (b -> b)] -> ParsecT s u m b -> ParsecT s u m b
 withPostfix qs p =
   flip ($) <$> p <*> makePostfix qs
-
+withPrefix :: Stream s m t => [ParsecT s u m (b -> b)] -> ParsecT s u m b -> ParsecT s u m b
 withPrefix qs p =
   ($) <$> makePrefix qs <*> p

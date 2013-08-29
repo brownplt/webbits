@@ -73,8 +73,7 @@ insideMultiLineComment = noAsterisk <|> try asteriskInComment
 
 --7.6
 identifier :: PosParser Expression
-identifier = withPos $ do name <- identifierName
-                          return $ VarRef def name
+identifier = withPos $ VarRef def <$> identifierName
 
 identifierName :: PosParser Id
 identifierName = lexeme $ withPos $ flip butNot reservedWord $ fmap (Id def) $
@@ -359,10 +358,8 @@ fromDecimal digits = do [(hex,"")] <- return $ Numeric.readDec digits
                         return hex
 hexIntegerLiteral :: PosParser Expression
 hexIntegerLiteral = lexeme $ withPos $ do
-  try (char '0' >> (char 'x' <|> char 'X'))
-  digits <- many1 hexDigit
-  n <- fromHex digits
-  return $ NumLit def $ Left $ fromInteger n
+  try (char '0' >> oneOf ['x', 'X'])
+  NumLit def <$> Left <$> fromInteger <$> (many1 hexDigit >>= fromHex)
 
 --7.8.4
 dblquote :: Parser Char

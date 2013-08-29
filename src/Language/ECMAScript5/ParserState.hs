@@ -87,8 +87,11 @@ instance Show SourceSpan where
     s2 = l2 ++ "-" ++ c2
     in "(" ++ show (s1 ++ "/" ++ s2) ++ ")"
 
--- a convenience wrapper to take care of the position, "with position"
-withPos   :: (HasAnnotation x, HasComments state, Stream s Identity Char) => ParsecT s state Identity (Positioned x) -> ParsecT s state Identity (Positioned x)
+-- a convenience wrapper to take care of the position, "with
+-- position". Whenever we return something `Positioned` we need to use it.
+withPos   :: (HasAnnotation x, HasComments state, Stream s Identity Char)
+          => ParsecT s state Identity (Positioned x)
+          -> ParsecT s state Identity (Positioned x)
 withPos p = do start <- getPosition
                comments <- getComments <$> getState
                modifyState $ modifyComments (const [])
