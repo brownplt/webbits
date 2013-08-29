@@ -220,10 +220,10 @@ exprTable =
   [ [ makePostfixExpr pplusplus PostfixInc
     , makePostfixExpr pminusminus PostfixDec
     ]
-    -- todo, !++x
   , [ makePrefixExpr  pplusplus PrefixInc
     , makePrefixExpr  pminusminus PrefixDec
-    , makeUnaryExpr [ (pnot     , PrefixLNot)
+    ]
+  , [ makeUnaryExpr [ (pnot     , PrefixLNot)
                     , (pbnot     , PrefixBNot)
                     , (pplus     , PrefixPlus)
                     , (pminus    , PrefixMinus)
