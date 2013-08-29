@@ -91,7 +91,7 @@ unitTests runTest =
        runTest "switch-statements"
        [SwitchStmt () (VarRef () (Id () "foo")) [CaseClause () (NumLit () (Left 10)) [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "10!"])],CaseClause () (NumLit () (Left 20)) [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "20!"])],CaseDefault () [ExprStmt () (CallExpr () (DotRef () (VarRef () (Id () "console")) (Id () "log")) [StringLit () "something else!"])]]]
   $: testCase "Switch statement w/ two defaults" $$
-       expectedParseFail "switch-double-default" (6,12)
+       expectedParseFail "switch-double-default" (6,5)
   $: testCase "If-statement" $$
        runTest "if-statement"
        [IfStmt () (PrefixExpr () PrefixLNot (InfixExpr () OpEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar")))) (ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 10)))) (IfStmt () (InfixExpr () OpNEq (VarRef () (Id () "foo")) (VarRef () (Id () "bar"))) (BlockStmt () [ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 20)))]) (BlockStmt () [ExprStmt () (AssignExpr () OpAssign (VarRef () (Id () "x")) (NumLit () (Left 30)))]))]
