@@ -3,10 +3,14 @@
 module Language.ECMAScript5.ParserState 
        ( Comment(..)
        , SourceSpan(..)  
+       , Positioned
        , ParserAnnotation
        , ParserState
        , InParserState
        , HasComments
+       , Parser
+       , PosParser
+       , withPos
        , getComments
        , allowIn
        , liftIn
@@ -32,9 +36,11 @@ import Data.Default.Instances.Base
 import Control.Monad.Identity
 import Control.Applicative
 
+type Positioned x = x ParserAnnotation
 
 type Parser   a = forall s. Stream s Identity Char => ParsecT s ParserState Identity a
 type InParser a =  forall s. Stream s Identity Char => ParsecT s InParserState Identity a
+type PosParser x = Parser (Positioned x)
 
 data ParserState = ParserState { hasNewLine :: Bool, comments :: [Comment], labels :: [String] }
 data InParserState = InParserState { allowIn :: Bool, baseState :: ParserState }
@@ -80,6 +86,15 @@ instance Show SourceSpan where
     s1 = l1 ++ "-" ++ c1
     s2 = l2 ++ "-" ++ c2
     in "(" ++ show (s1 ++ "/" ++ s2) ++ ")"
+
+-- a convenience wrapper to take care of the position, "with position"
+withPos   :: (HasAnnotation x, HasComments state, Stream s Identity Char) => ParsecT s state Identity (Positioned x) -> ParsecT s state Identity (Positioned x)
+withPos p = do start <- getPosition
+               comments <- getComments <$> getState
+               modifyState $ modifyComments (const [])
+               result <- p
+               end <- getPosition
+               return $ setAnnotation (SourceSpan (start, end), comments) result
 
 liftIn :: Bool -> Parser a -> InParser a
 liftIn x p = changeState (InParserState x) baseState p
