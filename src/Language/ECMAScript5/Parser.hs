@@ -88,13 +88,13 @@ objectLiteral = withPos $
 
 propertyAssignment :: Parser (Positioned PropAssign)
 propertyAssignment = withPos $
-                     (do try (makeKeyword "get" <* notFollowedBy pcolon)
+                     (do try (sget <* notFollowedBy pcolon)
                          pname <- propertyName
                          prparen
                          plparen
                          body <- inBraces functionBody
                          return $ PGet def pname body)
-                  <|>(do try (makeKeyword "set" <* notFollowedBy pcolon)
+                  <|>(do try (sset <* notFollowedBy pcolon)
                          pname <- propertyName
                          param <- inParens identifierName
                          body <- inBraces functionBody
