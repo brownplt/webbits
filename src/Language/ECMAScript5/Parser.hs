@@ -112,7 +112,7 @@ propertyName = withPos $
   where id2Prop (Id a s)            = PropId a s
         string2Prop (StringLit a s) = PropString a s
         num2Prop (NumLit a i)       = PropNum a i
-
+           
 bracketed, dotref, called :: Parser (Positioned Expression -> Positioned Expression)
 bracketed = flip (BracketRef def) <$> inBrackets expression
 dotref    = flip (DotRef def)     <$  pdot <*> identifierName
@@ -220,6 +220,7 @@ exprTable =
   [ [ makePostfixExpr pplusplus PostfixInc
     , makePostfixExpr pminusminus PostfixDec
     ]
+    -- todo, !++x
   , [ makePrefixExpr  pplusplus PrefixInc
     , makePrefixExpr  pminusminus PrefixDec
     , makeUnaryExpr [ (pnot     , PrefixLNot)

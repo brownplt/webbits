@@ -11,6 +11,7 @@ module Language.ECMAScript5.ParserState
        , Parser
        , PosParser
        , withPos
+       , postfixWithPos
        , getComments
        , allowIn
        , liftIn
@@ -30,6 +31,8 @@ module Language.ECMAScript5.ParserState
        ) where
 
 import Text.Parsec hiding (labels)
+import Text.Parsec.Pos (initialPos)
+import Language.ECMAScript5.Syntax
 import Language.ECMAScript5.Syntax.Annotations
 import Data.Default.Class
 import Data.Default.Instances.Base
@@ -69,10 +72,8 @@ instance HasComments InParserState where
 
 type ParserAnnotation = (SourceSpan, [Comment])
 
-initialPos = undefined
-
 instance Default SourcePos where
-  def = initialPos ""
+  def = undefined ""
 
 instance Default SourceSpan where
   def = SourceSpan def
@@ -87,14 +88,29 @@ instance Show SourceSpan where
     s2 = l2 ++ "-" ++ c2
     in "(" ++ show (s1 ++ "/" ++ s2) ++ ")"
 
+consumeComments :: (HasComments state) => Stream s Identity Char => ParsecT s state Identity [Comment]
+consumeComments = do comments <- getComments <$> getState
+                     modifyState $ modifyComments (const [])
+                     return comments
+
 -- a convenience wrapper to take care of the position, "with position"
+
 withPos   :: (HasAnnotation x, HasComments state, Stream s Identity Char) => ParsecT s state Identity (Positioned x) -> ParsecT s state Identity (Positioned x)
 withPos p = do start <- getPosition
-               comments <- getComments <$> getState
-               modifyState $ modifyComments (const [])
+               comments <- consumeComments
                result <- p
                end <- getPosition
                return $ setAnnotation (SourceSpan (start, end), comments) result
+
+postfixWithPos :: HasAnnotation x =>
+                  Parser (Positioned x -> Positioned x) -> 
+                  Parser (Positioned x -> Positioned x)
+postfixWithPos p = do
+  f <- p
+  high <- getPosition
+  comments <- consumeComments
+  return $ \e -> let (SourceSpan (low, _), _) = getAnnotation e 
+                 in setAnnotation (SourceSpan (low, high), comments) (f e)
 
 liftIn :: Bool -> Parser a -> InParser a
 liftIn x p = changeState (InParserState x) baseState p

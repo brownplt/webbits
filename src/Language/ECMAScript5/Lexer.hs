@@ -194,54 +194,57 @@ plbrace, prbrace, plparen, prparen, plbracket, prbracket, pdot, psemi,
   passignshr, passignushr, passignband, passignbor, passignbxor, pdiv, passigndiv
   :: Parser ()
 
-plbrace       = forget $ lexeme $ char '{'
-prbrace       = forget $ lexeme $ char '}'
-plparen       = forget $ lexeme $ char '('
-prparen       = forget $ lexeme $ char ')'
-plbracket     = forget $ lexeme $ char '['
-prbracket     = forget $ lexeme $ char ']'
-pdot          = forget $ lexeme $ char '.'
-psemi         = forget $ lexeme $ char ';'
-pcomma        = forget $ lexeme $ char ','
-plangle       = forget $ lexeme $ char '<' *> notFollowedBy (oneOf "=<")
-prangle       = forget $ lexeme $ char '>' *> notFollowedBy (oneOf "=>")
-pleqt         = forget $ lexeme $ string "<="
-pgeqt         = forget $ lexeme $ string ">="
-peq           = forget $ lexeme $ string "==" *> notFollowedBy (char '=')
-pneq          = forget $ lexeme $ string "!=" *> notFollowedBy (char '=')
-pseq          = forget $ lexeme $ string "==="
-psneq         = forget $ lexeme $ string "!=="
-pplus         = forget $ lexeme $ do char '+' *> notFollowedBy (oneOf "=+")
-pminus        = forget $ lexeme $ do char '-' *> notFollowedBy (oneOf "=-")
-pmul          = forget $ lexeme $ do char '*' *> notFollowedBy (char '=')
-pmod          = forget $ lexeme $ do char '%' *> notFollowedBy (char '=')
-pplusplus     = forget $ lexeme $ string "++"
-pminusminus   = forget $ lexeme $ string "--"
-pshl          = forget $ lexeme $ string "<<" *> notFollowedBy (char '=')
-pshr          = forget $ lexeme $ string ">>" *> notFollowedBy (oneOf ">=")
-pushr         = forget $ lexeme $ string ">>>" *> notFollowedBy (char '=')
-pband         = forget $ lexeme $ do char '&' *> notFollowedBy (oneOf "&=")
-pbor          = forget $ lexeme $ do char '|' *> notFollowedBy (oneOf "|=")
-pbxor         = forget $ lexeme $ do char '^' *> notFollowedBy (char '=')
-pnot          = forget $ lexeme $ do char '!' *> notFollowedBy (char '=')
-pbnot         = forget $ lexeme $ char '~'
-pand          = forget $ lexeme $ string "&&"
-por           = forget $ lexeme $ string "||"
-pquestion     = forget $ lexeme $ char '?'
-pcolon        = forget $ lexeme $ char ':'
-passign       = forget $ lexeme $ char '=' *> notFollowedBy (char '=')
-passignadd    = forget $ lexeme $ string "+="
-passignsub    = forget $ lexeme $ string "-="
-passignmul    = forget $ lexeme $ string "*="
-passignmod    = forget $ lexeme $ string "%="
-passignshl    = forget $ lexeme $ string "<<="
-passignshr    = forget $ lexeme $ string ">>="
-passignushr   = forget $ lexeme $ string ">>>="
-passignband   = forget $ lexeme $ string "&="
-passignbor    = forget $ lexeme $ string "|="
-passignbxor   = forget $ lexeme $ string "^="
-pdiv          = forget $ lexeme $ do char '/' *> notFollowedBy (char '=')
-passigndiv    = forget $ lexeme $ try (string "/=")
+makeOp :: Show a => Parser a -> Parser ()
+makeOp op = forget $ lexeme $ try op
+
+plbrace       = makeOp $ char '{'
+prbrace       = makeOp $ char '}'
+plparen       = makeOp $ char '('
+prparen       = makeOp $ char ')'
+plbracket     = makeOp $ char '['
+prbracket     = makeOp $ char ']'
+pdot          = makeOp $ char '.'
+psemi         = makeOp $ char ';'
+pcomma        = makeOp $ char ','
+plangle       = makeOp $ char '<' *> notFollowedBy (oneOf "=<")
+prangle       = makeOp $ char '>' *> notFollowedBy (oneOf "=>")
+pleqt         = makeOp $ string "<="
+pgeqt         = makeOp $ string ">="
+peq           = makeOp $ string "==" *> notFollowedBy (char '=')
+pneq          = makeOp $ string "!=" *> notFollowedBy (char '=')
+pseq          = makeOp $ string "==="
+psneq         = makeOp $ string "!=="
+pplus         = makeOp $ char '+' *> notFollowedBy (oneOf "=+")
+pminus        = makeOp $ char '-' *> notFollowedBy (oneOf "=-")
+pmul          = makeOp $ char '*' *> notFollowedBy (char '=')
+pmod          = makeOp $ char '%' *> notFollowedBy (char '=')
+pplusplus     = makeOp $ string "++"
+pminusminus   = makeOp $ string "--"
+pshl          = makeOp $ string "<<" *> notFollowedBy (char '=')
+pshr          = makeOp $ string ">>" *> notFollowedBy (oneOf ">=")
+pushr         = makeOp $ string ">>>" *> notFollowedBy (char '=')
+pband         = makeOp $ char '&' *> notFollowedBy (oneOf "&=")
+pbor          = makeOp $ char '|' *> notFollowedBy (oneOf "|=")
+pbxor         = makeOp $ char '^' *> notFollowedBy (char '=')
+pnot          = makeOp $ char '!' *> notFollowedBy (char '=')
+pbnot         = makeOp $ char '~'
+pand          = makeOp $ string "&&"
+por           = makeOp $ string "||"
+pquestion     = makeOp $ char '?'
+pcolon        = makeOp $ char ':'
+passign       = makeOp $ char '=' *> notFollowedBy (char '=')
+passignadd    = makeOp $ string "+="
+passignsub    = makeOp $ string "-="
+passignmul    = makeOp $ string "*="
+passignmod    = makeOp $ string "%="
+passignshl    = makeOp $ string "<<="
+passignshr    = makeOp $ string ">>="
+passignushr   = makeOp $ string ">>>="
+passignband   = makeOp $ string "&="
+passignbor    = makeOp $ string "|="
+passignbxor   = makeOp $ string "^="
+pdiv          = makeOp $ do char '/' *> notFollowedBy (char '=')
+passigndiv    = makeOp $ try (string "/=")
 
 --7.8
 literal :: PosParser Expression
