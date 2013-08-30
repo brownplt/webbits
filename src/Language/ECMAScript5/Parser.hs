@@ -302,6 +302,7 @@ parseStatement :: PosParser Statement
 parseStatement =
   choice
   [ parseBlock
+  , labelledStatement
   , variableStatement
   , expressionStatement
   , ifStatement
@@ -310,7 +311,6 @@ parseStatement =
   , breakStatement
   , returnStatement
   , withStatement
-  , labelledStatement
   , switchStatement
   , throwStatement
   , tryStatement
@@ -462,12 +462,10 @@ breakStatement = do
   b@(BreakStmt _ mlab) <- restricted kbreak BreakStmt (return Nothing) (optionMaybe identifierName)
   case mlab of
     Nothing ->if null $ filter isIterSwitch enc
-              then setPosition pos >>
-                   fail "Break is not nested in an iteration or switch statement"
+              then fail "Break is not nested in an iteration or switch statement"
               else return b
     Just lab->if null $ filter (elem (unId lab) . getLabelSet) enc
-              then setPosition pos >>
-                   fail "Break is not nested in a statement with the specified\
+              then fail "Break is not nested in a statement with the specified\
                         \ label"
               else return b
 
@@ -492,8 +490,7 @@ labelledStatement :: PosParser Statement
 labelledStatement =
   withPos $
   LabelledStmt def
-  <$> (identifierName >>= pushLabel)
-  <*  pcolon
+  <$> try ((identifierName >>= pushLabel) <* pcolon)
   <*> parseStatement
   <*  clearLabelSet
 
