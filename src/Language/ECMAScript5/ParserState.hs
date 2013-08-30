@@ -159,9 +159,9 @@ withPos p = do start <- getPosition
                end <- getPosition 
                return $ setAnnotation (SourceSpan (start, end), comments) result 
  
-postfixWithPos :: HasAnnotation x => 
-                  Parser (Positioned x -> Positioned x) ->  
-                  Parser (Positioned x -> Positioned x) 
+postfixWithPos :: (HasAnnotation x, HasComments state, Stream s Identity Char) => 
+                  ParsecT s state Identity (Positioned x -> Positioned x) ->  
+                  ParsecT s state Identity (Positioned x -> Positioned x) 
 postfixWithPos p = do 
   f <- p 
   high <- getPosition 
