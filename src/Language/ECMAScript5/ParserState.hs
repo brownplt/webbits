@@ -11,6 +11,7 @@ module Language.ECMAScript5.ParserState
        , PosParser
        , withPos
        , postfixWithPos
+       , prefixWithPos
        , getComments
        , allowIn
        , liftIn
@@ -169,6 +170,16 @@ postfixWithPos p = do
   return $ \e -> let (SourceSpan (low, _), _) = getAnnotation e  
                  in setAnnotation (SourceSpan (low, high), comments) (f e) 
  
+prefixWithPos :: (HasAnnotation x, HasComments state, Stream s Identity Char) => 
+                  ParsecT s state Identity (Positioned x -> Positioned x) ->  
+                  ParsecT s state Identity (Positioned x -> Positioned x) 
+prefixWithPos p = do 
+  low <- getPosition 
+  f <- p 
+  comments <- consumeComments 
+  return $ \e -> let (SourceSpan (_, high), _) = getAnnotation e  
+                 in setAnnotation (SourceSpan (low, high), comments) (f e) 
+
 liftIn :: Bool -> Parser a -> InParser a 
 liftIn x p = changeState (InParserState x) baseState p 
  

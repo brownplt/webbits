@@ -113,9 +113,9 @@ propertyName = withPos $
         num2Prop (NumLit a i)       = PropNum a i
            
 bracketed, dotref, called :: Parser (Positioned Expression -> Positioned Expression)
-bracketed = flip (BracketRef def) <$> inBrackets expression
-dotref    = flip (DotRef def)     <$  pdot <*> identifierName
-called    = flip (CallExpr def)   <$> arguments
+bracketed = postfixWithPos $ flip (BracketRef def) <$> inBrackets expression
+dotref    = postfixWithPos $ flip (DotRef def)     <$  pdot <*> identifierName
+called    = postfixWithPos $ flip (CallExpr def)   <$> arguments
 
 newExpression :: PosParser Expression
 newExpression =
@@ -202,17 +202,17 @@ inExpr =
 
 makePostfixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePostfixExpr str constr =
-  Postfix $ postfixWithPos (UnaryAssignExpr def constr <$ (liftIn True hadNoNewLine >> mkOp str))
+  Postfix $ postfixWithPos $ UnaryAssignExpr def constr <$ (liftIn True hadNoNewLine >> mkOp str)
 
 makePrefixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePrefixExpr str constr =
-  Prefix $ UnaryAssignExpr def constr <$ mkOp str
+  Prefix $ prefixWithPos $ UnaryAssignExpr def constr <$ mkOp str
 
 makeUnaryExpr pfxs =
   let mkPrefix :: Parser () -> PrefixOp -> InParser (Positioned Expression -> Positioned Expression)
       mkPrefix p op = PrefixExpr def op <$ mkOp p
   in  
-    Prefix $ makePrefix (map (uncurry mkPrefix) pfxs)
+    Prefix $ makePrefix (map (prefixWithPos . uncurry mkPrefix) pfxs)
 
 exprTable:: Stream s Identity Char => [[InOp s]]
 exprTable =
