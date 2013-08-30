@@ -56,7 +56,8 @@ type Parser   a = forall s. Stream s Identity Char => ParsecT s ParserState Iden
 type InParser a =  forall s. Stream s Identity Char => ParsecT s InParserState Identity a 
 type PosParser x = Parser (Positioned x) 
  
-data ParserState = ParserState { hasNewLine :: Bool, comments :: [Comment], enclosing :: [EnclosingStatement], labelSet :: [Label] } 
+data ParserState = ParserState { hasNewLine :: Bool, comments :: [Comment], enclosing :: [EnclosingStatement], labelSet :: [Label] }
+                 deriving (Show)
 data InParserState = InParserState { allowIn :: Bool, baseState :: ParserState } 
 
 data EnclosingStatement = EnclosingIter [Label]

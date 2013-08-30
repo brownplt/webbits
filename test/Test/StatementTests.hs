@@ -193,6 +193,8 @@ unitTests runTest =
         ContinueStmt () $ Just $ Id () "l1"]
   $: testCase "Continue with a wrong label" $$
        expectedParseFail "continue-label2" (2, 16)
+  $: testCase "Continue alone" $$
+       expectedParseFail "continue-alone" (1, 8)       
   $: testCase "Continue in a switch" $$
        expectedParseFail "continue-switch" (3, 19)
   $: testCase "Duplicate label" $$
