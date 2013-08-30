@@ -206,6 +206,9 @@ unitTests runTest =
        expectedParseFail "not-in-label-set" (3, 19)
   $: testCase "Labels don't travel across funtion boundaries" $$
        expectedParseFail "label-functions" (3, 16)
+  $: testCase "A simple labelled statement" $$
+       runTest "label"
+       [LabelledStmt () (Id () "l") $ ExprStmt () $ VarRef () $ Id () "x"]
   $: []
 
 
