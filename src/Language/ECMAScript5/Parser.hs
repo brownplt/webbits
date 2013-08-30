@@ -441,33 +441,31 @@ restricted keyword constructor null parser =
 
 continueStatement :: PosParser Statement
 continueStatement = do
-  encIter <- filter isIter <$> getEnclosing
-  pos <- getPosition
-  c@(ContinueStmt _ mlab) <- restricted kcontinue ContinueStmt (return Nothing) (optionMaybe identifierName) 
-  case mlab of
-    Nothing  -> if null encIter
-                then setPosition pos >>
+   encIter <- filter isIter <$> getEnclosing
+   restricted kcontinue ContinueStmt (return Nothing) (label encIter) 
+ where 
+   label encIter = do
+     label <- optionMaybe identifierName
+     case label of
+       Nothing  -> when (null encIter) $
                      fail "Continue is not nested in an iteration statement"
-                else return c
-    Just lab -> if null $ filter (elem (unId lab) . getLabelSet) encIter
-                then setPosition pos >>
+       Just lab -> unless (any (elem (unId lab) . getLabelSet) encIter) $
                      fail "Labelled continue is not nested in an iteration\
-                          \statement with the specified label"
-                else return c
+                             \statement with the specified label"
+     return label
 
 breakStatement :: PosParser Statement
-breakStatement = do
-  enc <- getEnclosing
-  pos <- getPosition
-  b@(BreakStmt _ mlab) <- restricted kbreak BreakStmt (return Nothing) (optionMaybe identifierName)
-  case mlab of
-    Nothing ->if null $ filter isIterSwitch enc
-              then fail "Break is not nested in an iteration or switch statement"
-              else return b
-    Just lab->if null $ filter (elem (unId lab) . getLabelSet) enc
-              then fail "Break is not nested in a statement with the specified\
-                        \ label"
-              else return b
+breakStatement = 
+    restricted kbreak BreakStmt (return Nothing) (getEnclosing >>= label)
+  where
+    label enc = do
+      label <- optionMaybe identifierName
+      case label of
+        Nothing  -> unless (any isIterSwitch enc) $
+                      fail "Break is not nested in an iteration or switch statement"
+        Just lab -> unless (any (elem (unId lab) . getLabelSet) enc) $
+                      fail "Break is not nested in a statement with the specified label"
+      return label
 
 throwStatement :: PosParser Statement
 throwStatement =
@@ -490,7 +488,7 @@ labelledStatement :: PosParser Statement
 labelledStatement =
   withPos $
   LabelledStmt def
-  <$> try ((identifierName >>= pushLabel) <* pcolon)
+  <$> try (identifierName <* pcolon >>= pushLabel)
   <*> parseStatement
   <*  clearLabelSet
 

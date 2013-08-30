@@ -1,5 +1,5 @@
 l1: while (x) {
     (function () {
-	break l1;
+    break l1;
     })();
 }

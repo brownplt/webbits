@@ -59,8 +59,8 @@ expectedParseFail file (expectedLine, expectedCol) =
                        line = sourceLine pos
                        col  = sourceColumn pos
                    in do
-                    assertEqual "Parse failure at wrong line" expectedLine line
-                    assertEqual "Parse failure at wrong column" expectedCol col
+                    assertEqual ("Parse failure at wrong line")   expectedLine line
+                    assertEqual ("Parse failure at wrong column") expectedCol col
 
 ableToParse file =
   do content <- readFile ("test-data/" ++ file ++ ".js")
@@ -174,7 +174,7 @@ unitTests runTest =
        [LabelledStmt () (Id () "l") $ BlockStmt () [
            BreakStmt () $ Just $ Id () "l"]]
   $: testCase "Break with an incorrect label" $$
-       expectedParseFail "break-label2" (2,12)
+       expectedParseFail "break-label2" (2, 13)
   $: testCase "Break in a switch" $$
        runTest "break-switch"
        [SwitchStmt () (VarRef () $ Id () "a")
@@ -193,19 +193,19 @@ unitTests runTest =
        [LabelledStmt () (Id () "l1") $ WhileStmt () (VarRef () $ Id () "x") $
         ContinueStmt () $ Just $ Id () "l1"]
   $: testCase "Continue with a wrong label" $$
-       expectedParseFail "continue-label2" (2, 15)
+       expectedParseFail "continue-label2" (2, 16)
   $: testCase "Continue in a switch" $$
-       expectedParseFail "continue-switch" (3, 18)
+       expectedParseFail "continue-switch" (3, 19)
   $: testCase "Duplicate label" $$
-       expectedParseFail "duplicate-label" (1, 3)
+       expectedParseFail "duplicate-label" (1, 7)
   $: testCase "Duplicate label across nested statements" $$
        expectedParseFail "duplicate-label2" (1, 6)       
   $: testCase "Non-enclosing label" $$
-       expectedParseFail "non-enclosing-label" (2, 21)
+       expectedParseFail "non-enclosing-label" (2, 22)
   $: testCase "Label not in label set" $$
-       expectedParseFail "not-in-label-set" (3, 19)
+       expectedParseFail "not-in-label-set" (3, 16)
   $: testCase "Labels don't travel across funtion boundaries" $$
-       expectedParseFail "label-functions" (3, 16)
+       expectedParseFail "label-functions" (3, 13)
   $: testCase "A simple labelled statement" $$
        runTest "label"
        [LabelledStmt () (Id () "l") $ ExprStmt () $ VarRef () $ Id () "x"]
