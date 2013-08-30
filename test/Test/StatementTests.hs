@@ -44,7 +44,6 @@ parseTest replaceSemiColons file ast =
           do c <- readFile ("test-data/" ++ file ++ ".js")
              let content = if not replaceSemiColons then c else stripSemis c
              let res = parseFromString content
-             
              case res of
                Right (Program _ statements) -> assertEqual "Unexpected AST" ast (deannotate statements)
                Left parseError -> assertFailure (show parseError)
@@ -209,6 +208,17 @@ unitTests runTest =
   $: testCase "A simple labelled statement" $$
        runTest "label"
        [LabelledStmt () (Id () "l") $ ExprStmt () $ VarRef () $ Id () "x"]
+  $: testCase "Isolated jQuery break failure" $$
+       runTest "jquery-break-isolated"
+       [WhileStmt () (VarRef () $ Id () "node") $ BlockStmt ()
+        [IfStmt () (VarRef () $ Id () "useCache") (BlockStmt () []) $ EmptyStmt ()
+        ,IfStmt () (InfixExpr () OpStrictEq (VarRef () $ Id () "node")
+                    (VarRef () $ Id () "elem")) (BlockStmt () [BreakStmt () Nothing])
+                    (EmptyStmt ())
+        ]]
+  $: testCase "While with a break" $$
+       runTest "while-break"
+       [WhileStmt () (VarRef () $ Id () "x") $ BlockStmt () [BreakStmt () Nothing]]
   $: []
 
 
