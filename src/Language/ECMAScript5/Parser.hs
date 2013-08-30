@@ -194,11 +194,11 @@ mkOp p = liftIn True $ try $ p
 
 makeInfixExpr :: Stream s Identity Char => Parser () -> InfixOp -> InOp s
 makeInfixExpr str constr = 
-  Infix (InfixExpr def constr <$ mkOp str) AssocLeft 
+  Infix (infixWithPos $ InfixExpr def constr <$ mkOp str) AssocLeft 
       
 inExpr :: Stream s Identity Char => InOp s
 inExpr =
-  Infix (InfixExpr def OpIn <$ (assertInAllowed <* mkOp kin) ) AssocLeft
+  Infix (infixWithPos $ InfixExpr def OpIn <$ (assertInAllowed <* mkOp kin)) AssocLeft
 
 makePostfixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePostfixExpr str constr =

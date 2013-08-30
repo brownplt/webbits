@@ -12,6 +12,7 @@ module Language.ECMAScript5.ParserState
        , withPos
        , postfixWithPos
        , prefixWithPos
+       , infixWithPos
        , getComments
        , allowIn
        , liftIn
@@ -128,7 +129,7 @@ instance HasComments InParserState where
 type ParserAnnotation = (SourceSpan, [Comment]) 
  
 instance Default SourcePos where 
-  def = undefined "" 
+  def = initialPos "" 
  
 instance Default SourceSpan where 
   def = SourceSpan def 
@@ -179,6 +180,16 @@ prefixWithPos p = do
   comments <- consumeComments 
   return $ \e -> let (SourceSpan (_, high), _) = getAnnotation e  
                  in setAnnotation (SourceSpan (low, high), comments) (f e) 
+
+infixWithPos :: (HasAnnotation x, HasComments state, Stream s Identity Char) =>
+                ParsecT s state Identity (Positioned x -> Positioned x -> Positioned x) ->
+                ParsecT s state Identity (Positioned x -> Positioned x -> Positioned x)
+infixWithPos p = 
+  liftAnnotations2 combinePos <$> p
+  where combinePos (SourceSpan (low, _), _) (SourceSpan (_, high), _) = (SourceSpan (low, high), [])
+        liftAnnotations2 f g x y = setAnnotation (f (getAnnotation x) (getAnnotation y)) (g x y)
+
+
 
 liftIn :: Bool -> Parser a -> InParser a 
 liftIn x p = changeState (InParserState x) baseState p 
