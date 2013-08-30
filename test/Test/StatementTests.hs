@@ -223,6 +223,8 @@ unitTests runTest =
        [WhileStmt () (VarRef () $ Id () "x") $ BlockStmt () [BreakStmt () Nothing]]
   $: testCase "Continue with a label in the wrong scope" $$
        expectedParseFail "continue-wrong-label-scope" (2, 26)
+  $: testCase "Break with the wrong label scope (extra ;)" $$
+       expectedParseFail "label-set" (3,11)
   $: []
 
 
