@@ -322,8 +322,8 @@ statementList = many (withPos parseStatement)
 
 parseBlock :: PosParser Statement
 parseBlock =
-  withPos $ inBraces $
-  pushEnclosing encOther >> BlockStmt def <$> statementList <* popEnclosing
+  withPos $ inBraces $ pushEnclosing EnclosingOther >>
+  BlockStmt def <$> statementList <* popEnclosing
 
 variableStatement :: PosParser Statement
 variableStatement =
@@ -373,11 +373,11 @@ ifStatement :: PosParser Statement
 ifStatement =
   withPos $
   IfStmt def
-  <$  (kif >> pushEnclosing encOther)
+  <$  (kif >> pushEnclosing EnclosingOther)
   <*> inParens expression
   <*> parseStatement
   <*> option (EmptyStmt def) (kelse *> parseStatement)
-  <* popEnclosing
+  <*  popEnclosing
 
 iterationStatement :: PosParser Statement
 iterationStatement = doStatement <|> whileStatement <|> forStatement
@@ -386,7 +386,7 @@ doStatement :: PosParser Statement
 doStatement =
   withPos $
   DoWhileStmt def
-  <$  (kdo >> pushEnclosing encIter)
+  <$  (kdo >> pushEnclosing EnclosingIter)
   <*> parseStatement
   <*  kwhile
   <*> inParens expression
@@ -397,7 +397,7 @@ whileStatement :: PosParser Statement
 whileStatement =
   withPos $
   WhileStmt def
-  <$  (kwhile >> pushEnclosing encIter)
+  <$  (kwhile >> pushEnclosing EnclosingIter)
   <*> inParens expression
   <*> parseStatement
   <*  popEnclosing
@@ -406,10 +406,10 @@ forStatement :: PosParser Statement
 forStatement =
   withPos $
   kfor
-  >> pushEnclosing encIter
-  >> inParens (forStmt <|> forInStmt)
+  >>  pushEnclosing EnclosingIter
+  >>  inParens (forStmt <|> forInStmt)
   <*> parseStatement
-  <* popEnclosing
+  <*  popEnclosing
   where
     forStmt :: Parser (Positioned Statement -> Positioned Statement)
     forStmt =
@@ -432,7 +432,7 @@ restricted :: (HasAnnotation e)
 restricted keyword constructor null parser =
   withPos $
   do consumedNewLine <- keyword 
-     rest <- if consumedNewLine 
+     rest <- if consumedNewLine
        then null
        else parser
      autoSemi
@@ -441,31 +441,32 @@ restricted keyword constructor null parser =
 
 continueStatement :: PosParser Statement
 continueStatement = do
-   encIter <- filter isIter <$> getEnclosing
-   restricted kcontinue ContinueStmt (return Nothing) (label encIter) 
+   restricted kcontinue ContinueStmt (return Nothing) (getEnclosing >>= label) 
  where 
-   label encIter = do
-     label <- optionMaybe identifierName
-     case label of
+   label enc = do
+     let encIter = filter isIter enc
+     mlab <- optionMaybe identifierName
+     case mlab of
        Nothing  -> when (null encIter) $
                      fail "Continue is not nested in an iteration statement"
        Just lab -> unless (any (elem (unId lab) . getLabelSet) encIter) $
-                     fail "Labelled continue is not nested in an iteration\
-                             \statement with the specified label"
-     return label
+                   fail $ "Labelled continue is not nested in an iteration \
+                          \statement with the specified label; the current \
+                          \enclosing statement stack is: " ++ show enc
+     return mlab
 
 breakStatement :: PosParser Statement
 breakStatement = 
     restricted kbreak BreakStmt (return Nothing) (getEnclosing >>= label)
   where
     label enc = do
-      label <- optionMaybe identifierName
-      case label of
+      mlab <- optionMaybe identifierName
+      case mlab of
         Nothing  -> unless (any isIterSwitch enc) $
-                      fail "Break is not nested in an iteration or switch statement"
+                      fail $ "Break is not nested in an iteration or switch statement; the current enclosing statement stack is " ++ show enc
         Just lab -> unless (any (elem (unId lab) . getLabelSet) enc) $
                       fail "Break is not nested in a statement with the specified label"
-      return label
+      return mlab
 
 throwStatement :: PosParser Statement
 throwStatement =
@@ -479,10 +480,10 @@ withStatement :: PosParser Statement
 withStatement =
   withPos $
   WithStmt def
-  <$  (kwith >> pushEnclosing encOther)
+  <$  (kwith >> pushEnclosing EnclosingOther)
   <*> inParens expression
   <*> parseStatement
-  <* popEnclosing
+  <*  popEnclosing
 
 labelledStatement :: PosParser Statement
 labelledStatement =
@@ -495,7 +496,7 @@ labelledStatement =
 switchStatement :: PosParser Statement
 switchStatement = withPos $
   SwitchStmt def
-  <$  (kswitch >> pushEnclosing encSwitch)
+  <$  (kswitch >> pushEnclosing EnclosingSwitch)
   <*> inParens expression
   <*> caseBlock
   <*  popEnclosing

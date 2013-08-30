@@ -32,13 +32,11 @@ module Language.ECMAScript5.ParserState
        , setNewLineState 
        , hadNewLine 
        , hadNoNewLine
-       , encIter
-       , encOther
-       , encSwitch
        , getEnclosing
        , isIter
        , isIterSwitch
        , HasLabelSet (..)
+       , EnclosingStatement (..)
        ) where 
  
 import Text.Parsec hiding (labels) 
@@ -71,6 +69,11 @@ data EnclosingStatement = EnclosingIter [Label]
                           -- never pushed if the current `labelSet` is
                           -- empty, so the list of labels in this
                           -- constructor should always be non-empty
+
+instance Show EnclosingStatement where
+  show (EnclosingIter ls) = "iteration" ++ show ls
+  show (EnclosingSwitch ls) = "switch" ++ show ls
+  show (EnclosingOther ls) = "statement" ++ show ls
 
 isIter :: EnclosingStatement -> Bool
 isIter (EnclosingIter _) = True
@@ -225,8 +228,9 @@ initialParserState = ParserState False [] [] []
 pushLabel :: Id a -> Parser (Id a)
 pushLabel ident = do ps <- getState 
                      pos <- getPosition
+                     encs <- getEnclosing
                      let lab  = unId ident
-                     let labs = labelSet ps
+                     let labs = labelSet ps ++ concatMap getLabelSet encs
                      if lab `elem` labs 
                        then fail $ "Duplicate label at " ++ show pos 
                        else putState (ps {labelSet = (lab:labs)}) >> return ident
@@ -234,20 +238,11 @@ pushLabel ident = do ps <- getState
 clearLabelSet :: Parser ()
 clearLabelSet = modifyState $ modifyLabelSet (const [])
 
-encOther = EnclosingOther []
-encSwitch = EnclosingSwitch []
-encIter = EnclosingIter []
-
-applyLabelSet :: EnclosingStatement -> Parser ()
-applyLabelSet enc = do ls <- labelSet <$> getState
+pushEnclosing :: ([Label] -> EnclosingStatement) -> Parser ()
+pushEnclosing ctr = do labs <- getLabelSet <$> getState
+                       modifyState (modifyEnclosing (ctr labs:))
                        clearLabelSet
-                       case (enc, ls) of
-                         (EnclosingOther _, []) -> return ()
-                         _ -> modifyState $ modifyEnclosing ((setLabelSet ls enc):)
 
-pushEnclosing :: EnclosingStatement -> Parser ()
-pushEnclosing = applyLabelSet
- 
 popEnclosing :: Parser () 
 popEnclosing = modifyState (modifyEnclosing safeTail) 
   where safeTail [] = [] 
@@ -259,10 +254,11 @@ getEnclosing :: Parser [EnclosingStatement]
 getEnclosing = enclosing <$> getState
 
 withFreshEnclosing :: Parser a -> Parser a 
-withFreshEnclosing p = do oldState <- getState 
-                          putState $ clearEnclosing oldState 
+withFreshEnclosing p = do oldEnclosing <- getEnclosing
+                          modifyState clearEnclosing
+                          clearLabelSet
                           a <- p 
-                          putState oldState 
+                          modifyState $ modifyEnclosing (const oldEnclosing)
                           return a 
  
 -- was newline consumed? keep as parser state set in 'ws' parser 

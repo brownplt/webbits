@@ -198,12 +198,12 @@ unitTests runTest =
   $: testCase "Duplicate label" $$
        expectedParseFail "duplicate-label" (1, 7)
   $: testCase "Duplicate label across nested statements" $$
-       expectedParseFail "duplicate-label2" (1, 6)       
+       expectedParseFail "duplicate-label2" (1, 9)
   $: testCase "Non-enclosing label" $$
        expectedParseFail "non-enclosing-label" (2, 22)
   $: testCase "Label not in label set" $$
        expectedParseFail "not-in-label-set" (3, 16)
-  $: testCase "Labels don't travel across funtion boundaries" $$
+  $: testCase "Labels don't travel across function boundaries" $$
        expectedParseFail "label-functions" (3, 13)
   $: testCase "A simple labelled statement" $$
        runTest "label"
@@ -219,6 +219,8 @@ unitTests runTest =
   $: testCase "While with a break" $$
        runTest "while-break"
        [WhileStmt () (VarRef () $ Id () "x") $ BlockStmt () [BreakStmt () Nothing]]
+  $: testCase "Continue with a label in the wrong scope" $$
+       expectedParseFail "continue-wrong-label-scope" (2, 26)
   $: []
 
 
