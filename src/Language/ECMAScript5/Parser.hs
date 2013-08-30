@@ -202,7 +202,7 @@ inExpr =
 
 makePostfixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePostfixExpr str constr =
-  Postfix $ UnaryAssignExpr def constr <$ (liftIn True hadNoNewLine >> mkOp str)
+  Postfix $ postfixWithPos (UnaryAssignExpr def constr <$ (liftIn True hadNoNewLine >> mkOp str))
 
 makePrefixExpr :: Stream s Identity Char => Parser () -> UnaryAssignOp -> InOp s
 makePrefixExpr str constr =
