@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Language.ECMAScript5.Parser (parse
                                    , PosParser
@@ -32,6 +32,7 @@ import Text.Parsec.Combinator
 import Text.Parsec.Prim hiding (parse)
 import Text.Parsec.Pos
 import Text.Parsec.Expr
+import Text.Parsec.Error (Message (..))
 
 import Control.Monad(liftM,liftM2)
 import Control.Monad.Trans (MonadIO,liftIO)
@@ -42,6 +43,7 @@ import Control.Monad.Identity
 import Data.Maybe (isJust, isNothing, fromMaybe, maybeToList)
 import Control.Applicative ((<$>), (<*), (*>), (<*>), (<$))
 import Control.Arrow
+import Data.Maybe (fromJust, isNothing)
 
 -- for parsers that have with/without in-clause variations
 type InParser a =  forall s. Stream s Identity Char => ParsecT s InParserState Identity a
@@ -437,36 +439,50 @@ restricted keyword constructor null parser =
        else parser
      autoSemi
      return (constructor def rest)
-     
+
+validatedRestricted :: (HasAnnotation e)
+                    => Parser Bool
+                    -> (ParserAnnotation -> a -> (Parser (e ParserAnnotation)))
+                    -> Parser a -> Parser a
+                    -> Parser (e ParserAnnotation)
+validatedRestricted keyword constructor null parser =
+  withPos $
+  do consumedNewLine <- keyword 
+     rest <- if consumedNewLine
+       then null
+       else parser
+     result <- constructor def rest
+     autoSemi
+     return result
+
 
 continueStatement :: PosParser Statement
 continueStatement =
-   restricted kcontinue ContinueStmt (return Nothing) (getEnclosing >>= label) 
- where 
-   label enc = do
-     let encIter = filter isIter enc
-     mlab <- optionMaybe identifierName
+   validatedRestricted kcontinue constructValidate (return Nothing) (optionMaybe identifierName)
+ where
+   constructValidate a mlab = do 
+     encIter <- filter isIter <$> getEnclosing
      case mlab of
-       Nothing  -> when (null encIter) $
-                     fail "Continue is not nested in an iteration statement"
+       Nothing  -> when (null encIter) $ unexpected
+                   "Continue is not nested in an iteration statement"
        Just lab -> unless (any (elem (unId lab) . getLabelSet) encIter) $
-                   fail $ "Labelled continue is not nested in an iteration \
-                          \statement with the specified label; the current \
-                          \enclosing statement stack is: " ++ show enc
-     return mlab
+                   unexpected $ "Labelled continue is not nested in an iteration\
+                                \ statement with the specified label"
+     return $ ContinueStmt a mlab
 
 breakStatement :: PosParser Statement
 breakStatement = 
-    restricted kbreak BreakStmt (return Nothing) (getEnclosing >>= label)
+    validatedRestricted kbreak constructValidate (return Nothing) (optionMaybe identifierName)
   where
-    label enc = do
-      mlab <- optionMaybe identifierName
+    constructValidate a mlab = do
+      enc <- getEnclosing
       case mlab of
-        Nothing  -> unless (any isIterSwitch enc) $
-                      fail $ "Break is not nested in an iteration or switch statement; the current enclosing statement stack is " ++ show enc
+        Nothing ->
+          unless (any isIterSwitch enc) $
+          unexpected "Break is not nested in an iteration or switch statement"
         Just lab -> unless (any (elem (unId lab) . getLabelSet) enc) $
-                      fail "Break is not nested in a statement with the specified label"
-      return mlab
+                    unexpected "Break is not nested in a statement with the specified label"
+      return $ BreakStmt a mlab
 
 throwStatement :: PosParser Statement
 throwStatement =

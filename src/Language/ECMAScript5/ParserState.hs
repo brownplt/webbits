@@ -37,6 +37,8 @@ module Language.ECMAScript5.ParserState
        , isIterSwitch
        , HasLabelSet (..)
        , EnclosingStatement (..)
+       , spanBegin
+       , spanEnd
        ) where 
  
 import Text.Parsec hiding (labels) 
@@ -109,8 +111,14 @@ instance HasLabelSet ParserState where
 type Label = String
 
 data SourceSpan =  
-  SourceSpan (SourcePos, SourcePos) 
- 
+  SourceSpan (SourcePos, SourcePos)
+
+spanBegin :: SourceSpan -> SourcePos
+spanBegin (SourceSpan (b, _)) = b
+
+spanEnd :: SourceSpan -> SourcePos
+spanEnd (SourceSpan (_, e)) = e
+
 data Comment  
   = SingleLineComment String  
   | MultiLineComment String  

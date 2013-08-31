@@ -184,7 +184,7 @@ unitTests runTest =
         ,CaseDefault () [ExprStmt () $ AssignExpr () OpAssign
                          (VarRef () $ Id () "x") (NumLit () $ Left 3)]]]
   $: testCase "Break alone" $$
-       expectedParseFail "break-alone" (1,1)
+       expectedParseFail "break-alone" (2,1)
   $: testCase "Break in a switch with a label" $$
        expectedParseFail "break-switch-label" (3, 14)
   $: testCase "Continue with a label" $$
@@ -194,7 +194,7 @@ unitTests runTest =
   $: testCase "Continue with a wrong label" $$
        expectedParseFail "continue-label2" (2, 16)
   $: testCase "Continue alone" $$
-       expectedParseFail "continue-alone" (1, 8)       
+       expectedParseFail "continue-alone" (2, 1)       
   $: testCase "Continue in a switch" $$
        expectedParseFail "continue-switch" (3, 19)
   $: testCase "Duplicate label" $$
