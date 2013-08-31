@@ -148,19 +148,19 @@ assignmentExpressionGen = withPos $
     assignment :: Positioned Expression -> PosInParser Expression
     assignment l =
      do op <- liftIn True assignOp
-        when (not $ validLHS l) $
+        unless (validLHS l) $
           fail "Invalid left-hand-side assignment"
         AssignExpr def op l <$> assignmentExpressionGen
         
 validLHS :: Expression a -> Bool
 validLHS e = case e of
-  VarRef _ _                -> True
-  DotRef _ _ _              -> True
-  BracketRef _ _ _          -> True
-  _                         -> False
+  VarRef {}              -> True
+  DotRef {}              -> True
+  BracketRef {}          -> True
+  _                      -> False
 
 assignOp :: Parser AssignOp
-assignOp = choice $
+assignOp = choice
   [ OpAssign         <$ passign
   , OpAssignAdd      <$ passignadd
   , OpAssignSub      <$ passignsub
@@ -190,7 +190,7 @@ conditionalExpressionGen l =
 type InOp s = Operator s InParserState Identity (Positioned Expression)
 
 mkOp :: Show a => Parser a -> InParser a
-mkOp p = liftIn True $ try $ p
+mkOp p = liftIn True $ try p
 
 makeInfixExpr :: Stream s Identity Char => Parser () -> InfixOp -> InOp s
 makeInfixExpr str constr = 
@@ -440,7 +440,7 @@ restricted keyword constructor null parser =
      
 
 continueStatement :: PosParser Statement
-continueStatement = do
+continueStatement =
    restricted kcontinue ContinueStmt (return Nothing) (getEnclosing >>= label) 
  where 
    label enc = do
@@ -584,4 +584,4 @@ parseFromFile fname =
 -- > parseFromString = parse program ""
 parseFromString :: String -- ^ JavaScript source to parse
                 -> Either ParseError (Program ParserAnnotation)
-parseFromString s = parse program "" s
+parseFromString = parse program ""
