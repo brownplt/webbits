@@ -1,0 +1,43 @@
+Version change log.
+
+=0.15=
+Bug fixes in the pretty-printer, the parser and the QuickCheck arbitrary
+instance for the AST. Refactored tests to use test-framework. Reorganized
+the interface for the parser to make it consistent; see deprecation
+warnings for details. Added Language.ECMAScript3.SourceDiff -- a simple
+source-based differ for ECMAScript programs, which is now used for
+visualizing test failures. Revised package dependencies. Factored the
+analyses out in a separate package: language-ecmascript-analysis;
+Language.ECMAScript3.Analysis.* are now deprecated.
+
+=0.14=
+Refactoring of the pretty-printing module: added class Pretty with a more
+comprehensive coverage of AST datatypes and better documentation. Removed
+duplicate code and deprecated all old interfaces (everything except class
+Pretty). Old interfaces would be removed in 1.0 (still a long way out).
+
+=0.13=
+Added class PP for pretty-printing
+
+=0.12=
+Added a 'setAnnotation' function to the 'HasAnnotation' class. Added
+a 'withAnnotation' helper function to modify the top level annotation.
+
+=0.11.1=
+Fixed binary operator precedence in the parser.
+
+=0.11=
+Added a simple quasi-quoter for ECMAScript (see
+Language.ECMAScript3.Syntax.QuasiQuote)
+
+=0.10=
+The ParenExpr constructor was removed from the Expression AST
+(WARNING: might break some builds). The pretty printer was rewritten
+to automatically parenthesize sub-expressions based on operator
+precedence. Added a (beta quality) arbitrary instance for all the
+AST's to generate random JavaScript programs (useful for testing).
+
+
+=0.9.1=
+Increased the upper bound on data-default in dependencies. See
+https://github.com/jswebtools/language-ecmascript/pull/5
