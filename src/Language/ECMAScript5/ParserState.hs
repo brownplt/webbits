@@ -53,6 +53,9 @@ import Control.Monad.Identity
 import Control.Applicative
 import Control.Monad.State (modify)
  
+import Data.Data (Data)
+import Data.Typeable (Typeable)
+
 type Positioned x = x ParserAnnotation 
  
 type Parser   a = forall s. Stream s Identity Char => ParsecT s ParserState Identity a 
@@ -115,6 +118,7 @@ type Label = String
 
 data SourceSpan =  
   SourceSpan (SourcePos, SourcePos)
+  deriving (Data, Typeable)
 
 spanBegin :: SourceSpan -> SourcePos
 spanBegin (SourceSpan (b, _)) = b
@@ -125,7 +129,7 @@ spanEnd (SourceSpan (_, e)) = e
 data Comment  
   = SingleLineComment String  
   | MultiLineComment String  
-    deriving Show 
+    deriving (Show, Data, Typeable)
  
 class HasWhiteSpacePos a where
   getWhiteSpaceStartPos :: a -> SourcePos
